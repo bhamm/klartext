@@ -1,0 +1,23 @@
+{
+  "name": "klartext",
+  "version": "1.0.0",
+  "description": "Chrome extension for translating German texts into 'Leichte Sprache'",
+  "private": true,
+  "scripts": {
+    "build": "node create-icons.js",
+    "package": "zip -r klartext.zip . -x '*.git*' 'node_modules/*' '*.zip' '*.crx' '*.pem' 'package*.json' 'create-icons.js' 'README.md' 'LICENSE'",
+    "test": "echo \"No tests specified yet\" && exit 0"
+  },
+  "keywords": [
+    "chrome-extension",
+    "accessibility",
+    "translation",
+    "leichte-sprache",
+    "german"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "canvas": "^2.11.0"
+  }
+}

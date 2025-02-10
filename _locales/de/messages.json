@@ -1,0 +1,72 @@
+{
+  "extensionName": {
+    "message": "Klartext - Leichte Sprache",
+    "description": "Der Name der Erweiterung"
+  },
+  "extensionDescription": {
+    "message": "Übersetzt deutsche Texte in 'Leichte Sprache' für bessere Zugänglichkeit",
+    "description": "Die Beschreibung der Erweiterung"
+  },
+  "contextMenuTitle": {
+    "message": "In Leichte Sprache übersetzen",
+    "description": "Text für das Kontextmenü"
+  },
+  "settingsSaved": {
+    "message": "Einstellungen gespeichert",
+    "description": "Erfolgsmeldung beim Speichern der Einstellungen"
+  },
+  "errorGpt4Key": {
+    "message": "GPT-4 API-Schlüssel wird benötigt",
+    "description": "Fehlermeldung für fehlenden GPT-4 Schlüssel"
+  },
+  "errorGeminiKey": {
+    "message": "Gemini API-Schlüssel wird benötigt",
+    "description": "Fehlermeldung für fehlenden Gemini Schlüssel"
+  },
+  "errorTranslation": {
+    "message": "Fehler bei der Übersetzung: $ERROR$",
+    "description": "Fehlermeldung bei Übersetzungsfehler",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "API nicht erreichbar"
+      }
+    }
+  },
+  "overlayTitle": {
+    "message": "Leichte Sprache Übersetzung",
+    "description": "Titel des Overlay-Fensters"
+  },
+  "closeButton": {
+    "message": "Schließen",
+    "description": "Text für den Schließen-Button"
+  },
+  "largeTextToggle": {
+    "message": "Große Schrift",
+    "description": "Text für den Große-Schrift-Schalter"
+  },
+  "instructionsTitle": {
+    "message": "Anleitung",
+    "description": "Titel der Bedienungsanleitung"
+  },
+  "instructionsText": {
+    "message": "So verwenden Sie Klartext:",
+    "description": "Einleitungstext der Anleitung"
+  },
+  "instructionStep1": {
+    "message": "Text markieren, den Sie übersetzen möchten",
+    "description": "Erster Schritt der Anleitung"
+  },
+  "instructionStep2": {
+    "message": "Rechtsklick auf den markierten Text",
+    "description": "Zweiter Schritt der Anleitung"
+  },
+  "instructionStep3": {
+    "message": "Wählen Sie \"In Leichte Sprache übersetzen\"",
+    "description": "Dritter Schritt der Anleitung"
+  },
+  "instructionResult": {
+    "message": "Die Übersetzung erscheint in einem Overlay-Fenster.",
+    "description": "Beschreibung des Ergebnisses"
+  }
+}

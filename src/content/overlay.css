@@ -1,0 +1,137 @@
+/* Overlay container */
+.klartext-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 600px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  z-index: 2147483647;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  padding: 24px;
+  border: none;
+}
+
+/* Visible state */
+.klartext-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Content container */
+.klartext-content {
+  position: relative;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* Translation text styling */
+.klartext-translation {
+  padding: 24px;
+  background-color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 20px;
+  line-height: 1.8;
+  color: #1a365d;
+  border-radius: 8px;
+  margin: 0 auto;
+}
+
+/* Error message styling */
+.klartext-error {
+  padding: 20px;
+  background-color: #fff5f5;
+  border-radius: 8px;
+  color: #c53030;
+  text-align: center;
+}
+
+.klartext-error p:first-child {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Close button */
+.klartext-close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background-color: #2c5282;
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.klartext-close:hover {
+  background-color: #1a365d;
+}
+
+.klartext-close:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+}
+
+/* Scrollbar styling */
+.klartext-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.klartext-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.klartext-content::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.klartext-content::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .klartext-overlay {
+    border: 3px solid #000000;
+  }
+
+  .klartext-close {
+    background-color: #000000;
+    border: 2px solid #ffffff;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .klartext-overlay {
+    transition: none;
+  }
+}
+
+/* Focus styles for accessibility */
+.klartext-overlay:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+}
+
+/* Large text option */
+.klartext-large-text .klartext-translation {
+  font-size: 24px;
+  line-height: 2;
+}
