@@ -21,6 +21,12 @@
       padding-bottom: 8px;
     }
 
+    h3 {
+      font-size: 14px;
+      margin: 0 0 12px;
+      color: #4a5568;
+    }
+
     .form-group {
       margin-bottom: 16px;
     }
@@ -31,25 +37,43 @@
       font-weight: 500;
     }
 
-    input[type="text"] {
+    input[type="text"], .select-input {
       width: 100%;
       padding: 8px;
       border: 1px solid #e2e8f0;
       border-radius: 4px;
       font-size: 14px;
       box-sizing: border-box;
+      background-color: #ffffff;
     }
 
-    input[type="text"]:focus {
+    input[type="text"]:focus, .select-input:focus {
       outline: none;
       border-color: #3182ce;
       box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
     }
 
+    .select-input {
+      cursor: pointer;
+    }
+
+    small {
+      display: block;
+      margin-top: 4px;
+      color: #718096;
+      font-size: 12px;
+    }
+
+    .settings-group {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+
     .switch-container {
       display: flex;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
 
     .switch-label {
@@ -106,6 +130,43 @@
       transform: translateX(20px);
     }
 
+    .save-button {
+      background-color: #3182ce;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+      margin-top: 8px;
+    }
+
+    .save-button:hover {
+      background-color: #2c5282;
+    }
+
+    .save-button:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+    }
+
+    .status {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .status.success {
+      color: #38a169;
+    }
+
+    .status.error {
+      color: #e53e3e;
+    }
+
     .instructions {
       background-color: #f7fafc;
       padding: 12px;
@@ -133,66 +194,52 @@
     .instructions li {
       margin-bottom: 4px;
     }
-
-    .save-button {
-      background-color: #3182ce;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-      width: 100%;
-      font-size: 14px;
-      font-weight: 500;
-      transition: background-color 0.2s;
-    }
-
-    .save-button:hover {
-      background-color: #2c5282;
-    }
-
-    .save-button:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
-    }
-
-    .status {
-      margin-top: 8px;
-      text-align: center;
-      font-size: 14px;
-    }
-
-    .status.success {
-      color: #38a169;
-    }
-
-    .status.error {
-      color: #e53e3e;
-    }
   </style>
 </head>
 <body>
   <h1>Klartext - Leichte Sprache</h1>
   
   <div class="form-group">
-    <label for="gpt4-key">GPT-4 API-Schlüssel</label>
-    <input type="text" id="gpt4-key" placeholder="sk-..." autocomplete="off">
+    <label for="provider-select">KI-Anbieter</label>
+    <select id="provider-select" class="select-input">
+      <option value="gpt4">OpenAI GPT-4</option>
+      <option value="gemini">Google Gemini</option>
+      <option value="claude">Anthropic Claude</option>
+      <option value="llama">Meta Llama 2</option>
+    </select>
   </div>
 
   <div class="form-group">
-    <label for="gemini-key">Gemini API-Schlüssel</label>
-    <input type="text" id="gemini-key" placeholder="..." autocomplete="off">
+    <label for="api-key">API-Schlüssel</label>
+    <input type="text" id="api-key" placeholder="Ihr API-Schlüssel" autocomplete="off">
+    <small class="api-hint" id="api-hint"></small>
   </div>
 
-  <div class="switch-container">
-    <label class="switch">
-      <input type="checkbox" id="large-text">
-      <span class="slider"></span>
-    </label>
-    <span class="switch-label">Große Schrift</span>
+  <div class="form-group">
+    <label for="api-endpoint">API-Endpoint (optional)</label>
+    <input type="text" id="api-endpoint" placeholder="https://..." autocomplete="off">
+    <small class="endpoint-hint">Leer lassen für Standard-Endpoint</small>
   </div>
 
-  <button class="save-button">Einstellungen speichern</button>
+  <div class="form-group">
+    <label for="model-select">Modell</label>
+    <select id="model-select" class="select-input">
+      <!-- Will be populated based on selected provider -->
+    </select>
+  </div>
+
+  <div class="settings-group">
+    <h3>Einstellungen</h3>
+    <div class="switch-container">
+      <label class="switch">
+        <input type="checkbox" id="large-text">
+        <span class="slider"></span>
+      </label>
+      <span class="switch-label">Große Schrift</span>
+    </div>
+  </div>
+
+  <button class="save-button">Speichern</button>
   <div id="status" class="status"></div>
 
   <div class="instructions">

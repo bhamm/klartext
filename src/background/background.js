@@ -1,33 +1,154 @@
 // Constants
 const MENU_ITEM_ID = 'translate-to-leichte-sprache';
-let API_CONFIG = {
-  GPT4: {
-    endpoint: 'https://api.openai.com/v1/chat/completions',
-    key: ''
+
+// Provider configurations with translation handlers
+const PROVIDERS = {
+  gpt4: {
+    async translate(text, config) {
+      const response = await fetch(config.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.apiKey}`
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a translator specialized in converting German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache.'
+            },
+            {
+              role: 'user',
+              content: text
+            }
+          ],
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`OpenAI API error: ${error.error?.message || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      return data.choices[0].message.content;
+    }
   },
-  GEMINI: {
-    endpoint: 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent',
-    key: ''
+  gemini: {
+    async translate(text, config) {
+      const response = await fetch(`${config.apiEndpoint}/${config.model}:generateContent?key=${config.apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Gemini API error: ${error.error?.message || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      return data.candidates[0].content.parts[0].text;
+    }
+  },
+  claude: {
+    async translate(text, config) {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': config.apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: [{
+            role: 'user',
+            content: `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`
+          }],
+          max_tokens: 1000,
+          temperature: 0.7
+        })
+      });
+
+      let error;
+      try {
+        const data = await response.json();
+        if (!response.ok) {
+          error = data;
+          throw new Error(`Claude API error: ${error.error?.message || 'Unknown error'}`);
+        }
+        // Extract the translation from the response
+        return data.content[0].text;
+      } catch (e) {
+        if (error) {
+          throw new Error(`Claude API error: ${error.error?.message || 'Unknown error'}`);
+        }
+        throw new Error(`Failed to parse Claude API response: ${e.message}`);
+      }
+    }
+  },
+  llama: {
+    async translate(text, config) {
+      const response = await fetch(config.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` })
+        },
+        body: JSON.stringify({
+          model: config.model,
+          prompt: `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`,
+          temperature: 0.7,
+          max_tokens: 1000
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Llama API error: ${error.error?.message || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      return data.generated_text;
+    }
   }
 };
 
-// Load API keys from storage
-chrome.storage.sync.get(['gpt4Key', 'geminiKey'], (items) => {
-  console.log('Loading API keys from storage');
-  if (items.gpt4Key) {
-    API_CONFIG.GPT4.key = items.gpt4Key;
-    console.log('GPT-4 API key loaded');
-  } else {
-    console.warn('No GPT-4 API key found in storage');
-  }
-  
-  if (items.geminiKey) {
-    API_CONFIG.GEMINI.key = items.geminiKey;
-    console.log('Gemini API key loaded');
-  } else {
-    console.warn('No Gemini API key found in storage');
-  }
+// Current API configuration
+let API_CONFIG = {
+  provider: 'gpt4',
+  model: 'gpt-4',
+  apiKey: '',
+  apiEndpoint: ''
+};
+
+// Load API configuration from storage
+chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], (items) => {
+  console.log('Loading API configuration from storage');
+  if (items.provider) API_CONFIG.provider = items.provider;
+  if (items.model) API_CONFIG.model = items.model;
+  if (items.apiKey) API_CONFIG.apiKey = items.apiKey;
+  if (items.apiEndpoint) API_CONFIG.apiEndpoint = items.apiEndpoint;
+  console.log('API configuration loaded:', { provider: API_CONFIG.provider, model: API_CONFIG.model });
 });
+
+// Cache for storing translations
+const translationCache = new Map();
 
 // Initialize context menu
 chrome.runtime.onInstalled.addListener(() => {
@@ -49,188 +170,68 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Listen for API key updates
+// Listen for API configuration updates
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background script received message:', message);
   
-  if (message.action === 'updateApiKeys') {
-    console.log('Updating API keys');
+  if (message.action === 'updateApiConfig') {
+    console.log('Updating API configuration');
     try {
-      if (!message.gpt4Key && !message.geminiKey) {
-        throw new Error('No API keys provided');
+      if (!message.config) {
+        throw new Error('No configuration provided');
       }
       
-      API_CONFIG.GPT4.key = message.gpt4Key;
-      API_CONFIG.GEMINI.key = message.geminiKey;
+      API_CONFIG = { ...API_CONFIG, ...message.config };
       
-      // Verify keys were set
-      console.log('API Configuration status:', {
-        gpt4KeyConfigured: !!API_CONFIG.GPT4.key,
-        geminiKeyConfigured: !!API_CONFIG.GEMINI.key
+      console.log('API Configuration updated:', {
+        provider: API_CONFIG.provider,
+        model: API_CONFIG.model
       });
       
-      // Send success response
-      if (sendResponse) {
-        sendResponse({ success: true });
-      }
+      sendResponse({ success: true });
     } catch (error) {
-      console.error('Error updating API keys:', error);
-      if (sendResponse) {
-        sendResponse({ success: false, error: error.message });
-      }
+      console.error('Error updating API configuration:', error);
+      sendResponse({ success: false, error: error.message });
     }
   }
+  
   // Return true to indicate we'll send a response asynchronously
   return true;
 });
 
-// Cache for storing translations
-let translationCache = new Map();
-
-// Text complexity analysis
-function analyzeComplexity(text) {
-  // Simple complexity analysis based on:
-  // - Sentence length
-  // - Word length
-  // - Presence of complex punctuation
-  const complexityScore = text.split('.').reduce((score, sentence) => {
-    const words = sentence.trim().split(/\s+/);
-    const avgWordLength = words.reduce((sum, word) => sum + word.length, 0) / words.length;
-    
-    return score + (
-      (words.length > 15 ? 2 : 1) * // Long sentences
-      (avgWordLength > 6 ? 1.5 : 1) * // Long words
-      (sentence.includes(',') ? 1.2 : 1) // Complex punctuation
-    );
-  }, 0) / text.split('.').length;
-
-  return complexityScore > 2.5 ? 'complex' : 'simple';
-}
-
-// Check cache for existing translation
-function checkCache(text) {
-  return translationCache.get(text);
-}
-
-// Store translation in cache
-function cacheTranslation(originalText, translation) {
-  translationCache.set(originalText, translation);
-  // Limit cache size to prevent memory issues
-  if (translationCache.size > 1000) {
-    const firstKey = translationCache.keys().next().value;
-    translationCache.delete(firstKey);
-  }
-}
-
-// Handle translation using appropriate model
+// Handle translation
 async function handleTranslation(text) {
-  console.log('Starting translation for text:', text.substring(0, 50) + '...');
+  console.log('Starting translation with provider:', API_CONFIG.provider);
   
   // Check cache first
-  const cachedTranslation = checkCache(text);
+  const cachedTranslation = translationCache.get(text);
   if (cachedTranslation) {
     console.log('Found translation in cache');
     return cachedTranslation;
   }
 
-  // Analyze text complexity
-  const complexity = analyzeComplexity(text);
-  console.log('Text complexity analysis result:', complexity);
-  
   try {
-    let translation;
-    if (complexity === 'complex') {
-      console.log('Using GPT-4 for complex text');
-      translation = await translateWithGPT4(text);
-    } else {
-      console.log('Using Gemini for simple text');
-      translation = await translateWithGemini(text);
+    // Get provider handler
+    const provider = PROVIDERS[API_CONFIG.provider];
+    if (!provider) {
+      throw new Error(`Unsupported provider: ${API_CONFIG.provider}`);
     }
+
+    // Perform translation
+    const translation = await provider.translate(text, API_CONFIG);
     
-    console.log('Translation successful');
     // Cache the result
-    cacheTranslation(text, translation);
+    translationCache.set(text, translation);
+    if (translationCache.size > 1000) {
+      const firstKey = translationCache.keys().next().value;
+      translationCache.delete(firstKey);
+    }
+
     return translation;
   } catch (error) {
     console.error('Translation error:', error);
     throw error;
   }
-}
-
-// GPT-4 translation
-async function translateWithGPT4(text) {
-  if (!API_CONFIG.GPT4.key) {
-    throw new Error('GPT-4 API key not configured');
-  }
-
-  const response = await fetch(API_CONFIG.GPT4.endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_CONFIG.GPT4.key}`
-    },
-    body: JSON.stringify({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a translator specialized in converting German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache.'
-        },
-        {
-          role: 'user',
-          content: text
-        }
-      ],
-      temperature: 0.7
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`GPT-4 API error: ${error.error?.message || 'Unknown error'}`);
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
-}
-
-// Gemini translation
-async function translateWithGemini(text) {
-  if (!API_CONFIG.GEMINI.key) {
-    throw new Error('Gemini API key not configured');
-  }
-
-  const response = await fetch(`${API_CONFIG.GEMINI.endpoint}?key=${API_CONFIG.GEMINI.key}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{
-          text: `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`
-        }]
-      }],
-      generationConfig: {
-        temperature: 0.7
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    console.error('Gemini API error response:', error);
-    throw new Error(`Gemini API error: ${error.error?.message || 'Unknown error'}`);
-  }
-
-  const data = await response.json();
-  console.log('Gemini API response:', data);
-  
-  if (!data.candidates || !data.candidates[0]) {
-    throw new Error('Invalid response format from Gemini API');
-  }
-
-  return data.candidates[0].content.parts[0].text;
 }
 
 // Listen for context menu clicks
@@ -240,8 +241,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === MENU_ITEM_ID && info.selectionText) {
     console.log('Selected text:', info.selectionText.substring(0, 50) + '...');
     console.log('Current API configuration:', {
-      gpt4KeyConfigured: !!API_CONFIG.GPT4.key,
-      geminiKeyConfigured: !!API_CONFIG.GEMINI.key
+      provider: API_CONFIG.provider,
+      model: API_CONFIG.model
     });
 
     // Check if content script is already injected

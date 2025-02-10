@@ -4,8 +4,13 @@ Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um 
 
 ## Features
 
+- Unterstützung für verschiedene KI-Anbieter:
+  - OpenAI GPT-4/3.5
+  - Google Gemini
+  - Anthropic Claude
+  - Meta Llama 2 (lokal oder gehostet)
+- Flexibel konfigurierbare API-Endpoints
 - Kontextmenü-Integration für einfache Textauswahl
-- Intelligente Auswahl zwischen GPT-4 und Gemini für optimale Übersetzungen
 - Zugängliches Overlay-Design mit Unterstützung für:
   - Große Schrift
   - Hoher Kontrast
@@ -25,11 +30,34 @@ Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um 
 ## Konfiguration
 
 1. Klicken Sie auf das Klartext-Icon in der Chrome-Toolbar
-2. Geben Sie Ihre API-Schlüssel ein:
-   - GPT-4 API-Schlüssel (für komplexe Texte)
-   - Gemini API-Schlüssel (für einfache Texte)
-3. Optional: Aktivieren Sie "Große Schrift" für bessere Lesbarkeit
-4. Klicken Sie auf "Einstellungen speichern"
+2. Wählen Sie einen KI-Anbieter:
+
+   ### OpenAI GPT-4/3.5
+   - API-Schlüssel von [OpenAI](https://platform.openai.com) benötigt
+   - Beginnt mit "sk-"
+   - Verfügbare Modelle: gpt-4, gpt-4-turbo, gpt-3.5-turbo
+
+   ### Google Gemini
+   - API-Schlüssel von [Google AI Studio](https://makersuite.google.com/app/apikey) benötigt
+   - Verfügbare Modelle: gemini-pro, gemini-pro-vision
+
+   ### Anthropic Claude
+   - API-Schlüssel von [Anthropic](https://console.anthropic.com/) benötigt
+   - Beginnt mit "sk-"
+   - Verfügbare Modelle: claude-2, claude-instant
+
+   ### Meta Llama 2
+   - Lokale Installation oder gehosteter Dienst
+   - Optional: API-Schlüssel je nach Setup
+   - Verfügbare Modelle: llama-2-70b, llama-2-13b, llama-2-7b
+   - Standard-Endpoint: http://localhost:8080/completion
+
+3. Optional:
+   - Eigenen API-Endpoint konfigurieren
+   - Große Schrift aktivieren
+   - Modell auswählen
+
+4. Einstellungen speichern
 
 ## Verwendung
 
@@ -40,11 +68,12 @@ Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um 
 
 ## Technische Details
 
-Die Erweiterung verwendet einen hybriden Ansatz für Übersetzungen:
+Die Erweiterung bietet eine flexible Architektur für verschiedene KI-Provider:
 
-- **Komplexe Texte:** Werden an GPT-4 gesendet für präzise Übersetzungen
-- **Einfache Texte:** Werden von Gemini übersetzt für schnellere Verarbeitung
-- **Häufige Texte:** Werden aus dem lokalen Cache abgerufen
+- **Provider-System:** Modulare Integration verschiedener KI-Dienste
+- **API-Konfiguration:** Anpassbare Endpoints und Modelle
+- **Caching:** Lokaler Cache für häufig übersetzte Texte
+- **Fehlerbehandlung:** Robuste Fehlerbehandlung für API-Aufrufe
 
 ## Entwicklung
 
@@ -104,13 +133,21 @@ klartext/
 
 ### Entwicklungshinweise
 
-- Die Erweiterung verwendet einen hybriden Ansatz für Übersetzungen:
-  - GPT-4 für komplexe Texte
-  - Gemini für einfache Texte
-  - Lokaler Cache für häufig übersetzte Texte
-- Content Scripts werden bei Bedarf dynamisch injiziert
-- Alle API-Schlüssel werden sicher im Chrome Storage gespeichert
-- Die Overlay-UI ist vollständig barrierefrei mit Tastatur-Navigation und Screenreader-Unterstützung
+- **Provider-Integration:**
+  - Modulares System für einfache Erweiterung
+  - Standardisierte Schnittstelle für neue Provider
+  - Konfigurierbare Modelle und Endpoints
+
+- **Sicherheit:**
+  - Sichere Speicherung der API-Schlüssel
+  - HTTPS-Verschlüsselung für API-Kommunikation
+  - Lokale Ausführung für Llama 2 möglich
+
+- **Barrierefreiheit:**
+  - ARIA-Attribute für Screenreader
+  - Tastatur-Navigation
+  - Hoher Kontrast und große Schrift
+  - Reduzierte Bewegung unterstützt
 
 ## Lizenz
 

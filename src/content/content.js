@@ -113,7 +113,7 @@ class TranslationOverlay {
   }
 }
 
-// Create single overlay instance
+// Initialize overlay instance
 const overlay = new TranslationOverlay();
 
 // Listen for messages from background script

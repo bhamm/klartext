@@ -1,6 +1,41 @@
+// Provider configurations
+const PROVIDERS = {
+  gpt4: {
+    name: 'OpenAI GPT-4',
+    models: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+    defaultEndpoint: 'https://api.openai.com/v1/chat/completions',
+    keyPlaceholder: 'sk-...',
+    keyHint: 'OpenAI API-Schlüssel beginnt mit "sk-"'
+  },
+  gemini: {
+    name: 'Google Gemini',
+    models: ['gemini-pro', 'gemini-pro-vision'],
+    defaultEndpoint: 'https://generativelanguage.googleapis.com/v1/models',
+    keyPlaceholder: 'Ihr Google API-Schlüssel',
+    keyHint: 'Google Cloud API-Schlüssel'
+  },
+  claude: {
+    name: 'Anthropic Claude',
+    models: ['claude-2', 'claude-instant'],
+    defaultEndpoint: 'https://api.anthropic.com/v1/messages',
+    keyPlaceholder: 'sk-...',
+    keyHint: 'Anthropic API-Schlüssel beginnt mit "sk-"'
+  },
+  llama: {
+    name: 'Meta Llama 2',
+    models: ['llama-2-70b', 'llama-2-13b', 'llama-2-7b'],
+    defaultEndpoint: 'http://localhost:8080/completion',
+    keyPlaceholder: 'Optional für lokale Installation',
+    keyHint: 'API-Schlüssel optional bei lokaler Installation'
+  }
+};
+
 // DOM Elements
-const gpt4KeyInput = document.getElementById('gpt4-key');
-const geminiKeyInput = document.getElementById('gemini-key');
+const providerSelect = document.getElementById('provider-select');
+const modelSelect = document.getElementById('model-select');
+const apiKeyInput = document.getElementById('api-key');
+const apiEndpointInput = document.getElementById('api-endpoint');
+const apiHint = document.getElementById('api-hint');
 const largeTextToggle = document.getElementById('large-text');
 const saveButton = document.querySelector('.save-button');
 const statusDiv = document.getElementById('status');
@@ -8,22 +43,49 @@ const statusDiv = document.getElementById('status');
 // Load saved settings
 chrome.storage.sync.get(
   {
-    gpt4Key: '',
-    geminiKey: '',
+    provider: 'gpt4',
+    model: '',
+    apiKey: '',
+    apiEndpoint: '',
     largeText: false
   },
   (items) => {
-    gpt4KeyInput.value = items.gpt4Key;
-    geminiKeyInput.value = items.geminiKey;
+    providerSelect.value = items.provider;
+    apiKeyInput.value = items.apiKey;
+    apiEndpointInput.value = items.apiEndpoint;
     largeTextToggle.checked = items.largeText;
+    updateProviderUI(items.provider, items.model);
   }
 );
+
+// Update UI based on selected provider
+function updateProviderUI(provider, selectedModel = '') {
+  const config = PROVIDERS[provider];
+  
+  // Update API key field
+  apiKeyInput.placeholder = config.keyPlaceholder;
+  apiHint.textContent = config.keyHint;
+
+  // Update endpoint field
+  apiEndpointInput.placeholder = config.defaultEndpoint;
+  
+  // Update model select options
+  modelSelect.innerHTML = config.models
+    .map(model => `<option value="${model}">${model}</option>`)
+    .join('');
+
+  if (selectedModel && config.models.includes(selectedModel)) {
+    modelSelect.value = selectedModel;
+  }
+}
 
 // Save settings
 async function saveSettings() {
   const settings = {
-    gpt4Key: gpt4KeyInput.value.trim(),
-    geminiKey: geminiKeyInput.value.trim(),
+    provider: providerSelect.value,
+    model: modelSelect.value,
+    apiKey: apiKeyInput.value.trim(),
+    apiEndpoint: apiEndpointInput.value.trim(),
     largeText: largeTextToggle.checked
   };
 
@@ -39,40 +101,56 @@ async function saveSettings() {
       });
     });
 
-    // Update API endpoints in background script
+    // Update API configuration in background script
     const response = await new Promise((resolve) => {
       chrome.runtime.sendMessage({
-        action: 'updateApiKeys',
-        gpt4Key: settings.gpt4Key,
-        geminiKey: settings.geminiKey
+        action: 'updateApiConfig',
+        config: {
+          provider: settings.provider,
+          model: settings.model,
+          apiKey: settings.apiKey,
+          apiEndpoint: settings.apiEndpoint || PROVIDERS[settings.provider].defaultEndpoint
+        }
       }, resolve);
     });
 
     if (response && response.success) {
-    // Update text size in all tabs
-    const tabs = await chrome.tabs.query({});
-    for (const tab of tabs) {
-      try {
-        // Inject content script first
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['src/content/content.js']
-        });
-        
-        // Then send the message
-        await chrome.tabs.sendMessage(tab.id, {
-          action: 'updateTextSize',
-          largeText: settings.largeText
-        });
-      } catch (err) {
-        // Ignore errors for tabs where we can't inject scripts (e.g., chrome:// pages)
-        console.warn(`Could not update text size for tab ${tab.id}:`, err);
+      // Update text size only in active tab if it's a supported URL
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (activeTab && activeTab.url && 
+          (activeTab.url.startsWith('http') || activeTab.url.startsWith('file'))) {
+        try {
+          // Check if content script is already loaded
+          const pingResponse = await new Promise((resolve) => {
+            chrome.tabs.sendMessage(activeTab.id, { action: 'ping' }, (response) => {
+              resolve(response);
+            });
+          }).catch(() => null);
+
+          // Only inject if content script is not loaded
+          if (!pingResponse) {
+            await chrome.scripting.executeScript({
+              target: { tabId: activeTab.id },
+              files: ['src/content/content.js']
+            });
+            // Wait a bit for the content script to initialize
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          
+          // Update text size
+          await chrome.tabs.sendMessage(activeTab.id, {
+            action: 'updateTextSize',
+            largeText: settings.largeText
+          });
+        } catch (err) {
+          // Log but don't throw error for script injection issues
+          console.warn('Could not update text size:', err);
+        }
       }
-    }
 
       showStatus('Einstellungen gespeichert', 'success');
     } else {
-      throw new Error(response?.error || 'Failed to update API keys');
+      throw new Error(response?.error || 'Failed to update API configuration');
     }
   } catch (error) {
     console.error('Error saving settings:', error);
@@ -94,24 +172,27 @@ function showStatus(message, type = 'success') {
 
 // Input validation
 function validateInputs() {
-  const gpt4Key = gpt4KeyInput.value.trim();
-  const geminiKey = geminiKeyInput.value.trim();
+  const provider = providerSelect.value;
+  const apiKey = apiKeyInput.value.trim();
   
-  // At least one API key must be provided
-  if (!gpt4Key && !geminiKey) {
-    showStatus('Mindestens ein API-Schlüssel wird benötigt', 'error');
+  // API key validation based on provider
+  if (provider !== 'llama' && !apiKey) {
+    showStatus('API-Schlüssel wird benötigt', 'error');
     return false;
   }
 
-  // Validate GPT-4 key format if provided
-  if (gpt4Key && !gpt4Key.startsWith('sk-')) {
-    showStatus('Ungültiger GPT-4 API-Schlüssel Format', 'error');
-    return false;
+  // Validate API key format
+  if (apiKey) {
+    if ((provider === 'gpt4' || provider === 'claude') && !apiKey.startsWith('sk-')) {
+      showStatus(`Ungültiger ${PROVIDERS[provider].name} API-Schlüssel Format`, 'error');
+      return false;
+    }
   }
 
-  // Basic length check for Gemini key if provided
-  if (geminiKey && geminiKey.length < 20) {
-    showStatus('Ungültiger Gemini API-Schlüssel Format', 'error');
+  // Validate endpoint if provided
+  const endpoint = apiEndpointInput.value.trim();
+  if (endpoint && !endpoint.startsWith('http')) {
+    showStatus('Ungültiger API-Endpoint Format', 'error');
     return false;
   }
 
@@ -119,6 +200,10 @@ function validateInputs() {
 }
 
 // Event Listeners
+providerSelect.addEventListener('change', () => {
+  updateProviderUI(providerSelect.value);
+});
+
 saveButton.addEventListener('click', async () => {
   if (validateInputs()) {
     saveButton.disabled = true;
@@ -131,7 +216,7 @@ saveButton.addEventListener('click', async () => {
 });
 
 // Handle Enter key in inputs
-[gpt4KeyInput, geminiKeyInput].forEach(input => {
+[apiKeyInput, apiEndpointInput].forEach(input => {
   input.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && validateInputs()) {
       saveSettings();
@@ -139,44 +224,15 @@ saveButton.addEventListener('click', async () => {
   });
 });
 
-// Apply text size immediately when toggled
-largeTextToggle.addEventListener('change', async () => {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab) {
-      // Ensure content script is loaded
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['src/content/content.js']
-      });
-      
-      // Send message to update text size
-      await chrome.tabs.sendMessage(tab.id, {
-        action: 'updateTextSize',
-        largeText: largeTextToggle.checked
-      });
-    }
-  } catch (error) {
-    console.warn('Could not update text size for current tab:', error);
-  }
-});
-
-// Handle errors
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.action === 'showError') {
-    showStatus(message.error, 'error');
-  }
-});
-
 // Secure input handling
 function sanitizeInput(input) {
   return input.replace(/[<>]/g, '');
 }
 
-gpt4KeyInput.addEventListener('input', (e) => {
+apiKeyInput.addEventListener('input', (e) => {
   e.target.value = sanitizeInput(e.target.value);
 });
 
-geminiKeyInput.addEventListener('input', (e) => {
+apiEndpointInput.addEventListener('input', (e) => {
   e.target.value = sanitizeInput(e.target.value);
 });
