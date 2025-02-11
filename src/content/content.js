@@ -1,4 +1,4 @@
-// Singleton overlay instance
+// Export for testing
 let overlayInstance = null;
 
 // Create and manage overlay
@@ -8,15 +8,24 @@ class TranslationOverlay {
       return overlayInstance;
     }
     
+    // Initialize instance
+    overlayInstance = this;
     this.overlay = null;
     this.content = null;
     this.closeButton = null;
     this.setupOverlay();
-    overlayInstance = this;
+    
+    // Return singleton instance
+    return overlayInstance;
   }
 
   setupOverlay() {
     try {
+      // Check if overlay already exists
+      if (document.querySelector('.klartext-overlay')) {
+        return;
+      }
+      
       console.log('Setting up Klartext overlay');
       
       // Create overlay elements
@@ -81,6 +90,44 @@ class TranslationOverlay {
       translationContainer.setAttribute('aria-label', 'Übersetzung in Leichte Sprache');
       this.content.appendChild(translationContainer);
 
+      // Create feedback button
+      const feedbackButton = document.createElement('button');
+      feedbackButton.className = 'klartext-feedback';
+      feedbackButton.textContent = 'Feedback geben';
+      feedbackButton.setAttribute('aria-label', 'Feedback zur Übersetzung geben');
+      feedbackButton.addEventListener('click', async () => {
+        try {
+          const originalText = window.getSelection().toString();
+          const provider = await new Promise(resolve => {
+            chrome.storage.sync.get(['provider', 'model'], items => {
+              resolve(`${items.provider || 'unknown'} (${items.model || 'unknown'})`);
+            });
+          });
+
+          const issueTitle = encodeURIComponent('Feedback: Übersetzung in Leichte Sprache');
+          const issueBody = encodeURIComponent(
+            `## Feedback zur Übersetzung\n\n` +
+            `### Originaltext\n\`\`\`\n${originalText}\n\`\`\`\n\n` +
+            `### Übersetzung\n\`\`\`\n${translation}\n\`\`\`\n\n` +
+            `### Feedback\n[Bitte beschreiben Sie hier Ihr Feedback zur Übersetzung]\n\n` +
+            `### Technische Details\n` +
+            `- Extension: ${chrome.runtime.getManifest().name}\n` +
+            `- Version: ${chrome.runtime.getManifest().version}\n` +
+            `- URL: ${window.location.href}\n` +
+            `- Provider: ${provider}\n`
+          );
+
+          window.open(
+            `https://github.com/borishamm/klartext/issues/new?title=${issueTitle}&body=${issueBody}`,
+            '_blank'
+          );
+        } catch (error) {
+          console.error('Error creating feedback:', error);
+          this.showError('Fehler beim Erstellen des Feedbacks');
+        }
+      });
+      this.content.appendChild(feedbackButton);
+
       // Show overlay with animation
       this.overlay.classList.add('visible');
 
@@ -113,7 +160,7 @@ class TranslationOverlay {
   }
 }
 
-// Initialize overlay instance
+// Initialize overlay instance for production use
 const overlay = new TranslationOverlay();
 
 // Listen for messages from background script

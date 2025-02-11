@@ -29,7 +29,7 @@ const PROVIDERS = {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(`OpenAI API error: ${error.error?.message || 'Unknown error'}`);
+        throw new Error(`GPT-4 API error: ${error.error?.message || 'Unknown error'}`);
       }
 
       const data = await response.json();
@@ -147,8 +147,27 @@ chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], (items) 
   console.log('API configuration loaded:', { provider: API_CONFIG.provider, model: API_CONFIG.model });
 });
 
-// Cache for storing translations
-const translationCache = new Map();
+// Cache for storing translations with size limit
+const translationCache = {
+  _cache: new Map(),
+  _maxSize: 1000,
+  
+  set(key, value) {
+    if (this._cache.size >= this._maxSize) {
+      const firstKey = this._cache.keys().next().value;
+      this._cache.delete(firstKey);
+    }
+    this._cache.set(key, value);
+  },
+  
+  get(key) {
+    return this._cache.get(key);
+  },
+  
+  get size() {
+    return this._cache.size;
+  }
+};
 
 // Initialize context menu
 chrome.runtime.onInstalled.addListener(() => {
@@ -162,7 +181,7 @@ chrome.runtime.onInstalled.addListener(() => {
       contexts: ['selection']
     }, () => {
       if (chrome.runtime.lastError) {
-        console.error('Error creating context menu:', chrome.runtime.lastError);
+        console.error(`Error creating context menu: ${chrome.runtime.lastError.message}`);
       } else {
         console.log('Context menu created successfully');
       }

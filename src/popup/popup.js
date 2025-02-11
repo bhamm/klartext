@@ -153,8 +153,8 @@ async function saveSettings() {
       throw new Error(response?.error || 'Failed to update API configuration');
     }
   } catch (error) {
-    console.error('Error saving settings:', error);
-    showStatus(`Fehler beim Speichern: ${error.message}`, 'error');
+    console.error(`Error saving settings: ${error.message}`);
+    showStatus('Fehler beim Speichern', 'error');
   }
 }
 
