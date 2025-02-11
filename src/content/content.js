@@ -166,19 +166,31 @@ const overlay = new TranslationOverlay();
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Content script received message:', message);
+  
+  // Parse message if it's a string
+  let parsedMessage = message;
+  if (typeof message === 'string') {
+    try {
+      parsedMessage = JSON.parse(message);
+    } catch (error) {
+      console.error('Error parsing message:', error);
+      overlay.showError(error.message);
+      return;
+    }
+  }
 
-  if (message.action === 'ping') {
+  if (parsedMessage.action === 'ping') {
     // Respond to ping to indicate content script is loaded
     sendResponse({ status: 'ok' });
-  } else if (message.action === 'showTranslation') {
-    console.log('Showing translation:', message.translation);
-    overlay.show(message.translation);
-  } else if (message.action === 'showError') {
-    console.error('Showing error:', message.error);
-    overlay.showError(message.error);
-  } else if (message.action === 'updateTextSize') {
-    console.log('Updating text size:', message.largeText);
-    document.body.classList.toggle('klartext-large-text', message.largeText);
+  } else if (parsedMessage.action === 'showTranslation') {
+    console.log('Showing translation:', parsedMessage.translation);
+    overlay.show(parsedMessage.translation);
+  } else if (parsedMessage.action === 'showError') {
+    console.error('Showing error:', parsedMessage.error);
+    overlay.showError(parsedMessage.error);
+  } else if (parsedMessage.action === 'updateTextSize') {
+    console.log('Updating text size:', parsedMessage.largeText);
+    document.body.classList.toggle('klartext-large-text', parsedMessage.largeText);
   }
 
   // Return true if we need to send a response asynchronously

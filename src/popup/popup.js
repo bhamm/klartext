@@ -122,7 +122,7 @@ async function saveSettings() {
         try {
           // Check if content script is already loaded
           const pingResponse = await new Promise((resolve) => {
-            chrome.tabs.sendMessage(activeTab.id, { action: 'ping' }, (response) => {
+            chrome.tabs.sendMessage(activeTab.id, JSON.stringify({ action: 'ping' }), (response) => {
               resolve(response);
             });
           }).catch(() => null);
@@ -138,10 +138,10 @@ async function saveSettings() {
           }
           
           // Update text size
-          await chrome.tabs.sendMessage(activeTab.id, {
+          await chrome.tabs.sendMessage(activeTab.id, JSON.stringify({
             action: 'updateTextSize',
             largeText: settings.largeText
-          });
+          }));
         } catch (err) {
           // Log but don't throw error for script injection issues
           console.warn('Could not update text size:', err);

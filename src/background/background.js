@@ -265,7 +265,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     });
 
     // Check if content script is already injected
-    chrome.tabs.sendMessage(tab.id, { action: 'ping' }, response => {
+    chrome.tabs.sendMessage(tab.id, JSON.stringify({ action: 'ping' }), response => {
       const injectAndTranslate = async () => {
         try {
           // Only inject if we got no response (content script not loaded)
@@ -280,16 +280,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
           
           const translation = await handleTranslation(info.selectionText);
           console.log('Sending translation to content script');
-          await chrome.tabs.sendMessage(tab.id, {
+          await chrome.tabs.sendMessage(tab.id, JSON.stringify({
             action: 'showTranslation',
             translation: translation
-          });
+          }));
         } catch (error) {
           console.error('Error during translation:', error);
-          chrome.tabs.sendMessage(tab.id, {
+          chrome.tabs.sendMessage(tab.id, JSON.stringify({
             action: 'showError',
             error: error.message
-          });
+          }));
         }
       };
 
