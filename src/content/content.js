@@ -1,4 +1,7 @@
-// Export for testing
+// Constants
+const REPO_URL = 'https://github.com/bhamm/klartext';
+
+// Singleton overlay instance
 let overlayInstance = null;
 
 // Create and manage overlay
@@ -8,25 +11,22 @@ class TranslationOverlay {
       return overlayInstance;
     }
     
-    // Initialize instance
-    overlayInstance = this;
     this.overlay = null;
+    this.backdrop = null;
     this.content = null;
     this.closeButton = null;
     this.setupOverlay();
-    
-    // Return singleton instance
-    return overlayInstance;
+    overlayInstance = this;
   }
 
   setupOverlay() {
     try {
-      // Check if overlay already exists
-      if (document.querySelector('.klartext-overlay')) {
-        return;
-      }
-      
       console.log('Setting up Klartext overlay');
+      
+      // Create backdrop
+      this.backdrop = document.createElement('div');
+      this.backdrop.className = 'klartext-backdrop';
+      document.body.appendChild(this.backdrop);
       
       // Create overlay elements
       this.overlay = document.createElement('div');
@@ -60,11 +60,9 @@ class TranslationOverlay {
       });
 
       // Add click outside listener
-      this.overlay.addEventListener('click', (e) => {
-        if (e.target === this.overlay) {
-          console.log('Clicked outside content, hiding overlay');
-          this.hide();
-        }
+      this.backdrop.addEventListener('click', () => {
+        console.log('Clicked outside content, hiding overlay');
+        this.hide();
       });
 
       // Add overlay to document
@@ -86,8 +84,18 @@ class TranslationOverlay {
       // Create and append translation container
       const translationContainer = document.createElement('div');
       translationContainer.className = 'klartext-translation';
-      translationContainer.textContent = translation;
       translationContainer.setAttribute('aria-label', 'Übersetzung in Leichte Sprache');
+
+      // Process translation text
+      const paragraphs = translation.split(/\n\n+/); // Split on multiple newlines
+      paragraphs.forEach(paragraph => {
+        if (paragraph.trim()) {
+          const p = document.createElement('p');
+          p.textContent = paragraph.trim().replace(/\s+/g, ' '); // Remove extra whitespace
+          translationContainer.appendChild(p);
+        }
+      });
+
       this.content.appendChild(translationContainer);
 
       // Create feedback button
@@ -118,7 +126,7 @@ class TranslationOverlay {
           );
 
           window.open(
-            `https://github.com/borishamm/klartext/issues/new?title=${issueTitle}&body=${issueBody}`,
+            `${REPO_URL}/issues/new?title=${issueTitle}&body=${issueBody}`,
             '_blank'
           );
         } catch (error) {
@@ -128,7 +136,8 @@ class TranslationOverlay {
       });
       this.content.appendChild(feedbackButton);
 
-      // Show overlay with animation
+      // Show overlay and backdrop with animation
+      this.backdrop.classList.add('visible');
       this.overlay.classList.add('visible');
 
       // Set focus to the overlay for accessibility
@@ -142,17 +151,85 @@ class TranslationOverlay {
   }
 
   showError(message) {
-    this.content.innerHTML = `
-      <div class="klartext-error">
-        <p>Entschuldigung, es gab einen Fehler:</p>
-        <p>${message}</p>
-      </div>
-    `;
-    this.overlay.classList.add('visible');
+    try {
+      // Clear previous content
+      this.content.innerHTML = '';
+
+      // Create error container
+      const errorContainer = document.createElement('div');
+      errorContainer.className = 'klartext-error';
+      
+      // Add error message
+      const errorTitle = document.createElement('p');
+      errorTitle.textContent = 'Entschuldigung, es gab einen Fehler:';
+      errorContainer.appendChild(errorTitle);
+      
+      const errorMessage = document.createElement('p');
+      errorMessage.textContent = message;
+      errorContainer.appendChild(errorMessage);
+      
+      this.content.appendChild(errorContainer);
+
+      // Create feedback button
+      const feedbackButton = document.createElement('button');
+      feedbackButton.className = 'klartext-feedback';
+      feedbackButton.textContent = 'Fehler melden';
+      feedbackButton.setAttribute('aria-label', 'Diesen Fehler melden');
+      feedbackButton.addEventListener('click', async () => {
+        try {
+          const provider = await new Promise(resolve => {
+            chrome.storage.sync.get(['provider', 'model'], items => {
+              resolve(`${items.provider || 'unknown'} (${items.model || 'unknown'})`);
+            });
+          });
+
+          // Try to parse error details if it's a JSON string
+          let errorDetails = message;
+          try {
+            if (message.includes('{')) {
+              const jsonStart = message.indexOf('{');
+              const jsonString = message.slice(jsonStart);
+              const parsedError = JSON.parse(jsonString);
+              errorDetails = JSON.stringify(parsedError, null, 2);
+            }
+          } catch (e) {
+            console.error('Error parsing error details:', e);
+          }
+
+          const issueTitle = encodeURIComponent('Fehler: Klartext Extension');
+          const issueBody = encodeURIComponent(
+            `## Fehlerbericht\n\n` +
+            `### Fehlermeldung\n\`\`\`json\n${errorDetails}\n\`\`\`\n\n` +
+            `### Kontext\n` +
+            `- URL: ${window.location.href}\n` +
+            `- Extension: ${chrome.runtime.getManifest().name}\n` +
+            `- Version: ${chrome.runtime.getManifest().version}\n` +
+            `- Provider: ${provider}\n\n` +
+            `### Zusätzliche Informationen\n` +
+            `[Bitte beschreiben Sie hier, was Sie gemacht haben, als der Fehler auftrat]\n`
+          );
+
+          window.open(
+            `${REPO_URL}/issues/new?title=${issueTitle}&body=${issueBody}&labels=bug`,
+            '_blank'
+          );
+        } catch (error) {
+          console.error('Error creating error report:', error);
+        }
+      });
+      this.content.appendChild(feedbackButton);
+
+      // Show overlay and backdrop with animation
+      this.backdrop.classList.add('visible');
+      this.overlay.classList.add('visible');
+    } catch (error) {
+      console.error('Error showing error message:', error);
+    }
   }
 
   hide() {
     this.overlay.classList.remove('visible');
+    this.backdrop.classList.remove('visible');
   }
 
   isVisible() {
@@ -160,41 +237,44 @@ class TranslationOverlay {
   }
 }
 
-// Initialize overlay instance for production use
+// Initialize overlay instance
 const overlay = new TranslationOverlay();
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Content script received message:', message);
-  
-  // Parse message if it's a string
-  let parsedMessage = message;
-  if (typeof message === 'string') {
-    try {
-      parsedMessage = JSON.parse(message);
-    } catch (error) {
-      console.error('Error parsing message:', error);
-      overlay.showError(error.message);
-      return;
+
+  try {
+    switch (message.action) {
+      case 'ping':
+        // Only ping messages need a response
+        sendResponse({ status: 'ok' });
+        return false; // No async response needed
+
+      case 'showTranslation':
+        console.log('Showing translation:', message.translation);
+        overlay.show(message.translation);
+        break;
+
+      case 'showError':
+        console.error('Showing error:', message.error);
+        overlay.showError(message.error);
+        break;
+
+      case 'updateTextSize':
+        console.log('Updating text size:', message.largeText);
+        document.body.classList.toggle('klartext-large-text', message.largeText);
+        break;
+
+      default:
+        console.warn('Unknown message action:', message.action);
     }
+  } catch (error) {
+    console.error('Error handling message:', error);
   }
 
-  if (parsedMessage.action === 'ping') {
-    // Respond to ping to indicate content script is loaded
-    sendResponse({ status: 'ok' });
-  } else if (parsedMessage.action === 'showTranslation') {
-    console.log('Showing translation:', parsedMessage.translation);
-    overlay.show(parsedMessage.translation);
-  } else if (parsedMessage.action === 'showError') {
-    console.error('Showing error:', parsedMessage.error);
-    overlay.showError(parsedMessage.error);
-  } else if (parsedMessage.action === 'updateTextSize') {
-    console.log('Updating text size:', parsedMessage.largeText);
-    document.body.classList.toggle('klartext-large-text', parsedMessage.largeText);
-  }
-
-  // Return true if we need to send a response asynchronously
-  return message.action === 'ping';
+  // No response needed for non-ping messages
+  return false;
 });
 
 // Log when content script is loaded

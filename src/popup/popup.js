@@ -122,7 +122,7 @@ async function saveSettings() {
         try {
           // Check if content script is already loaded
           const pingResponse = await new Promise((resolve) => {
-            chrome.tabs.sendMessage(activeTab.id, JSON.stringify({ action: 'ping' }), (response) => {
+            chrome.tabs.sendMessage(activeTab.id, { action: 'ping' }, (response) => {
               resolve(response);
             });
           }).catch(() => null);
@@ -138,10 +138,10 @@ async function saveSettings() {
           }
           
           // Update text size
-          await chrome.tabs.sendMessage(activeTab.id, JSON.stringify({
+          await chrome.tabs.sendMessage(activeTab.id, {
             action: 'updateTextSize',
             largeText: settings.largeText
-          }));
+          });
         } catch (err) {
           // Log but don't throw error for script injection issues
           console.warn('Could not update text size:', err);
@@ -153,8 +153,8 @@ async function saveSettings() {
       throw new Error(response?.error || 'Failed to update API configuration');
     }
   } catch (error) {
-    console.error(`Error saving settings: ${error.message}`);
-    showStatus('Fehler beim Speichern', 'error');
+    console.error('Error saving settings:', error);
+    showStatus(`Fehler beim Speichern: ${error.message}`, 'error');
   }
 }
 

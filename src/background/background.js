@@ -1,17 +1,13 @@
 // Constants
 const MENU_ITEM_ID = 'translate-to-leichte-sprache';
+const REPO_URL = 'https://github.com/bhamm/klartext';
 
 // Provider configurations with translation handlers
 const PROVIDERS = {
   gpt4: {
     async translate(text, config) {
-      const response = await fetch(config.apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`
-        },
-        body: JSON.stringify({
+      try {
+        const requestBody = {
           model: config.model,
           messages: [
             {
@@ -24,26 +20,46 @@ const PROVIDERS = {
             }
           ],
           temperature: 0.7
-        })
-      });
+        };
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`GPT-4 API error: ${error.error?.message || 'Unknown error'}`);
+        const response = await fetch(config.apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${config.apiKey}`
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          const errorDetails = {
+            message: data.error?.message || 'Unknown error',
+            request: {
+              endpoint: config.apiEndpoint,
+              model: config.model,
+              text: text
+            },
+            response: data,
+            status: response.status,
+            statusText: response.statusText
+          };
+          throw new Error(`OpenAI API error: ${JSON.stringify(errorDetails, null, 2)}`);
+        }
+
+        return data.choices[0].message.content;
+      } catch (error) {
+        if (error.name === 'SyntaxError') {
+          throw new Error(`Invalid response from OpenAI API: ${error.message}. ${text} - ${config}`);
+        }
+        throw error;
       }
-
-      const data = await response.json();
-      return data.choices[0].message.content;
     }
   },
   gemini: {
     async translate(text, config) {
-      const response = await fetch(`${config.apiEndpoint}/${config.model}:generateContent?key=${config.apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      try {
+        const requestBody = {
           contents: [{
             parts: [{
               text: `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`
@@ -52,29 +68,45 @@ const PROVIDERS = {
           generationConfig: {
             temperature: 0.7
           }
-        })
-      });
+        };
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Gemini API error: ${error.error?.message || 'Unknown error'}`);
+        const response = await fetch(`${config.apiEndpoint}/${config.model}:generateContent?key=${config.apiKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          const errorDetails = {
+            message: data.error?.message || 'Unknown error',
+            request: {
+              endpoint: config.apiEndpoint,
+              model: config.model,
+              text: text
+            },
+            response: data,
+            status: response.status,
+            statusText: response.statusText
+          };
+          throw new Error(`Gemini API error: ${JSON.stringify(errorDetails, null, 2)}`);
+        }
+
+        return data.candidates[0].content.parts[0].text;
+      } catch (error) {
+        if (error.name === 'SyntaxError') {
+          throw new Error(`Invalid response from Gemini API: ${error.message}`);
+        }
+        throw error;
       }
-
-      const data = await response.json();
-      return data.candidates[0].content.parts[0].text;
     }
   },
   claude: {
     async translate(text, config) {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': config.apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
+      try {
+        const requestBody = {
           model: config.model,
           messages: [{
             role: 'user',
@@ -82,49 +114,86 @@ const PROVIDERS = {
           }],
           max_tokens: 1000,
           temperature: 0.7
-        })
-      });
+        };
 
-      let error;
-      try {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': config.apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
         const data = await response.json();
         if (!response.ok) {
-          error = data;
-          throw new Error(`Claude API error: ${error.error?.message || 'Unknown error'}`);
+          const errorDetails = {
+            message: data.error?.message || 'Unknown error',
+            request: {
+              endpoint: 'https://api.anthropic.com/v1/messages',
+              model: config.model,
+              text: text
+            },
+            response: data,
+            status: response.status,
+            statusText: response.statusText
+          };
+          throw new Error(`Claude API error: ${JSON.stringify(errorDetails, null, 2)}`);
         }
-        // Extract the translation from the response
+
         return data.content[0].text;
-      } catch (e) {
-        if (error) {
-          throw new Error(`Claude API error: ${error.error?.message || 'Unknown error'}`);
+      } catch (error) {
+        if (error.name === 'SyntaxError') {
+          throw new Error(`Invalid response from Claude API: ${error.message}`);
         }
-        throw new Error(`Failed to parse Claude API response: ${e.message}`);
+        throw error;
       }
     }
   },
   llama: {
     async translate(text, config) {
-      const response = await fetch(config.apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` })
-        },
-        body: JSON.stringify({
+      try {
+        const requestBody = {
           model: config.model,
           prompt: `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`,
           temperature: 0.7,
           max_tokens: 1000
-        })
-      });
+        };
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Llama API error: ${error.error?.message || 'Unknown error'}`);
+        const response = await fetch(config.apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` })
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          const errorDetails = {
+            message: data.error?.message || 'Unknown error',
+            request: {
+              endpoint: config.apiEndpoint,
+              model: config.model,
+              text: text
+            },
+            response: data,
+            status: response.status,
+            statusText: response.statusText
+          };
+          throw new Error(`Llama API error: ${JSON.stringify(errorDetails, null, 2)}`);
+        }
+
+        return data.generated_text;
+      } catch (error) {
+        if (error.name === 'SyntaxError') {
+          throw new Error(`Invalid response from Llama API: ${error.message}`);
+        }
+        throw error;
       }
-
-      const data = await response.json();
-      return data.generated_text;
     }
   }
 };
@@ -147,27 +216,38 @@ chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], (items) 
   console.log('API configuration loaded:', { provider: API_CONFIG.provider, model: API_CONFIG.model });
 });
 
-// Cache for storing translations with size limit
-const translationCache = {
-  _cache: new Map(),
-  _maxSize: 1000,
-  
-  set(key, value) {
-    if (this._cache.size >= this._maxSize) {
-      const firstKey = this._cache.keys().next().value;
-      this._cache.delete(firstKey);
-    }
-    this._cache.set(key, value);
-  },
-  
-  get(key) {
-    return this._cache.get(key);
-  },
-  
-  get size() {
-    return this._cache.size;
+// Translation cache using chrome.storage.local for persistence
+async function getCachedTranslation(text) {
+  try {
+    const result = await chrome.storage.local.get(['translationCache']);
+    const cache = result.translationCache || {};
+    return cache[text];
+  } catch (error) {
+    console.error('Error reading from cache:', error);
+    return null;
   }
-};
+}
+
+async function cacheTranslation(text, translation) {
+  try {
+    const result = await chrome.storage.local.get(['translationCache']);
+    const cache = result.translationCache || {};
+    
+    // Add new translation
+    cache[text] = translation;
+    
+    // Limit cache size to 100 entries
+    const entries = Object.entries(cache);
+    if (entries.length > 100) {
+      const newCache = Object.fromEntries(entries.slice(-100));
+      await chrome.storage.local.set({ translationCache: newCache });
+    } else {
+      await chrome.storage.local.set({ translationCache: cache });
+    }
+  } catch (error) {
+    console.error('Error writing to cache:', error);
+  }
+}
 
 // Initialize context menu
 chrome.runtime.onInstalled.addListener(() => {
@@ -181,7 +261,7 @@ chrome.runtime.onInstalled.addListener(() => {
       contexts: ['selection']
     }, () => {
       if (chrome.runtime.lastError) {
-        console.error(`Error creating context menu: ${chrome.runtime.lastError.message}`);
+        console.error('Error creating context menu:', chrome.runtime.lastError);
       } else {
         console.log('Context menu created successfully');
       }
@@ -222,14 +302,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleTranslation(text) {
   console.log('Starting translation with provider:', API_CONFIG.provider);
   
-  // Check cache first
-  const cachedTranslation = translationCache.get(text);
-  if (cachedTranslation) {
-    console.log('Found translation in cache');
-    return cachedTranslation;
-  }
-
   try {
+    // Check cache first
+    const cachedTranslation = await getCachedTranslation(text);
+    if (cachedTranslation) {
+      console.log('Found translation in cache');
+      return cachedTranslation;
+    }
+
     // Get provider handler
     const provider = PROVIDERS[API_CONFIG.provider];
     if (!provider) {
@@ -240,11 +320,7 @@ async function handleTranslation(text) {
     const translation = await provider.translate(text, API_CONFIG);
     
     // Cache the result
-    translationCache.set(text, translation);
-    if (translationCache.size > 1000) {
-      const firstKey = translationCache.keys().next().value;
-      translationCache.delete(firstKey);
-    }
+    await cacheTranslation(text, translation);
 
     return translation;
   } catch (error) {
@@ -264,36 +340,128 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       model: API_CONFIG.model
     });
 
-    // Check if content script is already injected
-    chrome.tabs.sendMessage(tab.id, JSON.stringify({ action: 'ping' }), response => {
-      const injectAndTranslate = async () => {
-        try {
-          // Only inject if we got no response (content script not loaded)
-          if (chrome.runtime.lastError) {
-            await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              files: ['src/content/content.js']
+    // Helper function to check if content script is loaded
+    const checkContentScript = async () => {
+      try {
+        const response = await new Promise(resolve => {
+          chrome.tabs.sendMessage(tab.id, { action: 'ping' }, response => {
+            if (chrome.runtime.lastError) {
+              resolve(null);
+            } else {
+              resolve(response);
+            }
+          });
+        });
+        return response?.status === 'ok';
+      } catch (error) {
+        return false;
+      }
+    };
+
+    // Helper function to inject content script and styles
+    const injectContentScript = async () => {
+      try {
+        // First inject CSS
+        await chrome.scripting.insertCSS({
+          target: { tabId: tab.id },
+          files: ['src/content/overlay.css']
+        });
+
+        // Then inject JS
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['src/content/content.js']
+        });
+
+        // Wait for script to initialize
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Verify script is loaded
+        const isLoaded = await checkContentScript();
+        if (!isLoaded) {
+          throw new Error('Content script failed to initialize after injection');
+        }
+
+        return true;
+      } catch (error) {
+        console.error('Failed to inject content script:', error);
+        return false;
+      }
+    };
+
+    // Helper function to send message to content script
+    const sendMessage = async (message) => {
+      try {
+        // For ping messages, we expect a response
+        if (message.action === 'ping') {
+          return new Promise((resolve, reject) => {
+            chrome.tabs.sendMessage(tab.id, message, response => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else {
+                resolve(response);
+              }
             });
-            // Wait a bit for the content script to initialize
-            await new Promise(resolve => setTimeout(resolve, 100));
+          });
+        }
+        
+        // For other messages, just send without waiting for response
+        chrome.tabs.sendMessage(tab.id, message);
+      } catch (error) {
+        console.error('Error sending message:', error);
+        throw error;
+      }
+    };
+
+    // Main translation function
+    const performTranslation = async () => {
+      try {
+        // Check if content script is loaded
+        let isLoaded = await checkContentScript();
+        
+        // If not loaded, try to inject it
+        if (!isLoaded) {
+          console.log('Content script not loaded, injecting...');
+          const injected = await injectContentScript();
+          if (!injected) {
+            throw new Error('Failed to inject content script');
           }
-          
-          const translation = await handleTranslation(info.selectionText);
-          console.log('Sending translation to content script');
-          await chrome.tabs.sendMessage(tab.id, JSON.stringify({
-            action: 'showTranslation',
-            translation: translation
-          }));
-        } catch (error) {
-          console.error('Error during translation:', error);
-          chrome.tabs.sendMessage(tab.id, JSON.stringify({
+          isLoaded = await checkContentScript();
+          if (!isLoaded) {
+            throw new Error('Content script failed to initialize');
+          }
+        }
+
+        // Perform translation
+        console.log('Starting translation...');
+        const translation = await handleTranslation(info.selectionText);
+        console.log('Translation completed, showing result');
+
+        // Show translation (don't await response)
+        sendMessage({
+          action: 'showTranslation',
+          translation: translation
+        });
+      } catch (error) {
+        console.error('Error during translation:', error);
+        try {
+          // Ensure content script is loaded for error display
+          if (!await checkContentScript()) {
+            await injectContentScript();
+          }
+          sendMessage({
             action: 'showError',
             error: error.message
-          }));
+          });
+        } catch (e) {
+          console.error('Failed to show error:', e);
         }
-      };
+      }
+    };
 
-      injectAndTranslate();
+    // Execute translation
+    performTranslation().catch(error => {
+      console.error('Critical error:', error);
     });
   }
 });

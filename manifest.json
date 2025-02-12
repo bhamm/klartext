@@ -8,7 +8,8 @@
     "storage",
     "scripting",
     "activeTab",
-    "tabs"
+    "tabs",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "https://api.openai.com/*",
@@ -18,17 +19,15 @@
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "src/background/background.js"
+    "service_worker": "src/background/background.js",
+    "type": "module"
   },
-  "content_scripts": [{
-    "matches": [
-      "http://*/*",
-      "https://*/*",
-      "file://*/*"
+  "web_accessible_resources": [{
+    "resources": [
+      "src/content/content.js",
+      "src/content/overlay.css"
     ],
-    "run_at": "document_end",
-    "js": ["src/content/content.js"],
-    "css": ["src/content/overlay.css"]
+    "matches": ["<all_urls>"]
   }],
   "action": {
     "default_popup": "src/popup/popup.html",

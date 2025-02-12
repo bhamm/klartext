@@ -131,68 +131,23 @@ klartext/
    ```
    Dies erstellt eine `klartext.zip` Datei, die im Chrome Web Store hochgeladen werden kann.
 
-### Tests
-
-Die Erweiterung verwendet Jest für Unit- und Integrationstests:
-
-```bash
-# Alle Tests ausführen
-npm test
-
-# Tests im Watch-Modus ausführen
-npm run test:watch
-
-# Test-Coverage Report erstellen
-npm run test:coverage
-```
-
-#### Test-Struktur
-
-```
-test/
-├── __mocks__/           # Mock-Implementierungen
-│   └── styleMock.js
-├── background/          # Tests für Background Script
-│   └── background.test.js
-├── content/             # Tests für Content Scripts
-│   └── TranslationOverlay.test.js
-└── popup/              # Tests für Popup UI
-    └── popup.test.js
-```
-
-#### Coverage-Ziele
-
-- Branches: 80%
-- Funktionen: 80%
-- Zeilen: 80%
-- Statements: 80%
-
 ### Entwicklungshinweise
 
 - **Provider-Integration:**
   - Modulares System für einfache Erweiterung
   - Standardisierte Schnittstelle für neue Provider
   - Konfigurierbare Modelle und Endpoints
-  - Unit-Tests für jeden Provider
 
 - **Sicherheit:**
   - Sichere Speicherung der API-Schlüssel
   - HTTPS-Verschlüsselung für API-Kommunikation
   - Lokale Ausführung für Llama 2 möglich
-  - Input-Validierung und Sanitization
 
 - **Barrierefreiheit:**
   - ARIA-Attribute für Screenreader
   - Tastatur-Navigation
   - Hoher Kontrast und große Schrift
   - Reduzierte Bewegung unterstützt
-  - Getestet mit Jest und Testing Library
-
-- **Qualitätssicherung:**
-  - Automatisierte Tests für alle Komponenten
-  - Integration Tests für Kernfunktionen
-  - Kontinuierliche Test-Ausführung
-  - Code Coverage Tracking
 
 ## Lizenz
 
