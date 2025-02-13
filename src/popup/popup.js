@@ -47,13 +47,13 @@ chrome.storage.sync.get(
     model: '',
     apiKey: '',
     apiEndpoint: '',
-    largeText: false
+    textSize: 'normal'
   },
   (items) => {
     providerSelect.value = items.provider;
     apiKeyInput.value = items.apiKey;
     apiEndpointInput.value = items.apiEndpoint;
-    largeTextToggle.checked = items.largeText;
+    document.querySelector(`input[name="text-size"][value="${items.textSize}"]`).checked = true;
     updateProviderUI(items.provider, items.model);
   }
 );
@@ -86,7 +86,7 @@ async function saveSettings() {
     model: modelSelect.value,
     apiKey: apiKeyInput.value.trim(),
     apiEndpoint: apiEndpointInput.value.trim(),
-    largeText: largeTextToggle.checked
+    textSize: document.querySelector('input[name="text-size"]:checked').value
   };
 
   try {
@@ -140,7 +140,7 @@ async function saveSettings() {
           // Update text size
           await chrome.tabs.sendMessage(activeTab.id, {
             action: 'updateTextSize',
-            largeText: settings.largeText
+            textSize: settings.textSize
           });
         } catch (err) {
           // Log but don't throw error for script injection issues

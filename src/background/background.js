@@ -1,5 +1,8 @@
 // Constants
-const MENU_ITEM_ID = 'translate-to-leichte-sprache';
+const MENU_ITEMS = {
+  SELECTION: 'translate-selection-to-leichte-sprache',
+  ARTICLE: 'translate-article-to-leichte-sprache'
+};
 const REPO_URL = 'https://github.com/bhamm/klartext';
 
 // Provider configurations with translation handlers
@@ -280,16 +283,26 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed/updated, creating context menu');
   // Remove existing menu item if it exists
   chrome.contextMenus.removeAll(() => {
-    // Create new menu item
+    // Create menu items
     chrome.contextMenus.create({
-      id: MENU_ITEM_ID,
-      title: 'In Leichte Sprache übersetzen',
+      id: MENU_ITEMS.SELECTION,
+      title: 'Markierten Text in Leichte Sprache übersetzen',
       contexts: ['selection']
     }, () => {
       if (chrome.runtime.lastError) {
-        console.error('Error creating context menu:', chrome.runtime.lastError);
+        console.error('Error creating selection menu item:', chrome.runtime.lastError);
+      }
+    });
+
+    chrome.contextMenus.create({
+      id: MENU_ITEMS.ARTICLE,
+      title: 'Artikel in Leichte Sprache übersetzen',
+      contexts: ['all']
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Error creating article menu item:', chrome.runtime.lastError);
       } else {
-        console.log('Context menu created successfully');
+        console.log('Context menu items created successfully');
       }
     });
   });
@@ -299,7 +312,26 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background script received message:', message);
   
-  if (message.action === 'updateApiConfig') {
+  if (message.action === 'translateText') {
+    // Handle article text translation
+    console.log('Received text for translation:', message.text.substring(0, 50) + '...');
+    handleTranslation(message.text)
+      .then(translation => {
+        chrome.tabs.sendMessage(sender.tab.id, {
+          action: 'showTranslation',
+          translation: translation
+        });
+      })
+      .catch(error => {
+        console.error('Error translating text:', error);
+        chrome.tabs.sendMessage(sender.tab.id, {
+          action: 'showError',
+          error: error.message
+        });
+      });
+    return true;
+  }
+  else if (message.action === 'updateApiConfig') {
     console.log('Updating API configuration');
     try {
       if (!message.config) {
@@ -372,8 +404,11 @@ async function handleTranslation(text) {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   console.log('Context menu clicked:', info.menuItemId);
   
-  if (info.menuItemId === MENU_ITEM_ID && info.selectionText) {
-    console.log('Selected text:', info.selectionText.substring(0, 50) + '...');
+  if (info.menuItemId === MENU_ITEMS.SELECTION || info.menuItemId === MENU_ITEMS.ARTICLE) {
+    if (info.menuItemId === MENU_ITEMS.SELECTION) {
+      if (!info.selectionText) return;
+      console.log('Selected text:', info.selectionText.substring(0, 50) + '...');
+    }
     console.log('Current API configuration:', {
       provider: API_CONFIG.provider,
       model: API_CONFIG.model
@@ -471,21 +506,28 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
           }
         }
 
-          // Show loading state immediately
-          sendMessage({
-            action: 'startTranslation'
-          });
+          if (info.menuItemId === MENU_ITEMS.ARTICLE) {
+            // Start article mode
+            sendMessage({
+              action: 'startArticleMode'
+            });
+          } else {
+            // Show loading state immediately
+            sendMessage({
+              action: 'startTranslation'
+            });
 
-          // Perform translation
-          console.log('Starting translation...');
-          const translation = await handleTranslation(info.selectionText);
-          console.log('Translation completed, showing result');
+            // Perform translation
+            console.log('Starting translation...');
+            const translation = await handleTranslation(info.selectionText);
+            console.log('Translation completed, showing result');
 
-          // Show translation result
-          sendMessage({
-            action: 'showTranslation',
-            translation: translation
-          });
+            // Show translation result
+            sendMessage({
+              action: 'showTranslation',
+              translation: translation
+            });
+          }
       } catch (error) {
         console.error('Error during translation:', error);
         try {

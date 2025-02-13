@@ -1,5 +1,19 @@
 // Constants
 const REPO_URL = 'https://github.com/bhamm/klartext';
+const ARTICLE_SELECTORS = [
+  'article',
+  '[role="article"]',
+  '.article',
+  '.post',
+  'main p',
+  '.content p',
+  '.entry-content',
+  '.post-content'
+];
+
+// Track article mode state
+let isArticleMode = false;
+let currentHighlight = null;
 
 // Singleton overlay instance
 let overlayInstance = null;
@@ -144,7 +158,7 @@ class TranslationOverlay {
       // Add rating label
       const ratingLabel = document.createElement('div');
       ratingLabel.className = 'klartext-rating-label';
-      ratingLabel.textContent = 'Wie gut war diese Übersetzung?';
+      ratingLabel.textContent = 'Wie gut ist diese Übersetzung?';
       ratingContainer.appendChild(ratingLabel);
 
       // Create stars container
@@ -354,6 +368,85 @@ class TranslationOverlay {
 // Initialize overlay instance
 const overlay = new TranslationOverlay();
 
+// Article mode functions
+function startArticleMode() {
+  if (isArticleMode) return;
+  isArticleMode = true;
+  
+  // Add mousemove listener
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('click', handleArticleClick);
+  
+  // Change cursor to indicate clickable state
+  document.body.style.cursor = 'pointer';
+}
+
+function stopArticleMode() {
+  if (!isArticleMode) return;
+  isArticleMode = false;
+  
+  // Remove listeners
+  document.removeEventListener('mousemove', handleMouseMove);
+  document.removeEventListener('click', handleArticleClick);
+  
+  // Reset cursor
+  document.body.style.cursor = '';
+  
+  // Remove any existing highlight
+  if (currentHighlight) {
+    currentHighlight.classList.remove('klartext-highlight');
+    currentHighlight = null;
+  }
+}
+
+function handleMouseMove(event) {
+  if (!isArticleMode) return;
+  
+  // Find potential article container under cursor
+  const element = document.elementFromPoint(event.clientX, event.clientY);
+  if (!element) return;
+  
+  // Find closest matching container
+  const container = ARTICLE_SELECTORS.reduce((closest, selector) => {
+    if (closest) return closest;
+    return element.closest(selector);
+  }, null);
+  
+  // Update highlight
+  if (container !== currentHighlight) {
+    if (currentHighlight) {
+      currentHighlight.classList.remove('klartext-highlight');
+    }
+    if (container) {
+      container.classList.add('klartext-highlight');
+    }
+    currentHighlight = container;
+  }
+}
+
+function handleArticleClick(event) {
+  if (!isArticleMode || !currentHighlight) return;
+  
+  event.preventDefault();
+  event.stopPropagation();
+  
+  // Get text content
+  const text = currentHighlight.innerText;
+  if (!text.trim()) return;
+  
+  // Stop article mode
+  stopArticleMode();
+  
+  // Show loading state
+  overlay.showLoading();
+  
+  // Send text to background script
+  chrome.runtime.sendMessage({
+    action: 'translateText',
+    text: text
+  });
+}
+
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Content script received message:', message);
@@ -364,6 +457,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Only ping messages need a response
         sendResponse({ status: 'ok' });
         return false; // No async response needed
+
+      case 'startArticleMode':
+        console.log('Starting article mode');
+        startArticleMode();
+        break;
 
       case 'startTranslation':
         console.log('Starting translation, showing loading state');
@@ -378,11 +476,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'showError':
         console.error('Showing error:', message.error);
         overlay.showError(message.error);
+        stopArticleMode();
         break;
 
       case 'updateTextSize':
-        console.log('Updating text size:', message.largeText);
-        document.body.classList.toggle('klartext-large-text', message.largeText);
+        console.log('Updating text size:', message.textSize);
+        // Remove any existing text size classes
+        document.body.classList.remove('klartext-text-normal', 'klartext-text-gross', 'klartext-text-sehr-gross');
+        // Add new text size class
+        document.body.classList.add(`klartext-text-${message.textSize}`);
         break;
 
       default:
