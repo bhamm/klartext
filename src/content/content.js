@@ -74,6 +74,45 @@ class TranslationOverlay {
     }
   }
 
+  showLoading() {
+    try {
+      console.log('Showing loading state');
+      
+      // Clear previous content
+      this.content.innerHTML = '';
+
+      // Create loading container
+      const loadingContainer = document.createElement('div');
+      loadingContainer.className = 'klartext-loading';
+
+      // Add spinner
+      const spinner = document.createElement('div');
+      spinner.className = 'klartext-spinner';
+      spinner.setAttribute('role', 'progressbar');
+      spinner.setAttribute('aria-label', 'Übersetze...');
+      loadingContainer.appendChild(spinner);
+
+      // Add loading text
+      const loadingText = document.createElement('p');
+      loadingText.className = 'klartext-loading-text';
+      loadingText.textContent = 'Übersetze...';
+      loadingContainer.appendChild(loadingText);
+
+      this.content.appendChild(loadingContainer);
+
+      // Show overlay and backdrop with animation
+      this.backdrop.classList.add('visible');
+      this.overlay.classList.add('visible');
+
+      // Set focus to the overlay for accessibility
+      this.overlay.focus();
+      
+      console.log('Loading state shown successfully');
+    } catch (error) {
+      console.error('Error showing loading state:', error);
+    }
+  }
+
   show(translation) {
     try {
       console.log('Showing translation overlay');
@@ -98,11 +137,84 @@ class TranslationOverlay {
 
       this.content.appendChild(translationContainer);
 
-      // Create feedback button
+      // Create rating container
+      const ratingContainer = document.createElement('div');
+      ratingContainer.className = 'klartext-rating';
+
+      // Add rating label
+      const ratingLabel = document.createElement('div');
+      ratingLabel.className = 'klartext-rating-label';
+      ratingLabel.textContent = 'Wie gut war diese Übersetzung?';
+      ratingContainer.appendChild(ratingLabel);
+
+      // Create stars container
+      const starsContainer = document.createElement('div');
+      starsContainer.className = 'klartext-stars';
+      ratingContainer.appendChild(starsContainer);
+
+      // Create feedback button (hidden by default)
       const feedbackButton = document.createElement('button');
       feedbackButton.className = 'klartext-feedback';
-      feedbackButton.textContent = 'Feedback geben';
-      feedbackButton.setAttribute('aria-label', 'Feedback zur Übersetzung geben');
+      feedbackButton.textContent = 'Mitteilung senden';
+      feedbackButton.setAttribute('aria-label', 'Mitteilung zur Übersetzung geben');
+
+      // Create and add stars
+      const stars = [];
+      for (let i = 1; i <= 5; i++) {
+        const star = document.createElement('span');
+        star.className = 'klartext-star';
+        star.textContent = '★';
+        star.setAttribute('role', 'button');
+        star.setAttribute('aria-label', `${i} Sterne`);
+        star.setAttribute('data-rating', i);
+
+        // Hover effect
+        star.addEventListener('mouseenter', () => {
+          stars.forEach((s, index) => {
+            if (index < i) s.classList.add('hover');
+            else s.classList.remove('hover');
+          });
+        });
+
+        // Click handler
+        star.addEventListener('click', async () => {
+          // Update visual state
+          stars.forEach((s, index) => {
+            if (index < i) s.classList.add('selected');
+            else s.classList.remove('selected');
+          });
+
+          // Store rating
+          try {
+            await chrome.storage.local.set({
+              [`rating_${Date.now()}`]: {
+                rating: i,
+                text: translation,
+                url: window.location.href
+              }
+            });
+          } catch (error) {
+            console.error('Error storing rating:', error);
+          }
+
+          // Show feedback button for low ratings
+          if (i < 3) {
+            feedbackButton.classList.add('visible');
+          } else {
+            feedbackButton.classList.remove('visible');
+          }
+        });
+
+        stars.push(star);
+        starsContainer.appendChild(star);
+      }
+
+      // Mouse leave handler for stars container
+      starsContainer.addEventListener('mouseleave', () => {
+        stars.forEach(s => s.classList.remove('hover'));
+      });
+
+      // Add feedback button click handler
       feedbackButton.addEventListener('click', async () => {
         try {
           const originalText = window.getSelection().toString();
@@ -134,6 +246,8 @@ class TranslationOverlay {
           this.showError('Fehler beim Erstellen des Feedbacks');
         }
       });
+      // Add components to overlay
+      this.content.appendChild(ratingContainer);
       this.content.appendChild(feedbackButton);
 
       // Show overlay and backdrop with animation
@@ -250,6 +364,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Only ping messages need a response
         sendResponse({ status: 'ok' });
         return false; // No async response needed
+
+      case 'startTranslation':
+        console.log('Starting translation, showing loading state');
+        overlay.showLoading();
+        break;
 
       case 'showTranslation':
         console.log('Showing translation:', message.translation);

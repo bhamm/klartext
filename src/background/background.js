@@ -7,6 +7,14 @@ const PROVIDERS = {
   gpt4: {
     async translate(text, config) {
       try {
+        // Validate configuration
+        if (!config.apiEndpoint) {
+          throw new Error('OpenAI API endpoint is not configured');
+        }
+        if (!config.apiKey) {
+          throw new Error('OpenAI API key is not configured');
+        }
+
         const requestBody = {
           model: config.model,
           messages: [
@@ -50,7 +58,7 @@ const PROVIDERS = {
         return data.choices[0].message.content;
       } catch (error) {
         if (error.name === 'SyntaxError') {
-          throw new Error(`Invalid response from OpenAI API: ${error.message}. ${text} - ${config}`);
+          throw new Error('Invalid response from OpenAI API. Please check your API endpoint configuration.');
         }
         throw error;
       }
@@ -59,6 +67,14 @@ const PROVIDERS = {
   gemini: {
     async translate(text, config) {
       try {
+        // Validate configuration
+        if (!config.apiEndpoint) {
+          throw new Error('Gemini API endpoint is not configured');
+        }
+        if (!config.apiKey) {
+          throw new Error('Gemini API key is not configured');
+        }
+
         const requestBody = {
           contents: [{
             parts: [{
@@ -97,7 +113,7 @@ const PROVIDERS = {
         return data.candidates[0].content.parts[0].text;
       } catch (error) {
         if (error.name === 'SyntaxError') {
-          throw new Error(`Invalid response from Gemini API: ${error.message}`);
+          throw new Error('Invalid response from Gemini API. Please check your API endpoint configuration.');
         }
         throw error;
       }
@@ -106,6 +122,11 @@ const PROVIDERS = {
   claude: {
     async translate(text, config) {
       try {
+        // Validate configuration
+        if (!config.apiKey) {
+          throw new Error('Claude API key is not configured');
+        }
+
         const requestBody = {
           model: config.model,
           messages: [{
@@ -146,7 +167,7 @@ const PROVIDERS = {
         return data.content[0].text;
       } catch (error) {
         if (error.name === 'SyntaxError') {
-          throw new Error(`Invalid response from Claude API: ${error.message}`);
+          throw new Error('Invalid response from Claude API. Please check your API configuration.');
         }
         throw error;
       }
@@ -155,6 +176,11 @@ const PROVIDERS = {
   llama: {
     async translate(text, config) {
       try {
+        // Validate configuration
+        if (!config.apiEndpoint) {
+          throw new Error('Llama API endpoint is not configured');
+        }
+
         const requestBody = {
           model: config.model,
           prompt: `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`,
@@ -190,7 +216,7 @@ const PROVIDERS = {
         return data.generated_text;
       } catch (error) {
         if (error.name === 'SyntaxError') {
-          throw new Error(`Invalid response from Llama API: ${error.message}`);
+          throw new Error('Invalid response from Llama API. Please check your API endpoint configuration.');
         }
         throw error;
       }
@@ -310,11 +336,24 @@ async function handleTranslation(text) {
       return cachedTranslation;
     }
 
+    // Validate API configuration
+    if (!API_CONFIG.provider) {
+      throw new Error('No translation provider selected. Please configure a provider in the extension settings.');
+    }
+
     // Get provider handler
     const provider = PROVIDERS[API_CONFIG.provider];
     if (!provider) {
       throw new Error(`Unsupported provider: ${API_CONFIG.provider}`);
     }
+
+    // Log configuration (without sensitive data)
+    console.log('Translation configuration:', {
+      provider: API_CONFIG.provider,
+      model: API_CONFIG.model,
+      endpoint: API_CONFIG.apiEndpoint,
+      textLength: text.length
+    });
 
     // Perform translation
     const translation = await provider.translate(text, API_CONFIG);
@@ -432,16 +471,21 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
           }
         }
 
-        // Perform translation
-        console.log('Starting translation...');
-        const translation = await handleTranslation(info.selectionText);
-        console.log('Translation completed, showing result');
+          // Show loading state immediately
+          sendMessage({
+            action: 'startTranslation'
+          });
 
-        // Show translation (don't await response)
-        sendMessage({
-          action: 'showTranslation',
-          translation: translation
-        });
+          // Perform translation
+          console.log('Starting translation...');
+          const translation = await handleTranslation(info.selectionText);
+          console.log('Translation completed, showing result');
+
+          // Show translation result
+          sendMessage({
+            action: 'showTranslation',
+            translation: translation
+          });
       } catch (error) {
         console.error('Error during translation:', error);
         try {

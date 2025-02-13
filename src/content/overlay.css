@@ -159,9 +159,50 @@
   box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
 }
 
-/* Feedback button */
-.klartext-feedback {
+/* Star Rating */
+.klartext-rating {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 16px auto 0;
+}
+
+.klartext-rating-label {
   display: block;
+  text-align: center;
+  margin-bottom: 8px;
+  color: #4a5568;
+  font-size: 14px;
+}
+
+.klartext-stars {
+  display: flex;
+  gap: 4px;
+}
+
+.klartext-star {
+  font-size: 24px;
+  cursor: pointer;
+  color: #cbd5e0;
+  transition: color 0.2s, transform 0.2s;
+  user-select: none;
+  padding: 4px;
+}
+
+.klartext-star:hover,
+.klartext-star.hover {
+  color: #ecc94b;
+  transform: scale(1.1);
+}
+
+.klartext-star.selected {
+  color: #d69e2e;
+}
+
+/* Feedback button (shown only for low ratings) */
+.klartext-feedback {
+  display: none; /* Hidden by default */
   margin: 16px auto 0;
   padding: 8px 16px;
   background-color: #4a5568;
@@ -171,6 +212,10 @@
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.2s;
+}
+
+.klartext-feedback.visible {
+  display: block;
 }
 
 .klartext-feedback:hover {
@@ -183,6 +228,23 @@
 }
 
 @media (prefers-color-scheme: dark) {
+  .klartext-rating-label {
+    color: #e2e8f0;
+  }
+
+  .klartext-star {
+    color: #4a5568;
+  }
+
+  .klartext-star:hover,
+  .klartext-star.hover {
+    color: #f6e05e;
+  }
+
+  .klartext-star.selected {
+    color: #ecc94b;
+  }
+
   .klartext-feedback {
     background-color: #718096;
   }
@@ -233,6 +295,57 @@
 .klartext-overlay:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+}
+
+/* Loading state */
+.klartext-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+}
+
+.klartext-loading-text {
+  color: #4a5568;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.klartext-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2c5282;
+  border-radius: 50%;
+  animation: spinner 1s linear infinite;
+}
+
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .klartext-loading-text {
+    color: #e2e8f0;
+  }
+  
+  .klartext-spinner {
+    border-color: #4a5568;
+    border-top-color: #90cdf4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .klartext-spinner {
+    animation: none;
+    border-top-color: #90cdf4;
+  }
 }
 
 /* Large text option */
