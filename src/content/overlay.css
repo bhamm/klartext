@@ -408,3 +408,85 @@
 .klartext-text-sehr-gross .klartext-translation p:last-child {
   margin-bottom: 0;
 }
+
+/* Text-to-Speech styles */
+.klartext-tts-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #3182ce;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 16px 0;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.klartext-tts-button:hover {
+  background-color: #2c5282;
+}
+
+.klartext-tts-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+}
+
+.klartext-tts-button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.klartext-tts-button.playing {
+  background-color: #e53e3e;
+}
+
+.klartext-tts-button.playing:hover {
+  background-color: #c53030;
+}
+
+/* Word highlighting */
+.klartext-word {
+  display: inline;
+  padding: 0 1px;
+  border-radius: 2px;
+  transition: background-color 0.2s;
+}
+
+.klartext-word.active {
+  background-color: #ebf8ff;
+  box-shadow: 0 0 0 2px #bee3f8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .klartext-tts-button {
+    background-color: #4299e1;
+  }
+
+  .klartext-tts-button:hover {
+    background-color: #3182ce;
+  }
+
+  .klartext-tts-button.playing {
+    background-color: #f56565;
+  }
+
+  .klartext-tts-button.playing:hover {
+    background-color: #e53e3e;
+  }
+
+  .klartext-word.active {
+    background-color: #2c5282;
+    box-shadow: 0 0 0 2px #2b6cb0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .klartext-word {
+    transition: none;
+  }
+}

@@ -1,5 +1,107 @@
 // Constants
 const REPO_URL = 'https://github.com/bhamm/klartext';
+const PLAY_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+const PAUSE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+
+// Speech synthesis controller
+class SpeechController {
+  constructor() {
+    this.utterance = null;
+    this.currentWordIndex = 0;
+    this.words = [];
+    this.isPlaying = false;
+    this.button = null;
+  }
+
+  setup(text, words, button) {
+    this.words = words;
+    this.button = button;
+    this.currentWordIndex = 0;
+    
+    // Create utterance
+    this.utterance = new SpeechSynthesisUtterance(text);
+    this.utterance.lang = 'de-DE';
+    this.utterance.rate = 0.9;
+    
+    // Handle word boundaries
+    this.utterance.onboundary = (event) => {
+      if (event.name === 'word' && this.currentWordIndex < this.words.length) {
+        // Remove highlight from previous word
+        if (this.currentWordIndex > 0) {
+          this.words[this.currentWordIndex - 1].classList.remove('active');
+        }
+        // Add highlight to current word
+        this.words[this.currentWordIndex].classList.add('active');
+        this.currentWordIndex++;
+      }
+    };
+
+    // Handle end of speech
+    this.utterance.onend = () => {
+      this.stop();
+    };
+
+    // Handle errors
+    this.utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event);
+      this.stop();
+    };
+  }
+
+  start() {
+    if (!this.utterance) return;
+    
+    this.isPlaying = true;
+    this.button.innerHTML = PAUSE_ICON + 'Pause';
+    this.button.classList.add('playing');
+    
+    speechSynthesis.speak(this.utterance);
+  }
+
+  pause() {
+    speechSynthesis.pause();
+    this.isPlaying = false;
+    this.button.innerHTML = PLAY_ICON + 'Vorlesen';
+    this.button.classList.remove('playing');
+  }
+
+  resume() {
+    speechSynthesis.resume();
+    this.isPlaying = true;
+    this.button.innerHTML = PAUSE_ICON + 'Pause';
+    this.button.classList.add('playing');
+  }
+
+  stop() {
+    speechSynthesis.cancel();
+    this.isPlaying = false;
+    this.currentWordIndex = 0;
+    
+    // Remove all highlights
+    this.words.forEach(word => word.classList.remove('active'));
+    
+    // Reset button
+    if (this.button) {
+      this.button.innerHTML = PLAY_ICON + 'Vorlesen';
+      this.button.classList.remove('playing');
+    }
+  }
+
+  toggle() {
+    if (!this.isPlaying) {
+      if (speechSynthesis.paused) {
+        this.resume();
+      } else {
+        this.start();
+      }
+    } else {
+      this.pause();
+    }
+  }
+}
+
+// Initialize speech controller
+const speechController = new SpeechController();
 const ARTICLE_SELECTORS = [
   'article',
   '[role="article"]',
@@ -141,13 +243,42 @@ class TranslationOverlay {
 
       // Process translation text
       const paragraphs = translation.split(/\n\n+/); // Split on multiple newlines
+      const allWords = [];
+      
       paragraphs.forEach(paragraph => {
         if (paragraph.trim()) {
           const p = document.createElement('p');
-          p.textContent = paragraph.trim().replace(/\s+/g, ' '); // Remove extra whitespace
+          
+          // Split paragraph into words and wrap each in a span
+          const words = paragraph.trim().replace(/\s+/g, ' ').split(' ');
+          words.forEach((word, index) => {
+            const span = document.createElement('span');
+            span.className = 'klartext-word';
+            span.textContent = word + (index < words.length - 1 ? ' ' : '');
+            p.appendChild(span);
+            allWords.push(span);
+          });
+          
           translationContainer.appendChild(p);
         }
       });
+
+      // Create text-to-speech button
+      const ttsButton = document.createElement('button');
+      ttsButton.className = 'klartext-tts-button';
+      ttsButton.innerHTML = PLAY_ICON + 'Vorlesen';
+      ttsButton.setAttribute('aria-label', 'Text vorlesen');
+      
+      // Setup speech controller
+      speechController.setup(translation, allWords, ttsButton);
+      
+      // Add click handler
+      ttsButton.addEventListener('click', () => {
+        speechController.toggle();
+      });
+
+      // Add button before translation
+      translationContainer.insertBefore(ttsButton, translationContainer.firstChild);
 
       this.content.appendChild(translationContainer);
 
@@ -356,6 +487,7 @@ class TranslationOverlay {
   }
 
   hide() {
+    speechController.stop();
     this.overlay.classList.remove('visible');
     this.backdrop.classList.remove('visible');
   }
