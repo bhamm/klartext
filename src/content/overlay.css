@@ -71,6 +71,34 @@
   margin: 0 auto;
 }
 
+/* Headings */
+.klartext-translation h1,
+.klartext-translation h2,
+.klartext-translation h3,
+.klartext-translation h4,
+.klartext-translation h5,
+.klartext-translation h6 {
+  margin: 1.5em 0 0.8em;
+  line-height: 1.4;
+  color: #2c5282;
+  font-weight: 600;
+}
+
+.klartext-translation h1:first-child,
+.klartext-translation h2:first-child,
+.klartext-translation h3:first-child {
+  margin-top: 0;
+}
+
+.klartext-translation h2 {
+  font-size: 1.5em;
+}
+
+.klartext-translation h3 {
+  font-size: 1.25em;
+}
+
+/* Paragraphs */
 .klartext-translation p {
   margin: 0 0 1.5em;
   padding: 0;
@@ -82,6 +110,70 @@
 
 .klartext-translation p:last-child {
   margin-bottom: 0;
+}
+
+/* Lists */
+.klartext-translation ul,
+.klartext-translation ol {
+  margin: 0 0 1.5em 1.5em;
+  padding: 0;
+}
+
+.klartext-translation li {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+
+.klartext-translation li:last-child {
+  margin-bottom: 0;
+}
+
+/* Preserve semantic structure */
+.klartext-translation strong,
+.klartext-translation b {
+  font-weight: 600;
+  color: #2c5282;
+}
+
+.klartext-translation em,
+.klartext-translation i {
+  font-style: italic;
+}
+
+/* Links */
+.klartext-translation a {
+  color: #3182ce;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.klartext-translation a:hover {
+  color: #2c5282;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .klartext-translation h1,
+  .klartext-translation h2,
+  .klartext-translation h3,
+  .klartext-translation h4,
+  .klartext-translation h5,
+  .klartext-translation h6 {
+    color: #90cdf4;
+  }
+
+  .klartext-translation strong,
+  .klartext-translation b {
+    color: #90cdf4;
+  }
+
+  .klartext-translation a {
+    color: #63b3ed;
+  }
+
+  .klartext-translation a:hover {
+    color: #90cdf4;
+  }
 }
 
 /* Large text option adjustments */
