@@ -163,7 +163,7 @@ klartext/
    ```bash
    npm run package
    ```
-   Dies erstellt eine `klartext.zip` Datei, die im Chrome Web Store hochgeladen werden kann.
+   Dies erstellt eine `klartext.zip` Datei.
 
 ### Entwicklungshinweise
 
