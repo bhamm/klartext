@@ -236,14 +236,23 @@ let API_CONFIG = {
 };
 
 // Load API configuration from storage
-chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], (items) => {
-  console.log('Loading API configuration from storage');
-  if (items.provider) API_CONFIG.provider = items.provider;
-  if (items.model) API_CONFIG.model = items.model;
-  if (items.apiKey) API_CONFIG.apiKey = items.apiKey;
-  if (items.apiEndpoint) API_CONFIG.apiEndpoint = items.apiEndpoint;
-  console.log('API configuration loaded:', { provider: API_CONFIG.provider, model: API_CONFIG.model });
-});
+async function loadApiConfig() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], (items) => {
+      console.log('Loading API configuration from storage');
+      if (items.provider) API_CONFIG.provider = items.provider;
+      if (items.model) API_CONFIG.model = items.model;
+      if (items.apiKey) API_CONFIG.apiKey = items.apiKey;
+      if (items.apiEndpoint) API_CONFIG.apiEndpoint = items.apiEndpoint;
+      console.log('API configuration loaded:', { provider: API_CONFIG.provider, model: API_CONFIG.model });
+      resolve(API_CONFIG);
+    });
+  });
+}
+
+// Initialize configuration on extension load
+chrome.runtime.onInstalled.addListener(loadApiConfig);
+chrome.runtime.onStartup.addListener(loadApiConfig);
 
 // Translation cache using chrome.storage.local for persistence
 async function getCachedTranslation(text) {
@@ -368,6 +377,9 @@ async function handleTranslation(text) {
       return cachedTranslation;
     }
 
+    // Reload configuration to ensure it's fresh
+    await loadApiConfig();
+
     // Validate API configuration
     if (!API_CONFIG.provider) {
       throw new Error('No translation provider selected. Please configure a provider in the extension settings.');
@@ -377,6 +389,11 @@ async function handleTranslation(text) {
     const provider = PROVIDERS[API_CONFIG.provider];
     if (!provider) {
       throw new Error(`Unsupported provider: ${API_CONFIG.provider}`);
+    }
+
+    // Validate required configuration
+    if (provider === PROVIDERS.gpt4 && !API_CONFIG.apiEndpoint) {
+      throw new Error('OpenAI API endpoint is not configured. Please check your extension settings.');
     }
 
     // Log configuration (without sensitive data)

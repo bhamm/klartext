@@ -50,11 +50,20 @@ chrome.storage.sync.get(
     textSize: 'normal'
   },
   (items) => {
-    providerSelect.value = items.provider;
+    const provider = items.provider;
+    const config = PROVIDERS[provider];
+    
+    providerSelect.value = provider;
     apiKeyInput.value = items.apiKey;
-    apiEndpointInput.value = items.apiEndpoint;
+    // Use default endpoint if none is saved
+    apiEndpointInput.value = items.apiEndpoint || config.defaultEndpoint;
     document.querySelector(`input[name="text-size"][value="${items.textSize}"]`).checked = true;
-    updateProviderUI(items.provider, items.model);
+    
+    // Update UI and save settings to ensure default endpoint is stored
+    updateProviderUI(provider, items.model);
+    if (!items.apiEndpoint) {
+      saveSettings().catch(console.error);
+    }
   }
 );
 
@@ -68,6 +77,10 @@ function updateProviderUI(provider, selectedModel = '') {
 
   // Update endpoint field
   apiEndpointInput.placeholder = config.defaultEndpoint;
+  // Set default endpoint if field is empty
+  if (!apiEndpointInput.value) {
+    apiEndpointInput.value = config.defaultEndpoint;
+  }
   
   // Update model select options
   modelSelect.innerHTML = config.models
@@ -201,7 +214,12 @@ function validateInputs() {
 
 // Event Listeners
 providerSelect.addEventListener('change', () => {
-  updateProviderUI(providerSelect.value);
+  const provider = providerSelect.value;
+  const config = PROVIDERS[provider];
+  
+  // Reset endpoint to default when provider changes
+  apiEndpointInput.value = config.defaultEndpoint;
+  updateProviderUI(provider);
 });
 
 saveButton.addEventListener('click', async () => {

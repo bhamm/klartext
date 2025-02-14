@@ -189,9 +189,15 @@
   </div>
 
   <div class="form-group">
-    <label for="api-endpoint">API-Endpoint (optional)</label>
+    <label for="api-endpoint">API-Endpoint</label>
     <input type="text" id="api-endpoint" placeholder="https://..." autocomplete="off">
-    <small class="endpoint-hint">Leer lassen für Standard-Endpoint</small>
+    <small class="endpoint-hint">
+      Standard-Endpoints:<br>
+      • OpenAI: https://api.openai.com/v1/chat/completions<br>
+      • Gemini: https://generativelanguage.googleapis.com/v1/models<br>
+      • Llama: http://localhost:8080/completion (lokale Installation)<br>
+      • Claude: Fest eingestellt, kein Endpoint nötig
+    </small>
   </div>
 
   <div class="form-group">
@@ -228,12 +234,27 @@
   <div class="instructions">
     <h2>Anleitung</h2>
     <p>So verwenden Sie Klartext:</p>
+    <h3>Text übersetzen</h3>
     <ul>
       <li>Text markieren, den Sie übersetzen möchten</li>
       <li>Rechtsklick auf den markierten Text</li>
-      <li>Wählen Sie "In Leichte Sprache übersetzen"</li>
+      <li>Wählen Sie "Markierten Text in Leichte Sprache übersetzen"</li>
     </ul>
-    <p>Die Übersetzung erscheint in einem Overlay-Fenster.</p>
+
+    <h3>Artikel übersetzen</h3>
+    <ul>
+      <li>Rechtsklick auf eine beliebige Stelle der Webseite</li>
+      <li>Wählen Sie "Artikel in Leichte Sprache übersetzen"</li>
+      <li>Bewegen Sie die Maus über den gewünschten Textbereich</li>
+      <li>Klicken Sie auf den hervorgehobenen Bereich</li>
+    </ul>
+
+    <h3>Vorlesefunktion</h3>
+    <ul>
+      <li>Klicken Sie in der Übersetzung auf "Vorlesen"</li>
+      <li>Der Text wird vorgelesen und das aktuelle Wort hervorgehoben</li>
+      <li>Klicken Sie erneut zum Pausieren/Fortsetzen</li>
+    </ul>
   </div>
 
   <script src="popup.js"></script>
