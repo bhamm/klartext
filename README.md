@@ -4,6 +4,19 @@ Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um 
 
 ## Features
 
+- Text-zu-Sprache Funktion:
+  - Vorlesen der Übersetzung mit Wort-Hervorhebung
+  - Play/Pause Steuerung
+  - Deutsche Sprachausgabe
+  - Visuelle Rückmeldung
+- Artikel-Modus für ganze Textabschnitte
+  - Hover-Hervorhebung von Artikeln
+  - Einfache Auswahl durch Klicken
+  - Automatische Texterkennung
+- Flexible Textgrößen:
+  - Normal
+  - Groß
+  - Sehr groß
 - Unterstützung für verschiedene KI-Anbieter:
   - OpenAI GPT-4/3.5
   - Google Gemini
@@ -61,10 +74,31 @@ Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um 
 
 ## Verwendung
 
+### Text-Auswahl-Modus
 1. Markieren Sie einen deutschen Text auf einer Webseite
 2. Klicken Sie mit der rechten Maustaste auf den markierten Text
-3. Wählen Sie "In Leichte Sprache übersetzen"
+3. Wählen Sie "Markierten Text in Leichte Sprache übersetzen"
 4. Die Übersetzung erscheint in einem zugänglichen Overlay-Fenster
+
+### Artikel-Modus
+1. Klicken Sie mit der rechten Maustaste auf eine beliebige Stelle der Webseite
+2. Wählen Sie "Artikel in Leichte Sprache übersetzen"
+3. Bewegen Sie die Maus über den gewünschten Textbereich
+4. Klicken Sie auf den hervorgehobenen Bereich
+
+### Text-zu-Sprache
+1. Klicken Sie in der Übersetzung auf den "Vorlesen" Button
+2. Der Text wird vorgelesen und das aktuelle Wort hervorgehoben
+3. Klicken Sie erneut zum Pausieren/Fortsetzen
+4. Die Vorlesefunktion stoppt automatisch am Ende oder beim Schließen
+
+### Textgröße anpassen
+1. Öffnen Sie die Erweiterungseinstellungen
+2. Wählen Sie unter "Textgröße" eine der Optionen:
+   - Normal (18px)
+   - Groß (22px)
+   - Sehr groß (26px)
+3. Speichern Sie die Einstellungen
 
 ## Technische Details
 
@@ -146,8 +180,10 @@ klartext/
 - **Barrierefreiheit:**
   - ARIA-Attribute für Screenreader
   - Tastatur-Navigation
-  - Hoher Kontrast und große Schrift
+  - Hoher Kontrast und flexible Textgrößen
   - Reduzierte Bewegung unterstützt
+  - Text-zu-Sprache Integration
+  - Wort-für-Wort Hervorhebung
 
 ## Lizenz
 
