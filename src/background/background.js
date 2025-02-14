@@ -8,7 +8,7 @@ const REPO_URL = 'https://github.com/bhamm/klartext';
 // Provider configurations with translation handlers
 const PROVIDERS = {
   gpt4: {
-    async translate(text, config) {
+    async translate(text, config, isArticle = false) {
       try {
         // Validate configuration
         if (!config.apiEndpoint) {
@@ -18,12 +18,31 @@ const PROVIDERS = {
           throw new Error('OpenAI API key is not configured');
         }
 
+        const systemPrompt = isArticle ?
+          "You are an expert in German 'Leichte Sprache' and HTML formatting. Extract the main article content from HTML, ignoring navigation, ads, and captions. " +
+          "Translate the text into 'Leichte Sprache' following the rules. Format the result as clean HTML with short paragraphs (<p>), clear headings (<h2>, <h3>), and simple lists (<ul>, <li>) where appropriate. " + 
+          "Do not use nested structures or complex elements. Respond with properly formatted HTML only. The rules for 'Leichte Sprache' are: " +
+          "Die Leichte Sprache hat feste Regeln die bei der Erstellung von Texten immer beachtet werden." +
+          "Leichte Sprache zeichnet sich aus durch einfache, kurze Wörter, die Dinge genau beschreiben. Redewendungen, bildliche Sprache, Fach- und Fremdwörter sowie Abkürzungen kommen in der Leichten Sprache nicht vor." +
+          "In der Leichten Sprache werden Sätze aktiv formuliert. Wenn es möglich ist, werden Verben anstelle von Substantivierungen verwendet. Genitiv und Konjunktiv werden ebenfalls selten verwendet." +
+          "Hohe Zahlen und alte Jahreszahlen kommen in der Leichten Sprache meist nicht vor. Stattdessen sind Formulierungen wie 'sehr viel' oder 'vor langer Zeit' üblich." +
+          "Bei der Schreibweise von Datumsangaben, Uhrzeiten, Zeitangaben oder Telefonnummern ist es hierbei vom Kontext abhängig, welche Schreibweise besser verständlich ist." +
+          "In der Leichten Sprache werden kurze Sätze mit einfachem Satzbau verwendet. In jedem Satz soll nur eine Information enthalten sein." +
+          "Texte in Leichter Sprache richten sich direkt an die Leser. Fragen und Querverweise auf andere Texte oder Textstellen werden nach Möglichkeit vermieden." +
+          "Bei der Übersetzung in Leichte Sprache dürfen Texte verändert werden. Der Inhalt und der Sinn des ursprünglichen Textes muss erhalten bleibt." +
+          "Texte in Leichter Sprache sollen übersichtlich strukturiert sein. Durch Absätze, Zwischenüberschriften und Fettungen von wichtigen Infos wird der Text leichter verständlich. Aufzählungen können am besten erfasst werden, wenn sie mit Bulletpunkten aufgelistet werden." +
+          "Jeder Satz steht in einer eigenen Zeile. Ist ein Satz zu lang für eine Zeile, dann werden Wörter nicht getrennt, sondern in der neuen Zeile komplett aufgeschrieben." +
+          "Satzteile, die sinngemäß zueinander gehören, werden auch zusammen in eine Zeile geschrieben." +
+          "Findet ein Seitenwechsel statt, gibt es keine Satztrennung. Sätze werden als Ganzes auf der neuen Seite begonnen. Das Gleiche gilt wenn möglich auch für Absätze." +
+          "Texte werden immer linksbündig formatiert. Blocksatz wird nicht verwendet.":
+          'You are a translator specialized in converting German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache.';
+
         const requestBody = {
           model: config.model,
           messages: [
             {
               role: 'system',
-              content: 'You are a translator specialized in converting German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache.'
+              content: systemPrompt
             },
             {
               role: 'user',
@@ -68,7 +87,7 @@ const PROVIDERS = {
     }
   },
   gemini: {
-    async translate(text, config) {
+    async translate(text, config, isArticle = false) {
       try {
         // Validate configuration
         if (!config.apiEndpoint) {
@@ -78,10 +97,29 @@ const PROVIDERS = {
           throw new Error('Gemini API key is not configured');
         }
 
+        const prompt = isArticle ?
+          `You are an expert in German "Leichte Sprache" and HTML formatting.
+           
+           Process the following HTML content:
+           1. Extract the main article content, ignoring navigation, ads, captions, etc.
+           2. Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules
+           3. Format the result as clean HTML with:
+              - Short paragraphs (<p>)
+              - Clear headings (<h2>, <h3>)
+              - Simple lists (<ul>, <li>) where appropriate
+              - No nested structures
+              - No images or complex elements
+           
+           Input HTML:
+           ${text}
+           
+           Respond with properly formatted HTML only.` :
+          `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
+
         const requestBody = {
           contents: [{
             parts: [{
-              text: `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`
+              text: prompt
             }]
           }],
           generationConfig: {
@@ -123,18 +161,37 @@ const PROVIDERS = {
     }
   },
   claude: {
-    async translate(text, config) {
+    async translate(text, config, isArticle = false) {
       try {
         // Validate configuration
         if (!config.apiKey) {
           throw new Error('Claude API key is not configured');
         }
 
+        const prompt = isArticle ?
+          `You are an expert in German "Leichte Sprache" and HTML formatting.
+           
+           Process the following HTML content:
+           1. Extract the main article content, ignoring navigation, ads, captions, etc.
+           2. Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules
+           3. Format the result as clean HTML with:
+              - Short paragraphs (<p>)
+              - Clear headings (<h2>, <h3>)
+              - Simple lists (<ul>, <li>) where appropriate
+              - No nested structures
+              - No images or complex elements
+           
+           Input HTML:
+           ${text}
+           
+           Respond with properly formatted HTML only.` :
+          `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
+
         const requestBody = {
           model: config.model,
           messages: [{
             role: 'user',
-            content: `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`
+            content: prompt
           }],
           max_tokens: 1000,
           temperature: 0.7
@@ -177,16 +234,35 @@ const PROVIDERS = {
     }
   },
   llama: {
-    async translate(text, config) {
+    async translate(text, config, isArticle = false) {
       try {
         // Validate configuration
         if (!config.apiEndpoint) {
           throw new Error('Llama API endpoint is not configured');
         }
 
+        const prompt = isArticle ?
+          `You are an expert in German "Leichte Sprache" and HTML formatting.
+           
+           Process the following HTML content:
+           1. Extract the main article content, ignoring navigation, ads, captions, etc.
+           2. Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules
+           3. Format the result as clean HTML with:
+              - Short paragraphs (<p>)
+              - Clear headings (<h2>, <h3>)
+              - Simple lists (<ul>, <li>) where appropriate
+              - No nested structures
+              - No images or complex elements
+           
+           Input HTML:
+           ${text}
+           
+           Respond with properly formatted HTML only.` :
+          `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
+
         const requestBody = {
           model: config.model,
-          prompt: `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`,
+          prompt: prompt,
           temperature: 0.7,
           max_tokens: 1000
         };
@@ -321,10 +397,14 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background script received message:', message);
   
-  if (message.action === 'translateText') {
-    // Handle article text translation
-    console.log('Received text for translation:', message.text.substring(0, 50) + '...');
-    handleTranslation(message.text)
+  if (message.action === 'translateText' || message.action === 'translateArticle') {
+    // Handle translation
+    console.log(`Received ${message.action} request`);
+    
+    const content = message.action === 'translateArticle' ? message.html : message.text;
+    const isArticle = message.action === 'translateArticle';
+    
+    handleTranslation(content, isArticle)
       .then(translation => {
         chrome.tabs.sendMessage(sender.tab.id, {
           action: 'showTranslation',
@@ -332,7 +412,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       })
       .catch(error => {
-        console.error('Error translating text:', error);
+        console.error('Error translating:', error);
         chrome.tabs.sendMessage(sender.tab.id, {
           action: 'showError',
           error: error.message
@@ -366,7 +446,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Handle translation
-async function handleTranslation(text) {
+async function handleTranslation(text, isArticle = false) {
   console.log('Starting translation with provider:', API_CONFIG.provider);
   
   try {
@@ -401,11 +481,12 @@ async function handleTranslation(text) {
       provider: API_CONFIG.provider,
       model: API_CONFIG.model,
       endpoint: API_CONFIG.apiEndpoint,
-      textLength: text.length
+      textLength: text.length,
+      isArticle: isArticle
     });
 
     // Perform translation
-    const translation = await provider.translate(text, API_CONFIG);
+    const translation = await provider.translate(text, API_CONFIG, isArticle);
     
     // Cache the result
     await cacheTranslation(text, translation);

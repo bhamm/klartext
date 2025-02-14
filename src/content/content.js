@@ -241,27 +241,62 @@ class TranslationOverlay {
       translationContainer.className = 'klartext-translation';
       translationContainer.setAttribute('aria-label', 'Übersetzung in Leichte Sprache');
 
-      // Process translation text
-      const paragraphs = translation.split(/\n\n+/); // Split on multiple newlines
-      const allWords = [];
-      
-      paragraphs.forEach(paragraph => {
-        if (paragraph.trim()) {
-          const p = document.createElement('p');
-          
-          // Split paragraph into words and wrap each in a span
-          const words = paragraph.trim().replace(/\s+/g, ' ').split(' ');
-          words.forEach((word, index) => {
+      // Process translation content
+      let allWords = [];
+      let plainText = '';
+
+      // Check if translation is HTML
+      if (translation.trim().startsWith('<')) {
+        // Parse HTML content
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(translation, 'text/html');
+        
+        // Process each text node
+        const textNodes = [];
+        const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+        let node;
+        while (node = walker.nextNode()) {
+          textNodes.push(node);
+          plainText += node.textContent + ' ';
+        }
+
+        // Add HTML to container
+        translationContainer.innerHTML = translation;
+
+        // Wrap words in spans for text-to-speech
+        textNodes.forEach(textNode => {
+          const words = textNode.textContent.trim().split(/\s+/);
+          const spans = words.map((word, index) => {
             const span = document.createElement('span');
             span.className = 'klartext-word';
             span.textContent = word + (index < words.length - 1 ? ' ' : '');
-            p.appendChild(span);
             allWords.push(span);
+            return span;
           });
-          
-          translationContainer.appendChild(p);
-        }
-      });
+
+          const fragment = document.createDocumentFragment();
+          spans.forEach(span => fragment.appendChild(span));
+          textNode.parentNode.replaceChild(fragment, textNode);
+        });
+      } else {
+        // Process plain text
+        plainText = translation;
+        const paragraphs = translation.split(/\n\n+/);
+        paragraphs.forEach(paragraph => {
+          if (paragraph.trim()) {
+            const p = document.createElement('p');
+            const words = paragraph.trim().replace(/\s+/g, ' ').split(' ');
+            words.forEach((word, index) => {
+              const span = document.createElement('span');
+              span.className = 'klartext-word';
+              span.textContent = word + (index < words.length - 1 ? ' ' : '');
+              p.appendChild(span);
+              allWords.push(span);
+            });
+            translationContainer.appendChild(p);
+          }
+        });
+      }
 
       // Create text-to-speech button
       const ttsButton = document.createElement('button');
@@ -269,8 +304,8 @@ class TranslationOverlay {
       ttsButton.innerHTML = PLAY_ICON + 'Vorlesen';
       ttsButton.setAttribute('aria-label', 'Text vorlesen');
       
-      // Setup speech controller
-      speechController.setup(translation, allWords, ttsButton);
+      // Setup speech controller with plain text
+      speechController.setup(plainText, allWords, ttsButton);
       
       // Add click handler
       ttsButton.addEventListener('click', () => {
@@ -562,9 +597,9 @@ function handleArticleClick(event) {
   event.preventDefault();
   event.stopPropagation();
   
-  // Get text content
-  const text = currentHighlight.innerText;
-  if (!text.trim()) return;
+  // Get HTML content
+  const html = currentHighlight.innerHTML;
+  if (!html.trim()) return;
   
   // Stop article mode
   stopArticleMode();
@@ -572,10 +607,10 @@ function handleArticleClick(event) {
   // Show loading state
   overlay.showLoading();
   
-  // Send text to background script
+  // Send HTML to background script
   chrome.runtime.sendMessage({
-    action: 'translateText',
-    text: text
+    action: 'translateArticle',
+    html: html
   });
 }
 
