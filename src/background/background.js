@@ -1,7 +1,8 @@
 // Constants
 const MENU_ITEMS = {
   SELECTION: 'translate-selection-to-leichte-sprache',
-  ARTICLE: 'translate-article-to-leichte-sprache'
+  ARTICLE: 'translate-article-to-leichte-sprache',
+  FULLPAGE: 'translate-fullpage-to-leichte-sprache'
 };
 const REPO_URL = 'https://github.com/bhamm/klartext';
 
@@ -18,7 +19,9 @@ const PROVIDERS = {
           throw new Error('OpenAI API key is not configured');
         }
 
-        const systemPrompt = 'You are an expert in German "Leichte Sprache" and HTML formatting. Extract the article content from HTML, ignoring navigation, ads, and captions. Translate the text into "Leichte Sprache" following DIN SPEC 33429 rules. Format the result as clean HTML with paragraphs (<p>), clear headings (<h2>, <h3>), and simple lists (<ul>, <li>) where appropriate. One sentence per line. Respond with properly formatted HTML only. Keep the sentiment, tone and meaning of the original text.';
+        const systemPrompt = isArticle ?
+          'You are an expert in German "Leichte Sprache" and HTML formatting. Extract the article content from HTML, ignoring navigation, ads, and captions. Translate the text into "Leichte Sprache" following DIN SPEC 33429 rules. Format the result as clean HTML with paragraphs (<p>), clear headings (<h2>, <h3>), and simple lists (<ul>, <li>) where appropriate. One sentence per line. Respond with properly formatted HTML only. Keep the sentiment, tone and meaning of the original text.' :
+          'You are an expert in German "Leichte Sprache". Translate the following text into "Leichte Sprache" following DIN SPEC 33429 rules. Keep the HTML structure intact, only translate the text content. Keep headings (<h1>-<h6>), paragraphs (<p>), and lists (<ul>, <li>). One sentence per line. Keep the sentiment, tone and meaning of the original text.';
 
         const requestBody = {
           model: config.model,
@@ -369,6 +372,16 @@ chrome.runtime.onInstalled.addListener(() => {
     }, () => {
       if (chrome.runtime.lastError) {
         console.error('Error creating article menu item:', chrome.runtime.lastError);
+      }
+    });
+
+    chrome.contextMenus.create({
+      id: MENU_ITEMS.FULLPAGE,
+      title: 'Ganze Seite in Leichte Sprache übersetzen',
+      contexts: ['all']
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Error creating fullpage menu item:', chrome.runtime.lastError);
       } else {
         console.log('Context menu items created successfully');
       }
@@ -380,19 +393,24 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background script received message:', message);
   
-  if (message.action === 'translateText' || message.action === 'translateArticle') {
+  if (message.action === 'translateText' || message.action === 'translateArticle' || message.action === 'translateSection') {
     // Handle translation
     console.log(`Received ${message.action} request`);
     
-    const content = message.action === 'translateArticle' ? message.html : message.text;
-    const isArticle = message.action === 'translateArticle';
+    const content = message.action === 'translateArticle' || message.action === 'translateSection' ? message.html : message.text;
+    const isHtml = message.action === 'translateArticle' || message.action === 'translateSection';
     
-    handleTranslation(content, isArticle)
+    handleTranslation(content, isHtml)
       .then(translation => {
         chrome.tabs.sendMessage(sender.tab.id, {
           action: 'showTranslation',
-          translation: translation
+          translation: translation,
+          id: message.id // Pass through the section ID for full page mode
         });
+        // Send response for section translation
+        if (message.action === 'translateSection') {
+          sendResponse({ success: true });
+        }
       })
       .catch(error => {
         console.error('Error translating:', error);
@@ -400,6 +418,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           action: 'showError',
           error: error.message
         });
+        // Send error response for section translation
+        if (message.action === 'translateSection') {
+          sendResponse({ success: false, error: error.message });
+        }
       });
     return true;
   }
@@ -485,7 +507,7 @@ async function handleTranslation(text, isArticle = false) {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   console.log('Context menu clicked:', info.menuItemId);
   
-  if (info.menuItemId === MENU_ITEMS.SELECTION || info.menuItemId === MENU_ITEMS.ARTICLE) {
+  if (info.menuItemId === MENU_ITEMS.SELECTION || info.menuItemId === MENU_ITEMS.ARTICLE || info.menuItemId === MENU_ITEMS.FULLPAGE) {
     if (info.menuItemId === MENU_ITEMS.SELECTION) {
       if (!info.selectionText) return;
       console.log('Selected text:', info.selectionText.substring(0, 50) + '...');
@@ -591,6 +613,12 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
             // Start article mode
             sendMessage({
               action: 'startArticleMode'
+            });
+          } else if (info.menuItemId === MENU_ITEMS.FULLPAGE) {
+            console.log('Starting full page translation mode');
+            // Start full page translation mode
+            sendMessage({
+              action: 'startFullPageMode'
             });
           } else {
             // Show loading state immediately

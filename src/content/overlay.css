@@ -71,6 +71,134 @@
   margin: 0 auto;
 }
 
+/* Full page translation */
+.klartext-fullpage {
+  position: relative;
+  padding-top: 48px;
+}
+
+.klartext-progress {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.klartext-progress-bar {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.klartext-progress-fill {
+  height: 100%;
+  background: #3182ce;
+  transition: width 0.3s ease;
+}
+
+.klartext-progress-text {
+  font-size: 14px;
+  color: #4a5568;
+  text-align: center;
+}
+
+.klartext-section {
+  margin-bottom: 2em;
+  padding: 1em;
+  border-radius: 8px;
+  transition: background-color 0.3s;
+}
+
+.klartext-section.translating {
+  background-color: #ebf8ff;
+}
+
+/* Compare view */
+.klartext-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2em;
+}
+
+.klartext-compare .original {
+  color: #718096;
+  font-size: 0.9em;
+}
+
+.klartext-view-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #4a5568;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.klartext-view-toggle:hover {
+  background: #edf2f7;
+  color: #2d3748;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .klartext-progress {
+    background: #1a202c;
+    border-color: #2d3748;
+  }
+
+  .klartext-progress-bar {
+    background: #2d3748;
+  }
+
+  .klartext-progress-fill {
+    background: #4299e1;
+  }
+
+  .klartext-progress-text {
+    color: #e2e8f0;
+  }
+
+  .klartext-section.translating {
+    background-color: #2c5282;
+  }
+
+  .klartext-compare .original {
+    color: #a0aec0;
+  }
+
+  .klartext-view-toggle {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+
+  .klartext-view-toggle:hover {
+    background: #4a5568;
+    color: #f7fafc;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .klartext-progress-fill,
+  .klartext-section {
+    transition: none;
+  }
+}
+
 /* Headings */
 .klartext-translation h1,
 .klartext-translation h2,

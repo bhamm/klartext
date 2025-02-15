@@ -113,9 +113,199 @@ const ARTICLE_SELECTORS = [
   '.post-content'
 ];
 
-// Track article mode state
+// Track mode states
 let isArticleMode = false;
+let isFullPageMode = false;
 let currentHighlight = null;
+let pageTranslator = null;
+
+// Page translator class
+class PageTranslator {
+  constructor() {
+    this.sections = [];
+    this.currentSection = 0;
+    this.compareView = false;
+    this.excludeComments = true;
+  }
+
+  async initialize() {
+    // Get settings
+    const settings = await new Promise(resolve => {
+      chrome.storage.sync.get({
+        compareView: false,
+        excludeComments: true
+      }, resolve);
+    });
+    
+    this.compareView = settings.compareView;
+    this.excludeComments = settings.excludeComments;
+    
+    // Find all content sections
+    this.sections = this.getContentSections();
+    
+    // Show initial loading state
+    overlay.showPageTranslation({
+      total: this.sections.length,
+      compareView: this.compareView
+    });
+    
+    // Start translating first section
+    await this.translateNextSection();
+  }
+  
+  getContentSections() {
+    // Main content selectors in order of priority
+    const contentSelectors = [
+      // Main article containers
+      'article',
+      '[role="article"]',
+      '[role="main"]',
+      'main',
+      
+      // Common content containers
+      '.article',
+      '.post',
+      '.entry-content',
+      '.content',
+      '.page-content',
+      '.main-content',
+      
+      // Fallback to semantic sections
+      'section',
+      
+      // Individual content blocks if no container found
+      '.post-content p',
+      'article p',
+      'main p',
+      '.content p',
+      '.entry-content p'
+    ];
+    
+    // Comment section selectors to exclude
+    const commentSelectors = [
+      '#comments', '.comments', '.comment-section',
+      '[data-component="comments"]', '.comment-list'
+    ];
+    
+    // Helper function to split text into chunks
+    const splitIntoChunks = (element) => {
+      const MAX_CHARS = 1000; // Roughly 250-300 tokens
+      const chunks = [];
+      let currentChunk = [];
+      let currentLength = 0;
+      
+      // Get all text-containing elements
+      const walker = document.createTreeWalker(
+        element,
+        NodeFilter.SHOW_ELEMENT,
+        {
+          acceptNode: (node) => {
+            if (node.matches('p, h1, h2, h3, h4, h5, h6, li')) {
+              return NodeFilter.FILTER_ACCEPT;
+            }
+            return NodeFilter.FILTER_SKIP;
+          }
+        }
+      );
+      
+      let node;
+      while (node = walker.nextNode()) {
+        const text = node.innerHTML;
+        const length = text.length;
+        
+        if (currentLength + length > MAX_CHARS && currentChunk.length > 0) {
+          // Create a new section with current chunk
+          const section = document.createElement('div');
+          currentChunk.forEach(n => section.appendChild(n.cloneNode(true)));
+          chunks.push(section);
+          
+          // Start new chunk
+          currentChunk = [node];
+          currentLength = length;
+        } else {
+          currentChunk.push(node);
+          currentLength += length;
+        }
+      }
+      
+      // Add remaining chunk if any
+      if (currentChunk.length > 0) {
+        const section = document.createElement('div');
+        currentChunk.forEach(n => section.appendChild(n.cloneNode(true)));
+        chunks.push(section);
+      }
+      
+      return chunks;
+    };
+    
+    // Get all potential content sections
+    let sections = [];
+    let foundMainContainer = false;
+    
+    for (const selector of contentSelectors) {
+      const elements = document.querySelectorAll(selector);
+      if (elements.length > 0) {
+        // If we find a main container, use only that
+        if (!foundMainContainer && 
+            (selector.includes('article') || 
+             selector.includes('main') || 
+             selector.includes('content'))) {
+          // Split main container into chunks
+          const mainSections = Array.from(elements).flatMap(el => splitIntoChunks(el));
+          sections = mainSections;
+          foundMainContainer = true;
+          break;
+        }
+        // Otherwise add individual sections
+        if (!foundMainContainer) {
+          const newSections = Array.from(elements).flatMap(el => splitIntoChunks(el));
+          sections.push(...newSections);
+        }
+      }
+    }
+    
+    // Filter out empty sections and comments if excluded
+    return sections.filter(section => {
+      if (!section.innerText.trim()) return false;
+      if (this.excludeComments) {
+        return !commentSelectors.some(sel => 
+          section.matches(sel) || section.closest(sel)
+        );
+      }
+      return true;
+    });
+  }
+  
+  async translateNextSection() {
+    if (this.currentSection >= this.sections.length) {
+      overlay.completePageTranslation();
+      return;
+    }
+    
+    const section = this.sections[this.currentSection];
+    try {
+      // Create a unique ID for this section if it doesn't have one
+      if (!section.id) {
+        section.id = `klartext-section-${this.currentSection + 1}`;
+      }
+      
+      // Update progress before translation
+      overlay.updateProgress(this.currentSection + 1, this.sections.length);
+      
+      // Send section for translation
+      chrome.runtime.sendMessage({
+        action: 'translateSection',
+        html: section.innerHTML,
+        id: section.id
+      });
+      
+      // Translation will continue in message handler
+    } catch (error) {
+      console.error('Error translating section:', error);
+      overlay.showError(error.message);
+    }
+  }
+}
 
 // Singleton overlay instance
 let overlayInstance = null;
@@ -226,6 +416,200 @@ class TranslationOverlay {
       console.log('Loading state shown successfully');
     } catch (error) {
       console.error('Error showing loading state:', error);
+    }
+  }
+
+  showPageTranslation({ total, compareView }) {
+    try {
+      console.log('Starting full page translation');
+      
+      // Clear previous content
+      this.content.innerHTML = '';
+
+      // Create container
+      const container = document.createElement('div');
+      container.className = 'klartext-fullpage';
+      if (compareView) {
+        container.classList.add('klartext-compare');
+      }
+
+      // Add progress bar
+      const progress = document.createElement('div');
+      progress.className = 'klartext-progress';
+      progress.innerHTML = `
+        <div class="klartext-progress-bar">
+          <div class="klartext-progress-fill" style="width: 0%"></div>
+        </div>
+        <div class="klartext-progress-text">
+          Übersetze Abschnitt 0/${total}
+        </div>
+      `;
+
+      // Add view toggle
+      const viewToggle = document.createElement('button');
+      viewToggle.className = 'klartext-view-toggle';
+      viewToggle.textContent = compareView ? 
+        'Nur Übersetzung zeigen' : 'Original anzeigen';
+      viewToggle.onclick = () => this.toggleCompareView();
+
+      container.appendChild(progress);
+      container.appendChild(viewToggle);
+      this.content.appendChild(container);
+
+      // Show overlay
+      this.backdrop.classList.add('visible');
+      this.overlay.classList.add('visible');
+      this.overlay.focus();
+    } catch (error) {
+      console.error('Error showing page translation:', error);
+      this.showError('Fehler beim Starten der Übersetzung');
+    }
+  }
+
+  updateProgress(current, total) {
+    try {
+      const progress = this.content.querySelector('.klartext-progress-fill');
+      const text = this.content.querySelector('.klartext-progress-text');
+      
+      if (progress && text) {
+        progress.style.width = `${(current/total) * 100}%`;
+        text.textContent = `Übersetze Abschnitt ${current}/${total}`;
+        
+        // Highlight current section
+        const sections = this.content.querySelectorAll('.klartext-section');
+        sections.forEach(s => s.classList.remove('translating'));
+        sections[current-1]?.classList.add('translating');
+      }
+    } catch (error) {
+      console.error('Error updating progress:', error);
+    }
+  }
+
+  appendTranslation(translation, id) {
+    try {
+      const container = this.content.querySelector('.klartext-fullpage');
+      const section = document.createElement('div');
+      section.className = 'klartext-section';
+      section.dataset.originalId = id;
+      
+      if (container.classList.contains('klartext-compare')) {
+        const original = document.getElementById(id);
+        if (original) {
+          section.innerHTML = `
+            <div class="original">${original.innerHTML}</div>
+            <div class="translation">${translation}</div>
+          `;
+        } else {
+          console.warn(`Original section with ID ${id} not found`);
+          section.innerHTML = translation;
+        }
+      } else {
+        section.innerHTML = translation;
+      }
+      
+      container.appendChild(section);
+    } catch (error) {
+      console.error('Error appending translation:', error);
+      this.showError('Fehler beim Hinzufügen der Übersetzung');
+    }
+  }
+
+  toggleCompareView() {
+    try {
+      const container = this.content.querySelector('.klartext-fullpage');
+      const isCompare = container.classList.toggle('klartext-compare');
+      
+      const button = this.content.querySelector('.klartext-view-toggle');
+      button.textContent = isCompare ?
+        'Nur Übersetzung zeigen' : 'Original anzeigen';
+      
+      // Update sections
+      const sections = container.querySelectorAll('.klartext-section');
+      sections.forEach(section => {
+        const id = section.dataset.originalId;
+        const original = document.getElementById(id);
+        
+        if (isCompare && !section.querySelector('.original')) {
+          if (original) {
+            section.innerHTML = `
+              <div class="original">${original.innerHTML}</div>
+              <div class="translation">${section.innerHTML}</div>
+            `;
+          }
+        } else if (!isCompare && section.querySelector('.original')) {
+          section.innerHTML = section.querySelector('.translation').innerHTML;
+        }
+      });
+    } catch (error) {
+      console.error('Error toggling compare view:', error);
+    }
+  }
+
+  completePageTranslation() {
+    try {
+      // Remove progress bar
+      const progress = this.content.querySelector('.klartext-progress');
+      progress.remove();
+      
+      // Add text-to-speech button
+      const container = this.content.querySelector('.klartext-fullpage');
+      const ttsButton = document.createElement('button');
+      ttsButton.className = 'klartext-tts-button';
+      ttsButton.innerHTML = PLAY_ICON + 'Vorlesen';
+      ttsButton.setAttribute('aria-label', 'Text vorlesen');
+      
+      // Get all text for speech
+      const textNodes = [];
+      const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: node => {
+            // Skip original text in compare view
+            if (node.parentElement.closest('.original')) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        }
+      );
+      
+      let node;
+      let plainText = '';
+      while (node = walker.nextNode()) {
+        textNodes.push(node);
+        plainText += node.textContent + ' ';
+      }
+      
+      // Wrap words in spans
+      const allWords = [];
+      textNodes.forEach(textNode => {
+        const words = textNode.textContent.trim().split(/\s+/);
+        const spans = words.map((word, index) => {
+          const span = document.createElement('span');
+          span.className = 'klartext-word';
+          span.textContent = word + (index < words.length - 1 ? ' ' : '');
+          allWords.push(span);
+          return span;
+        });
+
+        const fragment = document.createDocumentFragment();
+        spans.forEach(span => fragment.appendChild(span));
+        textNode.parentNode.replaceChild(fragment, textNode);
+      });
+      
+      // Setup speech controller
+      speechController.setup(plainText, allWords, ttsButton);
+      
+      // Add click handler
+      ttsButton.addEventListener('click', () => {
+        speechController.toggle();
+      });
+      
+      // Add button at the top
+      container.insertBefore(ttsButton, container.firstChild);
+    } catch (error) {
+      console.error('Error completing page translation:', error);
     }
   }
 
@@ -535,6 +919,83 @@ class TranslationOverlay {
 // Initialize overlay instance
 const overlay = new TranslationOverlay();
 
+// Message handling
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('Content script received message:', message);
+
+  try {
+    switch (message.action) {
+      case 'ping':
+        // Only ping messages need a response
+        sendResponse({ status: 'ok' });
+        return false; // No async response needed
+
+      case 'startArticleMode':
+        console.log('Starting article mode');
+        startArticleMode();
+        break;
+
+      case 'startFullPageMode':
+        console.log('Starting full page translation mode');
+        startFullPageMode();
+        break;
+
+      case 'startTranslation':
+        console.log('Starting translation, showing loading state');
+        overlay.showLoading();
+        break;
+
+      case 'showTranslation':
+        console.log('Showing translation:', message.translation);
+        if (isFullPageMode && pageTranslator) {
+          overlay.appendTranslation(message.translation, message.id);
+          // Move to next section
+          pageTranslator.currentSection++;
+          // Continue translation
+          pageTranslator.translateNextSection().catch(error => {
+            console.error('Error continuing translation:', error);
+            overlay.showError(error.message);
+          });
+        } else {
+          overlay.show(message.translation);
+        }
+        break;
+
+      case 'showError':
+        console.error('Showing error:', message.error);
+        overlay.showError(message.error);
+        stopArticleMode();
+        stopFullPageMode();
+        break;
+
+      case 'updateSettings':
+        console.log('Updating settings:', message.settings);
+        if (message.settings.compareView !== undefined && pageTranslator) {
+          pageTranslator.compareView = message.settings.compareView;
+          overlay.toggleCompareView(message.settings.compareView);
+        }
+        if (message.settings.excludeComments !== undefined && pageTranslator) {
+          pageTranslator.excludeComments = message.settings.excludeComments;
+        }
+        if (message.settings.textSize) {
+          // Remove any existing text size classes
+          document.body.classList.remove('klartext-text-normal', 'klartext-text-gross', 'klartext-text-sehr-gross');
+          // Add new text size class
+          document.body.classList.add(`klartext-text-${message.settings.textSize}`);
+        }
+        break;
+
+      default:
+        console.warn('Unknown message action:', message.action);
+    }
+  } catch (error) {
+    console.error('Error handling message:', error);
+  }
+
+  // No response needed for non-ping messages
+  return false;
+});
+
 // Article mode functions
 function startArticleMode() {
   if (isArticleMode) return;
@@ -614,56 +1075,26 @@ function handleArticleClick(event) {
   });
 }
 
-// Listen for messages from background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Content script received message:', message);
+// Start full page translation mode
+function startFullPageMode() {
+  if (isFullPageMode) return;
+  isFullPageMode = true;
+  
+  // Initialize page translator
+  pageTranslator = new PageTranslator();
+  pageTranslator.initialize().catch(error => {
+    console.error('Error initializing page translator:', error);
+    overlay.showError(error.message);
+    stopFullPageMode();
+  });
+}
 
-  try {
-    switch (message.action) {
-      case 'ping':
-        // Only ping messages need a response
-        sendResponse({ status: 'ok' });
-        return false; // No async response needed
-
-      case 'startArticleMode':
-        console.log('Starting article mode');
-        startArticleMode();
-        break;
-
-      case 'startTranslation':
-        console.log('Starting translation, showing loading state');
-        overlay.showLoading();
-        break;
-
-      case 'showTranslation':
-        console.log('Showing translation:', message.translation);
-        overlay.show(message.translation);
-        break;
-
-      case 'showError':
-        console.error('Showing error:', message.error);
-        overlay.showError(message.error);
-        stopArticleMode();
-        break;
-
-      case 'updateTextSize':
-        console.log('Updating text size:', message.textSize);
-        // Remove any existing text size classes
-        document.body.classList.remove('klartext-text-normal', 'klartext-text-gross', 'klartext-text-sehr-gross');
-        // Add new text size class
-        document.body.classList.add(`klartext-text-${message.textSize}`);
-        break;
-
-      default:
-        console.warn('Unknown message action:', message.action);
-    }
-  } catch (error) {
-    console.error('Error handling message:', error);
-  }
-
-  // No response needed for non-ping messages
-  return false;
-});
+// Stop full page translation mode
+function stopFullPageMode() {
+  if (!isFullPageMode) return;
+  isFullPageMode = false;
+  pageTranslator = null;
+}
 
 // Log when content script is loaded
 console.log('Klartext content script loaded');

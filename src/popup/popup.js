@@ -36,7 +36,8 @@ const modelSelect = document.getElementById('model-select');
 const apiKeyInput = document.getElementById('api-key');
 const apiEndpointInput = document.getElementById('api-endpoint');
 const apiHint = document.getElementById('api-hint');
-const largeTextToggle = document.getElementById('large-text');
+const compareViewCheckbox = document.getElementById('compare-view');
+const excludeCommentsCheckbox = document.getElementById('exclude-comments');
 const saveButton = document.querySelector('.save-button');
 const statusDiv = document.getElementById('status');
 
@@ -47,7 +48,9 @@ chrome.storage.sync.get(
     model: '',
     apiKey: '',
     apiEndpoint: '',
-    textSize: 'normal'
+    textSize: 'normal',
+    compareView: false,
+    excludeComments: true
   },
   (items) => {
     const provider = items.provider;
@@ -58,6 +61,8 @@ chrome.storage.sync.get(
     // Use default endpoint if none is saved
     apiEndpointInput.value = items.apiEndpoint || config.defaultEndpoint;
     document.querySelector(`input[name="text-size"][value="${items.textSize}"]`).checked = true;
+    compareViewCheckbox.checked = items.compareView;
+    excludeCommentsCheckbox.checked = items.excludeComments;
     
     // Update UI and save settings to ensure default endpoint is stored
     updateProviderUI(provider, items.model);
@@ -99,7 +104,9 @@ async function saveSettings() {
     model: modelSelect.value,
     apiKey: apiKeyInput.value.trim(),
     apiEndpoint: apiEndpointInput.value.trim(),
-    textSize: document.querySelector('input[name="text-size"]:checked').value
+    textSize: document.querySelector('input[name="text-size"]:checked').value,
+    compareView: compareViewCheckbox.checked,
+    excludeComments: excludeCommentsCheckbox.checked
   };
 
   try {
@@ -122,7 +129,9 @@ async function saveSettings() {
           provider: settings.provider,
           model: settings.model,
           apiKey: settings.apiKey,
-          apiEndpoint: settings.apiEndpoint || PROVIDERS[settings.provider].defaultEndpoint
+          apiEndpoint: settings.apiEndpoint || PROVIDERS[settings.provider].defaultEndpoint,
+          compareView: settings.compareView,
+          excludeComments: settings.excludeComments
         }
       }, resolve);
     });
@@ -150,14 +159,18 @@ async function saveSettings() {
             await new Promise(resolve => setTimeout(resolve, 100));
           }
           
-          // Update text size
+          // Update settings in content script
           await chrome.tabs.sendMessage(activeTab.id, {
-            action: 'updateTextSize',
-            textSize: settings.textSize
+            action: 'updateSettings',
+            settings: {
+              textSize: settings.textSize,
+              compareView: settings.compareView,
+              excludeComments: settings.excludeComments
+            }
           });
         } catch (err) {
           // Log but don't throw error for script injection issues
-          console.warn('Could not update text size:', err);
+          console.warn('Could not update settings in content script:', err);
         }
       }
 
