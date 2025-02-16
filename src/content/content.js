@@ -118,199 +118,9 @@ let isArticleMode = false;
 let isFullPageMode = false;
 let currentHighlight = null;
 let pageTranslator = null;
-
-// Page translator class
-class PageTranslator {
-  constructor() {
-    this.sections = [];
-    this.currentSection = 0;
-    this.compareView = false;
-    this.excludeComments = true;
-  }
-
-  async initialize() {
-    // Get settings
-    const settings = await new Promise(resolve => {
-      chrome.storage.sync.get({
-        compareView: false,
-        excludeComments: true
-      }, resolve);
-    });
-    
-    this.compareView = settings.compareView;
-    this.excludeComments = settings.excludeComments;
-    
-    // Find all content sections
-    this.sections = this.getContentSections();
-    
-    // Show initial loading state
-    overlay.showPageTranslation({
-      total: this.sections.length,
-      compareView: this.compareView
-    });
-    
-    // Start translating first section
-    await this.translateNextSection();
-  }
-  
-  getContentSections() {
-    // Main content selectors in order of priority
-    const contentSelectors = [
-      // Main article containers
-      'article',
-      '[role="article"]',
-      '[role="main"]',
-      'main',
-      
-      // Common content containers
-      '.article',
-      '.post',
-      '.entry-content',
-      '.content',
-      '.page-content',
-      '.main-content',
-      
-      // Fallback to semantic sections
-      'section',
-      
-      // Individual content blocks if no container found
-      '.post-content p',
-      'article p',
-      'main p',
-      '.content p',
-      '.entry-content p'
-    ];
-    
-    // Comment section selectors to exclude
-    const commentSelectors = [
-      '#comments', '.comments', '.comment-section',
-      '[data-component="comments"]', '.comment-list'
-    ];
-    
-    // Helper function to split text into chunks
-    const splitIntoChunks = (element) => {
-      const MAX_CHARS = 1000; // Roughly 250-300 tokens
-      const chunks = [];
-      let currentChunk = [];
-      let currentLength = 0;
-      
-      // Get all text-containing elements
-      const walker = document.createTreeWalker(
-        element,
-        NodeFilter.SHOW_ELEMENT,
-        {
-          acceptNode: (node) => {
-            if (node.matches('p, h1, h2, h3, h4, h5, h6, li')) {
-              return NodeFilter.FILTER_ACCEPT;
-            }
-            return NodeFilter.FILTER_SKIP;
-          }
-        }
-      );
-      
-      let node;
-      while (node = walker.nextNode()) {
-        const text = node.innerHTML;
-        const length = text.length;
-        
-        if (currentLength + length > MAX_CHARS && currentChunk.length > 0) {
-          // Create a new section with current chunk
-          const section = document.createElement('div');
-          currentChunk.forEach(n => section.appendChild(n.cloneNode(true)));
-          chunks.push(section);
-          
-          // Start new chunk
-          currentChunk = [node];
-          currentLength = length;
-        } else {
-          currentChunk.push(node);
-          currentLength += length;
-        }
-      }
-      
-      // Add remaining chunk if any
-      if (currentChunk.length > 0) {
-        const section = document.createElement('div');
-        currentChunk.forEach(n => section.appendChild(n.cloneNode(true)));
-        chunks.push(section);
-      }
-      
-      return chunks;
-    };
-    
-    // Get all potential content sections
-    let sections = [];
-    let foundMainContainer = false;
-    
-    for (const selector of contentSelectors) {
-      const elements = document.querySelectorAll(selector);
-      if (elements.length > 0) {
-        // If we find a main container, use only that
-        if (!foundMainContainer && 
-            (selector.includes('article') || 
-             selector.includes('main') || 
-             selector.includes('content'))) {
-          // Split main container into chunks
-          const mainSections = Array.from(elements).flatMap(el => splitIntoChunks(el));
-          sections = mainSections;
-          foundMainContainer = true;
-          break;
-        }
-        // Otherwise add individual sections
-        if (!foundMainContainer) {
-          const newSections = Array.from(elements).flatMap(el => splitIntoChunks(el));
-          sections.push(...newSections);
-        }
-      }
-    }
-    
-    // Filter out empty sections and comments if excluded
-    return sections.filter(section => {
-      if (!section.innerText.trim()) return false;
-      if (this.excludeComments) {
-        return !commentSelectors.some(sel => 
-          section.matches(sel) || section.closest(sel)
-        );
-      }
-      return true;
-    });
-  }
-  
-  async translateNextSection() {
-    if (this.currentSection >= this.sections.length) {
-      overlay.completePageTranslation();
-      return;
-    }
-    
-    const section = this.sections[this.currentSection];
-    try {
-      // Create a unique ID for this section if it doesn't have one
-      if (!section.id) {
-        section.id = `klartext-section-${this.currentSection + 1}`;
-      }
-      
-      // Update progress before translation
-      overlay.updateProgress(this.currentSection + 1, this.sections.length);
-      
-      // Send section for translation
-      chrome.runtime.sendMessage({
-        action: 'translateSection',
-        html: section.innerHTML,
-        id: section.id
-      });
-      
-      // Translation will continue in message handler
-    } catch (error) {
-      console.error('Error translating section:', error);
-      overlay.showError(error.message);
-    }
-  }
-}
-
-// Singleton overlay instance
 let overlayInstance = null;
 
-// Create and manage overlay
+// Create and manage overlay for article mode
 class TranslationOverlay {
   constructor() {
     if (overlayInstance) {
@@ -339,7 +149,7 @@ class TranslationOverlay {
       this.overlay.className = 'klartext-overlay';
       this.overlay.setAttribute('role', 'dialog');
       this.overlay.setAttribute('aria-label', 'Leichte Sprache Übersetzung');
-      this.overlay.setAttribute('tabindex', '-1'); // Make focusable for accessibility
+      this.overlay.setAttribute('tabindex', '-1');
 
       // Create content container
       this.content = document.createElement('div');
@@ -416,200 +226,6 @@ class TranslationOverlay {
       console.log('Loading state shown successfully');
     } catch (error) {
       console.error('Error showing loading state:', error);
-    }
-  }
-
-  showPageTranslation({ total, compareView }) {
-    try {
-      console.log('Starting full page translation');
-      
-      // Clear previous content
-      this.content.innerHTML = '';
-
-      // Create container
-      const container = document.createElement('div');
-      container.className = 'klartext-fullpage';
-      if (compareView) {
-        container.classList.add('klartext-compare');
-      }
-
-      // Add progress bar
-      const progress = document.createElement('div');
-      progress.className = 'klartext-progress';
-      progress.innerHTML = `
-        <div class="klartext-progress-bar">
-          <div class="klartext-progress-fill" style="width: 0%"></div>
-        </div>
-        <div class="klartext-progress-text">
-          Übersetze Abschnitt 0/${total}
-        </div>
-      `;
-
-      // Add view toggle
-      const viewToggle = document.createElement('button');
-      viewToggle.className = 'klartext-view-toggle';
-      viewToggle.textContent = compareView ? 
-        'Nur Übersetzung zeigen' : 'Original anzeigen';
-      viewToggle.onclick = () => this.toggleCompareView();
-
-      container.appendChild(progress);
-      container.appendChild(viewToggle);
-      this.content.appendChild(container);
-
-      // Show overlay
-      this.backdrop.classList.add('visible');
-      this.overlay.classList.add('visible');
-      this.overlay.focus();
-    } catch (error) {
-      console.error('Error showing page translation:', error);
-      this.showError('Fehler beim Starten der Übersetzung');
-    }
-  }
-
-  updateProgress(current, total) {
-    try {
-      const progress = this.content.querySelector('.klartext-progress-fill');
-      const text = this.content.querySelector('.klartext-progress-text');
-      
-      if (progress && text) {
-        progress.style.width = `${(current/total) * 100}%`;
-        text.textContent = `Übersetze Abschnitt ${current}/${total}`;
-        
-        // Highlight current section
-        const sections = this.content.querySelectorAll('.klartext-section');
-        sections.forEach(s => s.classList.remove('translating'));
-        sections[current-1]?.classList.add('translating');
-      }
-    } catch (error) {
-      console.error('Error updating progress:', error);
-    }
-  }
-
-  appendTranslation(translation, id) {
-    try {
-      const container = this.content.querySelector('.klartext-fullpage');
-      const section = document.createElement('div');
-      section.className = 'klartext-section';
-      section.dataset.originalId = id;
-      
-      if (container.classList.contains('klartext-compare')) {
-        const original = document.getElementById(id);
-        if (original) {
-          section.innerHTML = `
-            <div class="original">${original.innerHTML}</div>
-            <div class="translation">${translation}</div>
-          `;
-        } else {
-          console.warn(`Original section with ID ${id} not found`);
-          section.innerHTML = translation;
-        }
-      } else {
-        section.innerHTML = translation;
-      }
-      
-      container.appendChild(section);
-    } catch (error) {
-      console.error('Error appending translation:', error);
-      this.showError('Fehler beim Hinzufügen der Übersetzung');
-    }
-  }
-
-  toggleCompareView() {
-    try {
-      const container = this.content.querySelector('.klartext-fullpage');
-      const isCompare = container.classList.toggle('klartext-compare');
-      
-      const button = this.content.querySelector('.klartext-view-toggle');
-      button.textContent = isCompare ?
-        'Nur Übersetzung zeigen' : 'Original anzeigen';
-      
-      // Update sections
-      const sections = container.querySelectorAll('.klartext-section');
-      sections.forEach(section => {
-        const id = section.dataset.originalId;
-        const original = document.getElementById(id);
-        
-        if (isCompare && !section.querySelector('.original')) {
-          if (original) {
-            section.innerHTML = `
-              <div class="original">${original.innerHTML}</div>
-              <div class="translation">${section.innerHTML}</div>
-            `;
-          }
-        } else if (!isCompare && section.querySelector('.original')) {
-          section.innerHTML = section.querySelector('.translation').innerHTML;
-        }
-      });
-    } catch (error) {
-      console.error('Error toggling compare view:', error);
-    }
-  }
-
-  completePageTranslation() {
-    try {
-      // Remove progress bar
-      const progress = this.content.querySelector('.klartext-progress');
-      progress.remove();
-      
-      // Add text-to-speech button
-      const container = this.content.querySelector('.klartext-fullpage');
-      const ttsButton = document.createElement('button');
-      ttsButton.className = 'klartext-tts-button';
-      ttsButton.innerHTML = PLAY_ICON + 'Vorlesen';
-      ttsButton.setAttribute('aria-label', 'Text vorlesen');
-      
-      // Get all text for speech
-      const textNodes = [];
-      const walker = document.createTreeWalker(
-        container,
-        NodeFilter.SHOW_TEXT,
-        {
-          acceptNode: node => {
-            // Skip original text in compare view
-            if (node.parentElement.closest('.original')) {
-              return NodeFilter.FILTER_REJECT;
-            }
-            return NodeFilter.FILTER_ACCEPT;
-          }
-        }
-      );
-      
-      let node;
-      let plainText = '';
-      while (node = walker.nextNode()) {
-        textNodes.push(node);
-        plainText += node.textContent + ' ';
-      }
-      
-      // Wrap words in spans
-      const allWords = [];
-      textNodes.forEach(textNode => {
-        const words = textNode.textContent.trim().split(/\s+/);
-        const spans = words.map((word, index) => {
-          const span = document.createElement('span');
-          span.className = 'klartext-word';
-          span.textContent = word + (index < words.length - 1 ? ' ' : '');
-          allWords.push(span);
-          return span;
-        });
-
-        const fragment = document.createDocumentFragment();
-        spans.forEach(span => fragment.appendChild(span));
-        textNode.parentNode.replaceChild(fragment, textNode);
-      });
-      
-      // Setup speech controller
-      speechController.setup(plainText, allWords, ttsButton);
-      
-      // Add click handler
-      ttsButton.addEventListener('click', () => {
-        speechController.toggle();
-      });
-      
-      // Add button at the top
-      container.insertBefore(ttsButton, container.firstChild);
-    } catch (error) {
-      console.error('Error completing page translation:', error);
     }
   }
 
@@ -916,7 +532,417 @@ class TranslationOverlay {
   }
 }
 
-// Initialize overlay instance
+// Floating controls for full page translation
+class TranslationControls {
+  constructor() {
+    this.container = null;
+    this.progressBar = null;
+    this.progressText = null;
+    this.viewToggle = null;
+    this.ttsButton = null;
+    this.minimizeButton = null;
+    this.isMinimized = false;
+    this.setupControls();
+  }
+
+  setupControls() {
+    // Create container
+    this.container = document.createElement('div');
+    this.container.className = 'klartext-controls';
+
+    // Create header
+    const header = document.createElement('div');
+    header.className = 'klartext-controls-header';
+
+    // Create title
+    const title = document.createElement('div');
+    title.textContent = 'Leichte Sprache';
+
+    // Create minimize button
+    this.minimizeButton = document.createElement('button');
+    this.minimizeButton.className = 'klartext-minimize-button';
+    this.minimizeButton.innerHTML = '⟪';
+    this.minimizeButton.onclick = () => this.toggleMinimize();
+
+    header.appendChild(title);
+    header.appendChild(this.minimizeButton);
+
+    // Create progress container
+    const progressContainer = document.createElement('div');
+    progressContainer.className = 'klartext-progress-container';
+
+    // Create progress bar
+    this.progressBar = document.createElement('div');
+    this.progressBar.className = 'klartext-progress-bar';
+    this.progressBar.innerHTML = '<div class="klartext-progress-fill"></div>';
+
+    // Create progress text
+    this.progressText = document.createElement('div');
+    this.progressText.className = 'klartext-progress-text';
+
+    progressContainer.appendChild(this.progressBar);
+    progressContainer.appendChild(this.progressText);
+
+    // Create buttons container
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'klartext-controls-buttons';
+
+    // Create view toggle button
+    this.viewToggle = document.createElement('button');
+    this.viewToggle.className = 'klartext-view-toggle';
+    this.viewToggle.textContent = 'Original anzeigen';
+    this.viewToggle.onclick = () => this.toggleView();
+
+    // Create TTS button
+    this.ttsButton = document.createElement('button');
+    this.ttsButton.className = 'klartext-tts-button';
+    this.ttsButton.innerHTML = PLAY_ICON + 'Vorlesen';
+
+    buttonsContainer.appendChild(this.viewToggle);
+    buttonsContainer.appendChild(this.ttsButton);
+
+    // Add all elements to container
+    this.container.appendChild(header);
+    this.container.appendChild(progressContainer);
+    this.container.appendChild(buttonsContainer);
+
+    // Add to document
+    document.body.appendChild(this.container);
+  }
+
+  updateProgress(current, total) {
+    const progress = this.progressBar.querySelector('.klartext-progress-fill');
+    progress.style.width = `${(current/total) * 100}%`;
+    this.progressText.textContent = `Übersetze Abschnitt ${current}/${total}`;
+  }
+
+  toggleMinimize() {
+    this.isMinimized = !this.isMinimized;
+    this.container.classList.toggle('minimized', this.isMinimized);
+    this.minimizeButton.innerHTML = this.isMinimized ? '⟫' : '⟪';
+  }
+
+  toggleView() {
+    const showingOriginal = this.viewToggle.textContent === 'Übersetzung anzeigen';
+    this.viewToggle.textContent = showingOriginal ? 'Original anzeigen' : 'Übersetzung anzeigen';
+    document.querySelectorAll('.klartext-inline-section').forEach(section => {
+      section.classList.toggle('show-original', showingOriginal);
+      section.classList.toggle('show-translation', !showingOriginal);
+    });
+  }
+
+  show() {
+    this.container.style.display = 'block';
+  }
+
+  hide() {
+    this.container.style.display = 'none';
+  }
+
+  setupTTS(text, words) {
+    speechController.setup(text, words, this.ttsButton);
+    this.ttsButton.onclick = () => speechController.toggle();
+  }
+}
+
+// Initialize controls instance
+const controls = new TranslationControls();
+
+// Page translator class
+class PageTranslator {
+  constructor() {
+    this.sections = [];
+    this.currentSection = 0;
+    this.excludeComments = true;
+  }
+
+  async initialize() {
+    // Get settings
+    const settings = await new Promise(resolve => {
+      chrome.storage.sync.get({
+        excludeComments: true
+      }, resolve);
+    });
+    
+    this.excludeComments = settings.excludeComments;
+    
+    // Find all content sections
+    this.sections = this.getContentSections();
+    
+    // Show controls
+    controls.show();
+    controls.updateProgress(0, this.sections.length);
+    
+    // Start translating first section
+    await this.translateNextSection();
+  }
+  
+  getContentSections() {
+    // Main content selectors in order of priority
+    const contentSelectors = [
+      // Main article containers
+      'article',
+      '[role="article"]',
+      '[role="main"]',
+      'main',
+      
+      // Common content containers
+      '.article',
+      '.post',
+      '.entry-content',
+      '.content',
+      '.page-content',
+      '.main-content',
+      
+      // Fallback to semantic sections
+      'section',
+      
+      // Individual content blocks if no container found
+      '.post-content p',
+      'article p',
+      'main p',
+      '.content p',
+      '.entry-content p'
+    ];
+    
+    // Comment section selectors to exclude
+    const commentSelectors = [
+      '#comments', '.comments', '.comment-section',
+      '[data-component="comments"]', '.comment-list'
+    ];
+    
+    // Helper function to split text into chunks
+    const splitIntoChunks = (element) => {
+      const MAX_CHARS = 1000; // Roughly 250-300 tokens
+      const chunks = [];
+      let currentChunk = [];
+      let currentLength = 0;
+      
+      // Get all text-containing elements
+      const walker = document.createTreeWalker(
+        element,
+        NodeFilter.SHOW_ELEMENT,
+        {
+          acceptNode: (node) => {
+            if (node.matches('p, h1, h2, h3, h4, h5, h6, li')) {
+              return NodeFilter.FILTER_ACCEPT;
+            }
+            return NodeFilter.FILTER_SKIP;
+          }
+        }
+      );
+      
+      let node;
+      while (node = walker.nextNode()) {
+        const text = node.innerHTML;
+        const length = text.length;
+        
+        if (currentLength + length > MAX_CHARS && currentChunk.length > 0) {
+          // Create a new section with current chunk
+          const section = document.createElement('div');
+          currentChunk.forEach(n => section.appendChild(n.cloneNode(true)));
+          chunks.push(section);
+          
+          // Start new chunk
+          currentChunk = [node];
+          currentLength = length;
+        } else {
+          currentChunk.push(node);
+          currentLength += length;
+        }
+      }
+      
+      // Add remaining chunk if any
+      if (currentChunk.length > 0) {
+        const section = document.createElement('div');
+        currentChunk.forEach(n => section.appendChild(n.cloneNode(true)));
+        chunks.push(section);
+      }
+      
+      return chunks;
+    };
+    
+    // Get all potential content sections
+    let sections = [];
+    
+    // Try to find main content container first
+    for (const selector of contentSelectors) {
+      if (selector.includes('article') || 
+          selector.includes('main') || 
+          selector.includes('content')) {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          // Found main container, use only these elements
+          sections = Array.from(elements);
+          break;
+        }
+      }
+    }
+    
+    // If no main container found, try other selectors
+    if (sections.length === 0) {
+      for (const selector of contentSelectors) {
+        if (!selector.includes('article') && 
+            !selector.includes('main') && 
+            !selector.includes('content')) {
+          const elements = document.querySelectorAll(selector);
+          if (elements.length > 0) {
+            sections.push(...Array.from(elements));
+          }
+        }
+      }
+    }
+    
+    // Split sections into chunks if they're too large
+    sections = sections.flatMap(el => splitIntoChunks(el));
+    
+    // Filter out empty sections and comments if excluded
+    return sections.filter(section => {
+      if (!section.innerText.trim()) return false;
+      if (this.excludeComments) {
+        return !commentSelectors.some(sel => 
+          section.matches(sel) || section.closest(sel)
+        );
+      }
+      return true;
+    });
+  }
+  
+  async translateNextSection() {
+    if (this.currentSection >= this.sections.length) {
+      this.completeTranslation();
+      return;
+    }
+    
+    const section = this.sections[this.currentSection];
+    try {
+      // Create a unique section ID
+      const sectionId = `klartext-section-${this.currentSection + 1}`;
+      
+      // Create inline section container
+      const container = document.createElement('div');
+      container.className = 'klartext-inline-section translating';
+      container.id = `klartext-container-${sectionId}`;
+      
+      // Add original content
+      const original = document.createElement('div');
+      original.className = 'original';
+      original.innerHTML = section.innerHTML;
+      container.appendChild(original);
+      
+      // Insert container into the document
+      document.body.appendChild(container);
+      
+      // Position container at the same place as the section
+      const rect = section.getBoundingClientRect();
+      container.style.position = 'absolute';
+      container.style.top = `${window.scrollY + rect.top}px`;
+      container.style.left = `${rect.left}px`;
+      container.style.width = `${rect.width}px`;
+      
+      // Remove original section
+      section.remove();
+      
+      // Update progress
+      controls.updateProgress(this.currentSection + 1, this.sections.length);
+      
+      // Send section for translation
+      chrome.runtime.sendMessage({
+        action: 'translateSection',
+        html: section.innerHTML,
+        id: sectionId
+      });
+      
+      // Translation will continue in message handler
+    } catch (error) {
+      console.error('Error translating section:', error);
+      this.showError(error.message);
+    }
+  }
+
+  appendTranslation(translation, id) {
+    try {
+      const container = document.getElementById(`klartext-container-${id}`);
+      if (!container) {
+        console.warn(`Container for section ${id} not found`);
+        return;
+      }
+
+      // Remove translating state
+      container.classList.remove('translating');
+      
+      // Add translation
+      const translationDiv = document.createElement('div');
+      translationDiv.className = 'translation';
+      translationDiv.innerHTML = translation;
+      container.appendChild(translationDiv);
+      
+      // Show translation by default
+      container.classList.add('show-translation');
+      
+      // Move to next section
+      this.currentSection++;
+      
+      // Continue translation
+      this.translateNextSection();
+    } catch (error) {
+      console.error('Error appending translation:', error);
+      this.showError(error.message);
+    }
+  }
+
+  completeTranslation() {
+    // Get all text for speech
+    const textNodes = [];
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: node => {
+          if (node.parentElement.closest('.original')) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+    
+    let plainText = '';
+    let node;
+    while (node = walker.nextNode()) {
+      textNodes.push(node);
+      plainText += node.textContent + ' ';
+    }
+    
+    // Wrap words in spans
+    const allWords = [];
+    textNodes.forEach(textNode => {
+      const words = textNode.textContent.trim().split(/\s+/);
+      const spans = words.map((word, index) => {
+        const span = document.createElement('span');
+        span.className = 'klartext-word';
+        span.textContent = word + (index < words.length - 1 ? ' ' : '');
+        allWords.push(span);
+        return span;
+      });
+
+      const fragment = document.createDocumentFragment();
+      spans.forEach(span => fragment.appendChild(span));
+      textNode.parentNode.replaceChild(fragment, textNode);
+    });
+    
+    // Setup TTS
+    controls.setupTTS(plainText, allWords);
+  }
+
+  showError(message) {
+    console.error('Translation error:', message);
+    alert(`Fehler bei der Übersetzung: ${message}`);
+    stopFullPageMode();
+  }
+}
+
+// Initialize overlay instance for article mode
 const overlay = new TranslationOverlay();
 
 // Message handling
@@ -942,20 +968,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'startTranslation':
         console.log('Starting translation, showing loading state');
-        overlay.showLoading();
+        if (!isFullPageMode) {
+          overlay.showLoading();
+        }
         break;
 
       case 'showTranslation':
         console.log('Showing translation:', message.translation);
         if (isFullPageMode && pageTranslator) {
-          overlay.appendTranslation(message.translation, message.id);
-          // Move to next section
-          pageTranslator.currentSection++;
-          // Continue translation
-          pageTranslator.translateNextSection().catch(error => {
-            console.error('Error continuing translation:', error);
-            overlay.showError(error.message);
-          });
+          pageTranslator.appendTranslation(message.translation, message.id);
         } else {
           overlay.show(message.translation);
         }
@@ -963,17 +984,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'showError':
         console.error('Showing error:', message.error);
-        overlay.showError(message.error);
+        if (isFullPageMode && pageTranslator) {
+          pageTranslator.showError(message.error);
+        } else {
+          overlay.showError(message.error);
+        }
         stopArticleMode();
         stopFullPageMode();
         break;
 
       case 'updateSettings':
         console.log('Updating settings:', message.settings);
-        if (message.settings.compareView !== undefined && pageTranslator) {
-          pageTranslator.compareView = message.settings.compareView;
-          overlay.toggleCompareView(message.settings.compareView);
-        }
         if (message.settings.excludeComments !== undefined && pageTranslator) {
           pageTranslator.excludeComments = message.settings.excludeComments;
         }
@@ -1084,7 +1105,7 @@ function startFullPageMode() {
   pageTranslator = new PageTranslator();
   pageTranslator.initialize().catch(error => {
     console.error('Error initializing page translator:', error);
-    overlay.showError(error.message);
+    pageTranslator.showError(error.message);
     stopFullPageMode();
   });
 }
@@ -1094,6 +1115,7 @@ function stopFullPageMode() {
   if (!isFullPageMode) return;
   isFullPageMode = false;
   pageTranslator = null;
+  controls.hide();
 }
 
 // Log when content script is loaded
