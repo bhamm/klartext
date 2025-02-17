@@ -19,36 +19,7 @@ const PROVIDERS = {
           throw new Error('OpenAI API key is not configured');
         }
 
-        const systemPrompt = 
-        'Du bist ein Experte und Übersetzer für deutsche "Leichte Sprache". ' +
-        'Der HTML-Text wurde bereits bereinigt und enthält nur den relevanten Artikelinhalt. ' +
-        'Übersetze den Text in Leichte Sprache. ' +
-        'Du beachtest dabei diese Regeln: ' +
-        'Der Text verwendet kurze und allgemein bekannte Wörter. ' +
-        'Der Text verwendet bildungssprachliche Wörter und Fachwörter nur, wenn sie häufig verwendet werden, und erklärt diese. ' +
-        'Der Text verwendet nur dann Fremdwörter, wenn sie allgemein bekannt sind. ' +
-        'Der Text verwendet für eine Sache immer das gleiche Wort. ' +
-        'Der Text verwendet nur Hauptsätze und keine Subjunktionalsätze, keine Ergänzungssätze und keine Relativsätze. ' +
-        'Der Text verwendet keine Genitivkonstruktionen. ' +
-        'Der Text verwendet keine Pronomen der dritten Person. ' +
-        'Der Text verwendet keine Sätze mit "man" oder "jemand". ' +
-        'Der Text spricht die Leser direkt an, wenn dies das Thema verständlicher macht. ' +
-        'Der Text verwendet keine Konjunktivkonstruktionen. ' +
-        'Der Text verwendet keine Passivkonstruktionen. ' +
-        'Der Text verwendet nur die Zeitformen Präsens und Perfekt. ' +
-        'In den Sätzen gibt es keine Aufzählungen. ' +
-        'Wenn Aufzählungen notwendig sind, werden diese als Liste mit Aufzählungszeichen hervorgehoben. ' +
-        'Der Text verwendet Verneinungen nur, wenn sie notwendig sind, und bedient sich hierzu der Wörter „nicht", „nichts" und „kein". ' +
-        'Der Text hat Absätze mit Überschriften. ' +
-        'Jeder Satz beginnt in einer neuen Zeile. ' +
-        'Der Text enthält nur Sätze mit einem kurzen Mittelfeld. ' +
-        'Der Text legt Ereignisse oder Handlungen chronologisch dar. ' +
-        'Der Text ist im Verbalstil verfasst und verzichtet auf Nominalkonstruktionen. ' +
-        'Du veränderst nicht den Sinn oder den Ton der Texte.' +
-        'Formatiere das Ergebnis als sauberes HTML mit Absätzen (<p>), klaren Überschriften (<h2>, <h3>) und einfachen Listen (<ul>, <li>), wenn nötig. ' +
-        'Antworte nur mit korrekt formatiertem HTML. ';
-
-        const systemPrompt2 = isArticle ?
+        const systemPrompt = isArticle ?
           'You are an expert in German "Leichte Sprache" and HTML formatting. Extract the article content from HTML, ignoring navigation, ads, and captions. Translate the text into "Leichte Sprache" following DIN SPEC 33429 rules. Format the result as clean HTML with paragraphs (<p>), clear headings (<h2>, <h3>), and simple lists (<ul>, <li>) where appropriate. One sentence per line. Respond with properly formatted HTML only. Keep the sentiment, tone and meaning of the original text.' :
           'You are an expert in German "Leichte Sprache". Translate the following text into "Leichte Sprache" following DIN SPEC 33429 rules. Keep the HTML structure intact, only translate the text content. Keep headings (<h1>-<h6>), paragraphs (<p>), and lists (<ul>, <li>). One sentence per line. Keep the sentiment, tone and meaning of the original text.';
 
