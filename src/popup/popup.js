@@ -49,6 +49,9 @@ chrome.storage.sync.get(
     apiKey: '',
     apiEndpoint: '',
     textSize: 'normal',
+    experimentalFeatures: {
+      fullPageTranslation: false
+    },
     compareView: false,
     excludeComments: true
   },
@@ -63,6 +66,13 @@ chrome.storage.sync.get(
     document.querySelector(`input[name="text-size"][value="${items.textSize}"]`).checked = true;
     compareViewCheckbox.checked = items.compareView;
     excludeCommentsCheckbox.checked = items.excludeComments;
+    
+    // Initialize experimental features
+    const enableFullpageCheckbox = document.getElementById('enable-fullpage');
+    const fullpageSettings = document.getElementById('fullpage-settings');
+    
+    enableFullpageCheckbox.checked = items.experimentalFeatures?.fullPageTranslation || false;
+    fullpageSettings.classList.toggle('enabled', enableFullpageCheckbox.checked);
     
     // Update UI and save settings to ensure default endpoint is stored
     updateProviderUI(provider, items.model);
@@ -105,6 +115,9 @@ async function saveSettings() {
     apiKey: apiKeyInput.value.trim(),
     apiEndpoint: apiEndpointInput.value.trim(),
     textSize: document.querySelector('input[name="text-size"]:checked').value,
+    experimentalFeatures: {
+      fullPageTranslation: document.getElementById('enable-fullpage').checked
+    },
     compareView: compareViewCheckbox.checked,
     excludeComments: excludeCommentsCheckbox.checked
   };
@@ -226,6 +239,13 @@ function validateInputs() {
 }
 
 // Event Listeners
+const enableFullpageCheckbox = document.getElementById('enable-fullpage');
+const fullpageSettings = document.getElementById('fullpage-settings');
+
+enableFullpageCheckbox.addEventListener('change', () => {
+  fullpageSettings.classList.toggle('enabled', enableFullpageCheckbox.checked);
+});
+
 providerSelect.addEventListener('change', () => {
   const provider = providerSelect.value;
   const config = PROVIDERS[provider];

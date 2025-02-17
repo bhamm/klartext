@@ -625,9 +625,15 @@ class TranslationControls {
   toggleView() {
     const showingOriginal = this.viewToggle.textContent === 'Übersetzung anzeigen';
     this.viewToggle.textContent = showingOriginal ? 'Original anzeigen' : 'Übersetzung anzeigen';
-    document.querySelectorAll('.klartext-inline-section').forEach(section => {
-      section.classList.toggle('show-original', showingOriginal);
-      section.classList.toggle('show-translation', !showingOriginal);
+    document.querySelectorAll('.klartext-section').forEach(section => {
+      const originalContent = section.getAttribute('data-original');
+      const translatedContent = section.getAttribute('data-translation');
+      
+      if (showingOriginal) {
+        section.innerHTML = originalContent;
+      } else {
+        section.innerHTML = translatedContent || section.innerHTML;
+      }
     });
   }
 
@@ -931,22 +937,9 @@ class PageTranslator {
       const sectionId = `klartext-section-${this.currentSection + 1}`;
       
       // Store original content
-      const originalContent = content;
-      
-      // Create container for translation
-      const container = document.createElement('div');
-      container.id = `klartext-container-${sectionId}`;
-      container.className = 'klartext-inline-section translating';
-      container.setAttribute('data-original', originalContent);
-
-      // Create a DocumentFragment for better performance
-      const fragment = document.createDocumentFragment();
-
-      // Add original content wrapper
-      const originalDiv = document.createElement('div');
-      originalDiv.className = 'original';
-      originalDiv.innerHTML = originalContent;
-      fragment.appendChild(originalDiv);
+      originalSection.setAttribute('data-original', content);
+      originalSection.setAttribute('data-section-id', sectionId);
+      originalSection.classList.add('klartext-section', 'translating');
 
       // Add loading indicator
       const loadingDiv = document.createElement('div');
@@ -955,41 +948,27 @@ class PageTranslator {
         <div class="klartext-spinner"></div>
         <p class="klartext-loading-text">Übersetze...</p>
       `;
-      fragment.appendChild(loadingDiv);
-
-      // Add fragment to container
-      container.appendChild(fragment);
+      originalSection.appendChild(loadingDiv);
 
       try {
-        // Verify original section is still valid
+        // Verify section is still valid
         if (!originalSection.isConnected || !originalSection.parentNode) {
-          console.warn('Original section no longer valid, skipping:', sectionId);
+          console.warn('Section no longer valid, skipping:', sectionId);
           this.currentSection++;
           this.translateNextSection();
           return;
         }
 
-        // Insert container after original section
-        originalSection.parentNode.insertBefore(container, originalSection.nextSibling);
-
         // Wait for DOM update
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Verify container is in DOM
-        const containerCheck = document.getElementById(`klartext-container-${sectionId}`);
-        if (!containerCheck) {
-          throw new Error('Failed to create translation container');
-        }
-
-        console.log('Successfully created container:', sectionId);
-        
         // Update progress
         controls.updateProgress(this.currentSection + 1, this.sections.length);
         
-        // Send original content for translation
+        // Send content for translation
         chrome.runtime.sendMessage({
           action: 'translateSection',
-          html: originalContent,
+          html: content,
           id: sectionId
         });
         
@@ -1010,32 +989,26 @@ class PageTranslator {
 
   appendTranslation(translation, id) {
     try {
-      const container = document.getElementById(`klartext-container-${id}`);
-      if (!container) {
-        console.warn(`Container for section ${id} not found`);
+      const section = document.querySelector(`[data-section-id="${id}"]`);
+      if (!section) {
+        console.warn(`Section ${id} not found`);
         return;
       }
 
       // Remove translating state
-      container.classList.remove('translating');
+      section.classList.remove('translating');
       
-      // Add translation
-      const translationDiv = document.createElement('div');
-      translationDiv.className = 'translation';
-      translationDiv.innerHTML = translation;
+      // Store translation content
+      section.setAttribute('data-translation', translation);
       
       // Remove loading indicator
-      const loadingEl = container.querySelector('.klartext-loading');
+      const loadingEl = section.querySelector('.klartext-loading');
       if (loadingEl) {
         loadingEl.remove();
       }
       
-      // Add translation
-      container.appendChild(translationDiv);
-      
-      // Show translation by default
-      container.classList.remove('show-original');
-      container.classList.add('show-translation');
+      // Replace content with translation
+      section.innerHTML = translation;
       
       // Move to next section
       this.currentSection++;
@@ -1130,6 +1103,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             controls.show();
           }
         } else {
+          // Initialize overlay if not already done
+          if (!overlayInstance) {
+            overlay = new TranslationOverlay();
+          }
           overlay.showLoading();
         }
         break;
@@ -1240,7 +1217,7 @@ function handleArticleClick(event) {
   event.preventDefault();
   event.stopPropagation();
   
-  // Get HTML content
+  // Get and clean HTML content
   const html = currentHighlight.innerHTML;
   if (!html.trim()) return;
   
@@ -1250,11 +1227,111 @@ function handleArticleClick(event) {
   // Show loading state
   overlay.showLoading();
   
-  // Send HTML to background script
+  // Clean HTML before sending
+  const cleanedHtml = cleanArticleHTML(html);
+  
+  // Send cleaned HTML to background script
   chrome.runtime.sendMessage({
     action: 'translateArticle',
-    html: html
+    html: cleanedHtml
   });
+}
+
+// Clean HTML for article translation
+function cleanArticleHTML(html) {
+  // Create a temporary div to parse HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+  
+  // Remove script tags
+  const scripts = tempDiv.getElementsByTagName('script');
+  while (scripts.length > 0) {
+    scripts[0].parentNode.removeChild(scripts[0]);
+  }
+  
+  // Remove style tags
+  const styles = tempDiv.getElementsByTagName('style');
+  while (styles.length > 0) {
+    styles[0].parentNode.removeChild(styles[0]);
+  }
+  
+  // Remove SVG elements
+  const svgs = tempDiv.getElementsByTagName('svg');
+  while (svgs.length > 0) {
+    svgs[0].parentNode.removeChild(svgs[0]);
+  }
+  
+  // Remove iframes
+  const iframes = tempDiv.getElementsByTagName('iframe');
+  while (iframes.length > 0) {
+    iframes[0].parentNode.removeChild(iframes[0]);
+  }
+  
+  // Convert images to alt text or remove them
+  const images = tempDiv.getElementsByTagName('img');
+  Array.from(images).forEach(img => {
+    if (img.alt) {
+      const textNode = document.createTextNode(`[Bild: ${img.alt}]`);
+      img.parentNode.replaceChild(textNode, img);
+    } else {
+      img.parentNode.removeChild(img);
+    }
+  });
+  
+  // Convert links to plain text
+  const links = tempDiv.getElementsByTagName('a');
+  Array.from(links).forEach(link => {
+    const textNode = document.createTextNode(link.textContent);
+    link.parentNode.replaceChild(textNode, link);
+  });
+  
+  // Remove all event handlers
+  const allElements = tempDiv.getElementsByTagName('*');
+  Array.from(allElements).forEach(element => {
+    // Remove all event handler attributes
+    const attrs = element.attributes;
+    for (let i = attrs.length - 1; i >= 0; i--) {
+      if (attrs[i].name.startsWith('on')) {
+        element.removeAttribute(attrs[i].name);
+      }
+    }
+  });
+  
+  // Remove all elements except allowed ones
+  const allowedTags = ['article', 'section', 'main', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'b', 'i'];
+  
+  function cleanNode(node) {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      if (!allowedTags.includes(node.tagName.toLowerCase())) {
+        // Check if node has a parent before replacing
+        if (node.parentNode) {
+          // Replace element with its text content
+          const textContent = node.textContent;
+          const textNode = document.createTextNode(textContent);
+          node.parentNode.replaceChild(textNode, node);
+        }
+        return;
+      }
+      
+      // Clean children recursively
+      Array.from(node.childNodes).forEach(child => cleanNode(child));
+      
+      // Remove all attributes except essential ones
+      const attrs = node.attributes;
+      for (let i = attrs.length - 1; i >= 0; i--) {
+        const attrName = attrs[i].name;
+        if (!['class', 'id'].includes(attrName)) {
+          node.removeAttribute(attrName);
+        }
+      }
+    }
+  }
+  
+  // Clean the entire content
+  cleanNode(tempDiv);
+  
+  // Return cleaned HTML
+  return tempDiv.innerHTML;
 }
 
 // Start full page translation mode

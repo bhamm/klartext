@@ -20,9 +20,9 @@ const PROVIDERS = {
         }
 
         const systemPrompt = 
-        'Du bist ein Experte und Übersetzer für deutsche "Leichte Sprache" und du bist Experte für HTML-Formatierung. ' +
-        'Wenn du HTML-Text bekommst, kannst du den Artikelinhalt aus HTML extrahieren, Navigation, Werbung und Bildunterschriften ignorieren. ' +
-        'Du kannst den Artikelinhalt dann in Leichte-Sprache übersetzen. ' + 
+        'Du bist ein Experte und Übersetzer für deutsche "Leichte Sprache". ' +
+        'Der HTML-Text wurde bereits bereinigt und enthält nur den relevanten Artikelinhalt. ' +
+        'Übersetze den Text in Leichte Sprache. ' +
         'Du beachtest dabei diese Regeln: ' +
         'Der Text verwendet kurze und allgemein bekannte Wörter. ' +
         'Der Text verwendet bildungssprachliche Wörter und Fachwörter nur, wenn sie häufig verwendet werden, und erklärt diese. ' +
@@ -38,7 +38,7 @@ const PROVIDERS = {
         'Der Text verwendet nur die Zeitformen Präsens und Perfekt. ' +
         'In den Sätzen gibt es keine Aufzählungen. ' +
         'Wenn Aufzählungen notwendig sind, werden diese als Liste mit Aufzählungszeichen hervorgehoben. ' +
-        'Der Text verwendet Verneinungen nur, wenn sie notwendig sind, und bedient sich hierzu der Wörter „nicht“, „nichts“ und „kein“. ' +
+        'Der Text verwendet Verneinungen nur, wenn sie notwendig sind, und bedient sich hierzu der Wörter „nicht", „nichts" und „kein". ' +
         'Der Text hat Absätze mit Überschriften. ' +
         'Jeder Satz beginnt in einer neuen Zeile. ' +
         'Der Text enthält nur Sätze mit einem kurzen Mittelfeld. ' +
@@ -92,7 +92,10 @@ const PROVIDERS = {
           throw new Error(`OpenAI API error: ${JSON.stringify(errorDetails, null, 2)}`);
         }
 
-        return data.choices[0].message.content;
+        // Clean up response by removing triple apostrophes
+        let translation = data.choices[0].message.content;
+        translation = translation.replace(/^'''|'''$/g, '').trim();
+        return translation;
       } catch (error) {
         if (error.name === 'SyntaxError') {
           throw new Error('Invalid response from OpenAI API. Please check your API endpoint configuration.');
@@ -113,17 +116,16 @@ const PROVIDERS = {
         }
 
         const prompt = isArticle ?
-          `You are an expert in German "Leichte Sprache" and HTML formatting.
+          `You are an expert in German "Leichte Sprache".
            
-           Process the following HTML content:
-           1. Extract the main article content, ignoring navigation, ads, captions, etc.
-           2. Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules
-           3. Format the result as clean HTML with:
-              - Short paragraphs (<p>)
-              - Clear headings (<h2>, <h3>)
-              - Simple lists (<ul>, <li>) where appropriate
-              - No nested structures
-              - No images or complex elements
+           The provided HTML has been cleaned and contains only the relevant article content.
+           Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules.
+           
+           Format the result as clean HTML with:
+           - Short paragraphs (<p>)
+           - Clear headings (<h2>, <h3>)
+           - Simple lists (<ul>, <li>) where appropriate
+           - One sentence per line
            
            Input HTML:
            ${text}
@@ -166,7 +168,9 @@ const PROVIDERS = {
           throw new Error(`Gemini API error: ${JSON.stringify(errorDetails, null, 2)}`);
         }
 
-        return data.candidates[0].content.parts[0].text;
+        let translation = data.candidates[0].content.parts[0].text;
+        translation = translation.replace(/^'''|'''$/g, '').trim();
+        return translation;
       } catch (error) {
         if (error.name === 'SyntaxError') {
           throw new Error('Invalid response from Gemini API. Please check your API endpoint configuration.');
@@ -184,17 +188,16 @@ const PROVIDERS = {
         }
 
         const prompt = isArticle ?
-          `You are an expert in German "Leichte Sprache" and HTML formatting.
+          `You are an expert in German "Leichte Sprache".
            
-           Process the following HTML content:
-           1. Extract the main article content, ignoring navigation, ads, captions, etc.
-           2. Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules
-           3. Format the result as clean HTML with:
-              - Short paragraphs (<p>)
-              - Clear headings (<h2>, <h3>)
-              - Simple lists (<ul>, <li>) where appropriate
-              - No nested structures
-              - No images or complex elements
+           The provided HTML has been cleaned and contains only the relevant article content.
+           Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules.
+           
+           Format the result as clean HTML with:
+           - Short paragraphs (<p>)
+           - Clear headings (<h2>, <h3>)
+           - Simple lists (<ul>, <li>) where appropriate
+           - One sentence per line
            
            Input HTML:
            ${text}
@@ -239,7 +242,9 @@ const PROVIDERS = {
           throw new Error(`Claude API error: ${JSON.stringify(errorDetails, null, 2)}`);
         }
 
-        return data.content[0].text;
+        let translation = data.content[0].text;
+        translation = translation.replace(/^'''|'''$/g, '').trim();
+        return translation;
       } catch (error) {
         if (error.name === 'SyntaxError') {
           throw new Error('Invalid response from Claude API. Please check your API configuration.');
@@ -257,17 +262,16 @@ const PROVIDERS = {
         }
 
         const prompt = isArticle ?
-          `You are an expert in German "Leichte Sprache" and HTML formatting.
+          `You are an expert in German "Leichte Sprache".
            
-           Process the following HTML content:
-           1. Extract the main article content, ignoring navigation, ads, captions, etc.
-           2. Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules
-           3. Format the result as clean HTML with:
-              - Short paragraphs (<p>)
-              - Clear headings (<h2>, <h3>)
-              - Simple lists (<ul>, <li>) where appropriate
-              - No nested structures
-              - No images or complex elements
+           The provided HTML has been cleaned and contains only the relevant article content.
+           Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules.
+           
+           Format the result as clean HTML with:
+           - Short paragraphs (<p>)
+           - Clear headings (<h2>, <h3>)
+           - Simple lists (<ul>, <li>) where appropriate
+           - One sentence per line
            
            Input HTML:
            ${text}
@@ -307,7 +311,9 @@ const PROVIDERS = {
           throw new Error(`Llama API error: ${JSON.stringify(errorDetails, null, 2)}`);
         }
 
-        return data.generated_text;
+        let translation = data.generated_text;
+        translation = translation.replace(/^'''|'''$/g, '').trim();
+        return translation;
       } catch (error) {
         if (error.name === 'SyntaxError') {
           throw new Error('Invalid response from Llama API. Please check your API endpoint configuration.');
@@ -404,15 +410,22 @@ chrome.runtime.onInstalled.addListener(() => {
       }
     });
 
-    chrome.contextMenus.create({
-      id: MENU_ITEMS.FULLPAGE,
-      title: 'Ganze Seite in Leichte Sprache übersetzen',
-      contexts: ['all']
-    }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('Error creating fullpage menu item:', chrome.runtime.lastError);
+    // Check if full page translation is enabled
+    chrome.storage.sync.get(['experimentalFeatures'], (items) => {
+      if (items.experimentalFeatures?.fullPageTranslation) {
+        chrome.contextMenus.create({
+          id: MENU_ITEMS.FULLPAGE,
+          title: 'Ganze Seite in Leichte Sprache übersetzen (Beta)',
+          contexts: ['all']
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('Error creating fullpage menu item:', chrome.runtime.lastError);
+          } else {
+            console.log('Context menu items created successfully');
+          }
+        });
       } else {
-        console.log('Context menu items created successfully');
+        console.log('Full page translation is disabled');
       }
     });
   });
@@ -473,6 +486,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log('API Configuration updated:', {
         provider: API_CONFIG.provider,
         model: API_CONFIG.model
+      });
+
+      // Update context menu based on experimental features
+      chrome.storage.sync.get(['experimentalFeatures'], (items) => {
+        chrome.contextMenus.removeAll(() => {
+          // Recreate selection menu item
+          chrome.contextMenus.create({
+            id: MENU_ITEMS.SELECTION,
+            title: 'Markierten Text in Leichte Sprache übersetzen',
+            contexts: ['selection']
+          });
+
+          // Recreate article menu item
+          chrome.contextMenus.create({
+            id: MENU_ITEMS.ARTICLE,
+            title: 'Artikel in Leichte Sprache übersetzen',
+            contexts: ['all']
+          });
+
+          // Add full page menu item if enabled
+          if (items.experimentalFeatures?.fullPageTranslation) {
+            chrome.contextMenus.create({
+              id: MENU_ITEMS.FULLPAGE,
+              title: 'Ganze Seite in Leichte Sprache übersetzen (Beta)',
+              contexts: ['all']
+            });
+          }
+        });
       });
       
       sendResponse({ success: true });

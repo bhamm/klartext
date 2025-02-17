@@ -27,6 +27,12 @@
       color: #4a5568;
     }
 
+    h4 {
+      font-size: 13px;
+      margin: 0 0 8px;
+      color: #4a5568;
+    }
+
     .form-group {
       margin-bottom: 16px;
     }
@@ -127,10 +133,51 @@
       line-height: 1.4;
     }
 
+    .experimental-features {
+      background-color: #fffbeb;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 24px;
+      border: 1px solid #f6ad55;
+    }
+
+    .experimental-features h3 {
+      color: #92400e;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 16px;
+      font-size: 14px;
+    }
+
+    .experimental-features h3::after {
+      content: 'BETA';
+      font-size: 10px;
+      background: #92400e;
+      color: white;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .feature-description {
+      color: #92400e;
+      font-size: 12px;
+      margin: 4px 0 12px 24px;
+    }
+
     .fullpage-settings {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid #e2e8f0;
+      margin-top: 12px;
+      margin-left: 24px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(146, 64, 14, 0.2);
+      opacity: 0.5;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .fullpage-settings.enabled {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .save-button {
@@ -257,17 +304,31 @@
       </div>
     </div>
 
-    <div class="fullpage-settings">
-      <h3>Vollseiten-Übersetzung</h3>
+    <div class="experimental-features">
+      <h3>Experimentelle Funktionen</h3>
       <div class="checkbox-group">
         <label class="checkbox-label">
-          <input type="checkbox" id="compare-view" name="compare-view">
-          <span>Original und Übersetzung nebeneinander anzeigen</span>
+          <input type="checkbox" id="enable-fullpage" name="enable-fullpage">
+          <span>Vollseiten-Übersetzung aktivieren</span>
         </label>
-        <label class="checkbox-label">
-          <input type="checkbox" id="exclude-comments" name="exclude-comments">
-          <span>Kommentare ausschließen</span>
-        </label>
+        <small class="feature-description">
+          Diese experimentelle Funktion ermöglicht die Übersetzung ganzer Webseiten. 
+          Bitte beachten Sie, dass dies bei komplexen Seiten zu unerwarteten Ergebnissen führen kann.
+        </small>
+      </div>
+
+      <div class="fullpage-settings" id="fullpage-settings">
+        <h4>Vollseiten-Einstellungen</h4>
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="compare-view" name="compare-view">
+            <span>Original und Übersetzung nebeneinander anzeigen</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="exclude-comments" name="exclude-comments">
+            <span>Kommentare ausschließen</span>
+          </label>
+        </div>
       </div>
     </div>
   </div>
@@ -293,7 +354,7 @@
       <li>Klicken Sie auf den hervorgehobenen Bereich</li>
     </ul>
 
-    <h3>Ganze Seite übersetzen</h3>
+    <h3>Ganze Seite übersetzen (Beta)</h3>
     <ul>
       <li>Rechtsklick auf eine beliebige Stelle der Webseite</li>
       <li>Wählen Sie "Ganze Seite in Leichte Sprache übersetzen"</li>
