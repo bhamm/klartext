@@ -19,7 +19,7 @@ const PROVIDERS = {
           throw new Error('OpenAI API key is not configured');
         }
 
-        const systemPrompt2 = 
+        const systemPrompt = 
         'Du bist ein Experte und Übersetzer für deutsche "Leichte Sprache" und du bist Experte für HTML-Formatierung. ' +
         'Wenn du HTML-Text bekommst, kannst du den Artikelinhalt aus HTML extrahieren, Navigation, Werbung und Bildunterschriften ignorieren. ' +
         'Du kannst den Artikelinhalt dann in Leichte-Sprache übersetzen. ' + 
@@ -48,7 +48,7 @@ const PROVIDERS = {
         'Formatiere das Ergebnis als sauberes HTML mit Absätzen (<p>), klaren Überschriften (<h2>, <h3>) und einfachen Listen (<ul>, <li>), wenn nötig. ' +
         'Antworte nur mit korrekt formatiertem HTML. ';
 
-        const systemPrompt = isArticle ?
+        const systemPrompt2 = isArticle ?
           'You are an expert in German "Leichte Sprache" and HTML formatting. Extract the article content from HTML, ignoring navigation, ads, and captions. Translate the text into "Leichte Sprache" following DIN SPEC 33429 rules. Format the result as clean HTML with paragraphs (<p>), clear headings (<h2>, <h3>), and simple lists (<ul>, <li>) where appropriate. One sentence per line. Respond with properly formatted HTML only. Keep the sentiment, tone and meaning of the original text.' :
           'You are an expert in German "Leichte Sprache". Translate the following text into "Leichte Sprache" following DIN SPEC 33429 rules. Keep the HTML structure intact, only translate the text content. Keep headings (<h1>-<h6>), paragraphs (<p>), and lists (<ul>, <li>). One sentence per line. Keep the sentiment, tone and meaning of the original text.';
 
@@ -429,29 +429,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const content = message.action === 'translateArticle' || message.action === 'translateSection' ? message.html : message.text;
     const isHtml = message.action === 'translateArticle' || message.action === 'translateSection';
     
-    handleTranslation(content, isHtml)
-      .then(translation => {
+    (async () => {
+      try {
+        const translation = await handleTranslation(content, isHtml);
+        
+        // Send translation to content script
         chrome.tabs.sendMessage(sender.tab.id, {
           action: 'showTranslation',
           translation: translation,
-          id: message.id // Pass through the section ID for full page mode
+          id: message.id
         });
-        // Send response for section translation
+
+        // Send success response for section translation
         if (message.action === 'translateSection') {
           sendResponse({ success: true });
         }
-      })
-      .catch(error => {
+      } catch (error) {
         console.error('Error translating:', error);
+        
+        // Send error to content script
         chrome.tabs.sendMessage(sender.tab.id, {
           action: 'showError',
           error: error.message
         });
+
         // Send error response for section translation
         if (message.action === 'translateSection') {
           sendResponse({ success: false, error: error.message });
         }
-      });
+      }
+    })();
     return true;
   }
   else if (message.action === 'updateApiConfig') {

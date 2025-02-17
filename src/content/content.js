@@ -657,27 +657,41 @@ class PageTranslator {
   }
 
   async initialize() {
-    // Get settings
-    const settings = await new Promise(resolve => {
-      chrome.storage.sync.get({
-        excludeComments: true
-      }, resolve);
-    });
-    
-    this.excludeComments = settings.excludeComments;
-    
-    // Find all content sections
-    this.sections = this.getContentSections();
-    
-    // Show controls
-    controls.show();
-    controls.updateProgress(0, this.sections.length);
-    
-    // Start translating first section
-    await this.translateNextSection();
+    try {
+      console.log('Initializing page translator');
+      
+      // Get settings
+      const settings = await new Promise(resolve => {
+        chrome.storage.sync.get({
+          excludeComments: true
+        }, resolve);
+      });
+      
+      this.excludeComments = settings.excludeComments;
+      
+      // Find all content sections
+      this.sections = this.getContentSections();
+      console.log(`Found ${this.sections.length} sections to translate`);
+      
+      if (this.sections.length === 0) {
+        throw new Error('Keine übersetzbaren Inhalte gefunden. Bitte wählen Sie einen Artikel oder Text aus.');
+      }
+      
+      // Show controls and start translation
+      controls.show();
+      controls.updateProgress(0, this.sections.length);
+      await this.translateNextSection();
+      
+    } catch (error) {
+      console.error('Error initializing page translator:', error);
+      this.showError(error.message);
+      throw error; // Re-throw to trigger error handling in startFullPageMode
+    }
   }
   
   getContentSections() {
+    console.log('Finding content sections');
+    
     // Main content selectors in order of priority
     const contentSelectors = [
       // Main article containers
@@ -705,10 +719,32 @@ class PageTranslator {
       '.entry-content p'
     ];
     
-    // Comment section selectors to exclude
-    const commentSelectors = [
+    // Selectors for elements to exclude
+    const excludeSelectors = [
+      // Comments
       '#comments', '.comments', '.comment-section',
-      '[data-component="comments"]', '.comment-list'
+      '[data-component="comments"]', '.comment-list',
+      // Social media and sharing
+      '.social', '.share', '.sharing', '.social-media',
+      '[class*="share-"], [class*="social-"]',
+      // Navigation and UI elements
+      '.nav', '.navigation', '.menu', '.toolbar',
+      '.header', '.footer', '.sidebar',
+      // Ads and promotional content
+      '.ad', '.advertisement', '.promo', '.sponsored',
+      // Interactive elements
+      '.widget', '.tool', '.interactive',
+      // Specific sharing elements
+      '.shariff', '.shariff-button', '.social-media-title',
+      // Other non-content elements
+      '.related', '.recommendations', '.newsletter',
+      '[role="complementary"]'
+    ];
+
+    // Content-specific class indicators
+    const contentClassPatterns = [
+      'text', 'content', 'article', 'story', 'post',
+      'body', 'entry', 'main', 'description'
     ];
     
     // Helper function to split text into chunks
@@ -773,7 +809,13 @@ class PageTranslator {
       'div[class*="content"]',
       'main',
       '[role="main"]',
-      '[role="article"]'
+      '[role="article"]',
+      // Add more general selectors as fallback
+      'article',
+      '.article',
+      '.content',
+      '.post',
+      '.entry-content'
     ];
 
     // Try each main selector
@@ -781,46 +823,98 @@ class PageTranslator {
       const elements = document.querySelectorAll(selector);
       if (elements.length > 0) {
         // Found main container, use only these elements
-        sections = Array.from(elements);
-        console.log(`Found main content using selector: ${selector}`);
-        break;
+        const validElements = Array.from(elements).filter(el => {
+          const text = el.innerText.trim();
+          return text.length > 0 && text.split(/\s+/).length > 10; // Ensure it has meaningful content
+        });
+        
+        if (validElements.length > 0) {
+          sections = validElements;
+          console.log(`Found main content container using selector: ${selector}`);
+          console.log(`Container contains ${validElements.length} valid elements`);
+          break;
+        }
       }
     }
 
     // If no main container found, try individual paragraph selectors
     if (sections.length === 0) {
+      console.log('No main container found, trying paragraph selectors');
       const paragraphSelectors = [
         'article p',
         '.article p',
         '.content p',
         '.post-content p',
         '.entry-content p',
-        'main p'
+        'main p',
+        // Add more specific selectors
+        'article > p',
+        '.article > p',
+        '.content > p',
+        '.post > p',
+        '.entry-content > p'
       ];
 
       for (const selector of paragraphSelectors) {
         const elements = document.querySelectorAll(selector);
         if (elements.length > 0) {
-          sections.push(...Array.from(elements));
-          console.log(`Found paragraphs using selector: ${selector}`);
-          break;
+          const validElements = Array.from(elements).filter(el => {
+            const text = el.innerText.trim();
+            return text.length > 0 && text.split(/\s+/).length > 5; // Ensure paragraph has meaningful content
+          });
+          
+          if (validElements.length > 0) {
+            sections.push(...validElements);
+            console.log(`Found individual paragraphs using selector: ${selector}`);
+            console.log(`Found ${validElements.length} valid paragraphs`);
+            break;
+          }
         }
       }
     }
     
-    // Split sections into chunks if they're too large
-    sections = sections.flatMap(el => splitIntoChunks(el));
-    
-    // Filter out empty sections and comments if excluded
-    return sections.filter(section => {
-      if (!section.innerText.trim()) return false;
-      if (this.excludeComments) {
-        return !commentSelectors.some(sel => 
-          section.matches(sel) || section.closest(sel)
-        );
+    // Filter sections first
+    const filteredSections = sections.filter(section => {
+      const text = section.innerText.trim();
+      if (!text || text.split(/\s+/).length < 5) {
+        return false;
+      }
+
+      // Check if section should be excluded
+      const shouldExclude = excludeSelectors.some(sel => 
+        section.matches(sel) || section.closest(sel)
+      );
+      if (shouldExclude) {
+        console.log('Excluding non-content section:', text.substring(0, 50) + '...');
+        return false;
+      }
+
+      // Validate section has content-related classes
+      const classes = Array.from(section.classList || []);
+      const hasContentClass = contentClassPatterns.some(pattern => 
+        classes.some(cls => cls.toLowerCase().includes(pattern))
+      );
+      
+      // If section has classes but none are content-related, skip it
+      if (classes.length > 0 && !hasContentClass) {
+        console.log('Skipping non-content element:', text.substring(0, 50) + '...');
+        return false;
       }
       return true;
     });
+
+    // Now split filtered sections into chunks and store original references
+    const chunkedSections = filteredSections.map(section => {
+      const chunks = splitIntoChunks(section);
+      return chunks.map(chunk => ({
+        originalSection: section,
+        content: chunk.innerHTML
+      }));
+    }).flat();
+    
+    console.log(`Split into ${chunkedSections.length} chunks`);
+    console.log(`Final section count after filtering: ${chunkedSections.length}`);
+    return chunkedSections;
   }
   
   async translateNextSection() {
@@ -829,52 +923,88 @@ class PageTranslator {
       return;
     }
     
-    const section = this.sections[this.currentSection];
     try {
+      const sectionData = this.sections[this.currentSection];
+      const { originalSection, content } = sectionData;
+      
       // Create a unique section ID
       const sectionId = `klartext-section-${this.currentSection + 1}`;
       
       // Store original content
-      const originalContent = section.innerHTML;
+      const originalContent = content;
       
-      // Create wrapper to maintain position
-      const wrapper = document.createElement('div');
-      wrapper.className = 'klartext-inline-section translating';
-      wrapper.id = `klartext-container-${sectionId}`;
-      wrapper.setAttribute('data-original', originalContent);
-      
+      // Create container for translation
+      const container = document.createElement('div');
+      container.id = `klartext-container-${sectionId}`;
+      container.className = 'klartext-inline-section translating';
+      container.setAttribute('data-original', originalContent);
+
+      // Create a DocumentFragment for better performance
+      const fragment = document.createDocumentFragment();
+
       // Add original content wrapper
       const originalDiv = document.createElement('div');
       originalDiv.className = 'original';
       originalDiv.innerHTML = originalContent;
-      wrapper.appendChild(originalDiv);
-      
+      fragment.appendChild(originalDiv);
+
       // Add loading indicator
-      const loading = document.createElement('div');
-      loading.className = 'klartext-loading';
-      loading.innerHTML = `
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'klartext-loading';
+      loadingDiv.innerHTML = `
         <div class="klartext-spinner"></div>
         <p class="klartext-loading-text">Übersetze...</p>
       `;
-      wrapper.appendChild(loading);
-      
-      // Replace section with wrapper
-      section.replaceWith(wrapper);
-      
-      // Update progress
-      controls.updateProgress(this.currentSection + 1, this.sections.length);
-      
-      // Send original content for translation
-      chrome.runtime.sendMessage({
-        action: 'translateSection',
-        html: originalContent,
-        id: sectionId
-      });
-      
-      // Translation will continue in message handler
+      fragment.appendChild(loadingDiv);
+
+      // Add fragment to container
+      container.appendChild(fragment);
+
+      try {
+        // Verify original section is still valid
+        if (!originalSection.isConnected || !originalSection.parentNode) {
+          console.warn('Original section no longer valid, skipping:', sectionId);
+          this.currentSection++;
+          this.translateNextSection();
+          return;
+        }
+
+        // Insert container after original section
+        originalSection.parentNode.insertBefore(container, originalSection.nextSibling);
+
+        // Wait for DOM update
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Verify container is in DOM
+        const containerCheck = document.getElementById(`klartext-container-${sectionId}`);
+        if (!containerCheck) {
+          throw new Error('Failed to create translation container');
+        }
+
+        console.log('Successfully created container:', sectionId);
+        
+        // Update progress
+        controls.updateProgress(this.currentSection + 1, this.sections.length);
+        
+        // Send original content for translation
+        chrome.runtime.sendMessage({
+          action: 'translateSection',
+          html: originalContent,
+          id: sectionId
+        });
+        
+        // Translation will continue in message handler
+      } catch (domError) {
+        console.warn('DOM manipulation failed for section:', sectionId, domError);
+        // Skip this section and continue with next
+        this.currentSection++;
+        this.translateNextSection();
+      }
     } catch (error) {
       console.error('Error translating section:', error);
-      this.showError(error.message);
+      // Skip problematic section and continue
+      this.currentSection++;
+      this.translateNextSection();
     }
   }
 
