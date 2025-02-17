@@ -645,8 +645,8 @@ class TranslationControls {
   }
 }
 
-// Initialize controls instance
-const controls = new TranslationControls();
+// Controls instance
+let controls = null;
 
 // Page translator class
 class PageTranslator {
@@ -766,29 +766,44 @@ class PageTranslator {
     let sections = [];
     
     // Try to find main content container first
-    for (const selector of contentSelectors) {
-      if (selector.includes('article') || 
-          selector.includes('main') || 
-          selector.includes('content')) {
-        const elements = document.querySelectorAll(selector);
-        if (elements.length > 0) {
-          // Found main container, use only these elements
-          sections = Array.from(elements);
-          break;
-        }
+    const mainSelectors = [
+      'article[class*="article"]',
+      'article[class*="content"]',
+      'div[class*="article"]',
+      'div[class*="content"]',
+      'main',
+      '[role="main"]',
+      '[role="article"]'
+    ];
+
+    // Try each main selector
+    for (const selector of mainSelectors) {
+      const elements = document.querySelectorAll(selector);
+      if (elements.length > 0) {
+        // Found main container, use only these elements
+        sections = Array.from(elements);
+        console.log(`Found main content using selector: ${selector}`);
+        break;
       }
     }
-    
-    // If no main container found, try other selectors
+
+    // If no main container found, try individual paragraph selectors
     if (sections.length === 0) {
-      for (const selector of contentSelectors) {
-        if (!selector.includes('article') && 
-            !selector.includes('main') && 
-            !selector.includes('content')) {
-          const elements = document.querySelectorAll(selector);
-          if (elements.length > 0) {
-            sections.push(...Array.from(elements));
-          }
+      const paragraphSelectors = [
+        'article p',
+        '.article p',
+        '.content p',
+        '.post-content p',
+        '.entry-content p',
+        'main p'
+      ];
+
+      for (const selector of paragraphSelectors) {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          sections.push(...Array.from(elements));
+          console.log(`Found paragraphs using selector: ${selector}`);
+          break;
         }
       }
     }
@@ -819,37 +834,40 @@ class PageTranslator {
       // Create a unique section ID
       const sectionId = `klartext-section-${this.currentSection + 1}`;
       
-      // Create inline section container
-      const container = document.createElement('div');
-      container.className = 'klartext-inline-section translating';
-      container.id = `klartext-container-${sectionId}`;
+      // Store original content
+      const originalContent = section.innerHTML;
       
-      // Add original content
-      const original = document.createElement('div');
-      original.className = 'original';
-      original.innerHTML = section.innerHTML;
-      container.appendChild(original);
+      // Create wrapper to maintain position
+      const wrapper = document.createElement('div');
+      wrapper.className = 'klartext-inline-section translating';
+      wrapper.id = `klartext-container-${sectionId}`;
+      wrapper.setAttribute('data-original', originalContent);
       
-      // Insert container into the document
-      document.body.appendChild(container);
+      // Add original content wrapper
+      const originalDiv = document.createElement('div');
+      originalDiv.className = 'original';
+      originalDiv.innerHTML = originalContent;
+      wrapper.appendChild(originalDiv);
       
-      // Position container at the same place as the section
-      const rect = section.getBoundingClientRect();
-      container.style.position = 'absolute';
-      container.style.top = `${window.scrollY + rect.top}px`;
-      container.style.left = `${rect.left}px`;
-      container.style.width = `${rect.width}px`;
+      // Add loading indicator
+      const loading = document.createElement('div');
+      loading.className = 'klartext-loading';
+      loading.innerHTML = `
+        <div class="klartext-spinner"></div>
+        <p class="klartext-loading-text">Übersetze...</p>
+      `;
+      wrapper.appendChild(loading);
       
-      // Remove original section
-      section.remove();
+      // Replace section with wrapper
+      section.replaceWith(wrapper);
       
       // Update progress
       controls.updateProgress(this.currentSection + 1, this.sections.length);
       
-      // Send section for translation
+      // Send original content for translation
       chrome.runtime.sendMessage({
         action: 'translateSection',
-        html: section.innerHTML,
+        html: originalContent,
         id: sectionId
       });
       
@@ -875,9 +893,18 @@ class PageTranslator {
       const translationDiv = document.createElement('div');
       translationDiv.className = 'translation';
       translationDiv.innerHTML = translation;
+      
+      // Remove loading indicator
+      const loadingEl = container.querySelector('.klartext-loading');
+      if (loadingEl) {
+        loadingEl.remove();
+      }
+      
+      // Add translation
       container.appendChild(translationDiv);
       
       // Show translation by default
+      container.classList.remove('show-original');
       container.classList.add('show-translation');
       
       // Move to next section
@@ -968,7 +995,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'startTranslation':
         console.log('Starting translation, showing loading state');
-        if (!isFullPageMode) {
+        if (isFullPageMode) {
+          if (controls) {
+            controls.show();
+          }
+        } else {
           overlay.showLoading();
         }
         break;
@@ -1097,17 +1128,21 @@ function handleArticleClick(event) {
 }
 
 // Start full page translation mode
-function startFullPageMode() {
+async function startFullPageMode() {
   if (isFullPageMode) return;
   isFullPageMode = true;
   
-  // Initialize page translator
+  // Initialize controls and page translator
+  controls = new TranslationControls();
   pageTranslator = new PageTranslator();
-  pageTranslator.initialize().catch(error => {
+  
+  try {
+    await pageTranslator.initialize();
+  } catch (error) {
     console.error('Error initializing page translator:', error);
     pageTranslator.showError(error.message);
     stopFullPageMode();
-  });
+  }
 }
 
 // Stop full page translation mode
@@ -1115,7 +1150,10 @@ function stopFullPageMode() {
   if (!isFullPageMode) return;
   isFullPageMode = false;
   pageTranslator = null;
-  controls.hide();
+  if (controls) {
+    controls.hide();
+    controls = null;
+  }
 }
 
 // Log when content script is loaded

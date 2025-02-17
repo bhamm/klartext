@@ -1,8 +1,8 @@
 // Provider configurations
 const PROVIDERS = {
   gpt4: {
-    name: 'OpenAI GPT-4',
-    models: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+    name: 'OpenAI',
+    models: ['gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1', 'gpt-4o-mini', 'gpt-4o', 'o3-mini'],
     defaultEndpoint: 'https://api.openai.com/v1/chat/completions',
     keyPlaceholder: 'sk-...',
     keyHint: 'OpenAI API-Schlüssel beginnt mit "sk-"'
