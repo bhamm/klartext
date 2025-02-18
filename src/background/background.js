@@ -6,37 +6,110 @@ const MENU_ITEMS = {
 };
 const REPO_URL = 'https://github.com/bhamm/klartext';
 
+// Utility class for API error handling
+class ApiErrorHandler {
+  static createErrorDetails(error, config, text, provider) {
+    return {
+      message: error?.message || 'Unknown error',
+      request: {
+        endpoint: config.apiEndpoint || 'https://api.anthropic.com/v1/messages',
+        model: config.model,
+        text: text
+      },
+      response: error,
+      status: error?.status,
+      statusText: error?.statusText
+    };
+  }
+
+  static handleApiError(error, config, text, provider) {
+    const errorDetails = this.createErrorDetails(error, config, text, provider);
+    throw new Error(`${provider} API error: ${JSON.stringify(errorDetails, null, 2)}`);
+  }
+
+  static handleSyntaxError(provider) {
+    throw new Error(`Invalid response from ${provider} API. Please check your API configuration.`);
+  }
+}
+
+// Menu manager for context menu operations
+class MenuManager {
+  static createMenuItem(id, title, contexts, callback) {
+    chrome.contextMenus.create({
+      id,
+      title,
+      contexts
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error(`Error creating menu item ${id}:`, chrome.runtime.lastError);
+      } else {
+        callback?.();
+      }
+    });
+  }
+
+  static setupContextMenu(experimentalFeatures) {
+    chrome.contextMenus.removeAll(() => {
+      this.createMenuItem(
+        MENU_ITEMS.SELECTION,
+        'Markierten Text in Leichte Sprache übersetzen',
+        ['selection']
+      );
+
+      this.createMenuItem(
+        MENU_ITEMS.ARTICLE,
+        'Artikel in Leichte Sprache übersetzen',
+        ['all']
+      );
+
+      if (experimentalFeatures?.fullPageTranslation) {
+        this.createMenuItem(
+          MENU_ITEMS.FULLPAGE,
+          'Ganze Seite in Leichte Sprache übersetzen (Beta)',
+          ['all'],
+          () => console.log('Context menu items created successfully')
+        );
+      }
+    });
+  }
+}
+
 // Provider configurations with translation handlers
 const PROVIDERS = {
   gpt4: {
     async translate(text, config, isArticle = false) {
       try {
-        // Validate configuration
-        if (!config.apiEndpoint) {
-          throw new Error('OpenAI API endpoint is not configured');
-        }
-        if (!config.apiKey) {
-          throw new Error('OpenAI API key is not configured');
-        }
+        if (!config.apiEndpoint) throw new Error('OpenAI API endpoint is not configured');
+        if (!config.apiKey) throw new Error('OpenAI API key is not configured');
 
-        const systemPrompt = isArticle ?
-          'You are an expert in German "Leichte Sprache" and HTML formatting. Extract the article content from HTML, ignoring navigation, ads, and captions. Translate the text into "Leichte Sprache" following DIN SPEC 33429 rules. Format the result as clean HTML with paragraphs (<p>), clear headings (<h2>, <h3>), and simple lists (<ul>, <li>) where appropriate. One sentence per line. Respond with properly formatted HTML only. Keep the sentiment, tone and meaning of the original text.' :
-          'You are an expert in German "Leichte Sprache". Translate the following text into "Leichte Sprache" following DIN SPEC 33429 rules. Keep the HTML structure intact, only translate the text content. Keep headings (<h1>-<h6>), paragraphs (<p>), and lists (<ul>, <li>). One sentence per line. Keep the sentiment, tone and meaning of the original text.';
-
-        const requestBody = {
-          model: config.model,
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt
-            },
-            {
-              role: 'user',
-              content: text
-            }
-          ],
-          temperature: 0.7
-        };
+        const systemPrompt = 
+        'Du bist ein Experte und Übersetzer für deutsche "Leichte Sprache". ' +
+        'Der HTML-Text wurde bereits bereinigt und enthält nur den relevanten Artikelinhalt. ' +
+        'Übersetze den Text in Leichte Sprache. ' +
+        'Du beachtest dabei diese Regeln: ' +
+        'Der Text verwendet kurze und allgemein bekannte Wörter. ' +
+        'Der Text verwendet bildungssprachliche Wörter und Fachwörter nur, wenn sie häufig verwendet werden, und erklärt diese. ' +
+        'Der Text verwendet nur dann Fremdwörter, wenn sie allgemein bekannt sind. ' +
+        'Der Text verwendet für eine Sache immer das gleiche Wort. ' +
+        'Der Text verwendet nur Hauptsätze und keine Subjunktionalsätze, keine Ergänzungssätze und keine Relativsätze. ' +
+        'Der Text verwendet keine Genitivkonstruktionen. ' +
+        'Der Text verwendet keine Pronomen der dritten Person. ' +
+        'Der Text verwendet keine Sätze mit "man" oder "jemand". ' +
+        'Der Text spricht die Leser direkt an, wenn dies das Thema verständlicher macht. ' +
+        'Der Text verwendet keine Konjunktivkonstruktionen. ' +
+        'Der Text verwendet keine Passivkonstruktionen. ' +
+        'Der Text verwendet nur die Zeitformen Präsens und Perfekt. ' +
+        'In den Sätzen gibt es keine Aufzählungen. ' +
+        'Wenn Aufzählungen notwendig sind, werden diese als Liste mit Aufzählungszeichen hervorgehoben. ' +
+        'Der Text verwendet Verneinungen nur, wenn sie notwendig sind, und bedient sich hierzu der Wörter „nicht", „nichts" und „kein". ' +
+        'Der Text hat Absätze mit Überschriften. ' +
+        'Jeder Satz beginnt in einer neuen Zeile. ' +
+        'Der Text enthält nur Sätze mit einem kurzen Mittelfeld. ' +
+        'Der Text legt Ereignisse oder Handlungen chronologisch dar. ' +
+        'Der Text ist im Verbalstil verfasst und verzichtet auf Nominalkonstruktionen. ' +
+        'Du veränderst nicht den Sinn oder den Ton der Texte.' +
+        'Formatiere das Ergebnis als sauberes HTML mit Absätzen (<p>), klaren Überschriften (<h2>, <h3>) und einfachen Listen (<ul>, <li>), wenn nötig. ' +
+        'Antworte nur mit korrekt formatiertem HTML. ';
 
         const response = await fetch(config.apiEndpoint, {
           method: 'POST',
@@ -44,32 +117,26 @@ const PROVIDERS = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${config.apiKey}`
           },
-          body: JSON.stringify(requestBody)
+          body: JSON.stringify({
+            model: config.model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: text }
+            ],
+            temperature: 0.7
+          })
         });
 
         const data = await response.json();
         if (!response.ok) {
-          const errorDetails = {
-            message: data.error?.message || 'Unknown error',
-            request: {
-              endpoint: config.apiEndpoint,
-              model: config.model,
-              text: text
-            },
-            response: data,
-            status: response.status,
-            statusText: response.statusText
-          };
-          throw new Error(`OpenAI API error: ${JSON.stringify(errorDetails, null, 2)}`);
+          ApiErrorHandler.handleApiError(data, config, text, 'OpenAI');
         }
 
-        // Clean up response by removing triple apostrophes
         let translation = data.choices[0].message.content;
-        translation = translation.replace(/^'''|'''$/g, '').trim();
-        return translation;
+        return translation.replace(/^'''|'''$/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
-          throw new Error('Invalid response from OpenAI API. Please check your API endpoint configuration.');
+          ApiErrorHandler.handleSyntaxError('OpenAI');
         }
         throw error;
       }
@@ -78,13 +145,8 @@ const PROVIDERS = {
   gemini: {
     async translate(text, config, isArticle = false) {
       try {
-        // Validate configuration
-        if (!config.apiEndpoint) {
-          throw new Error('Gemini API endpoint is not configured');
-        }
-        if (!config.apiKey) {
-          throw new Error('Gemini API key is not configured');
-        }
+        if (!config.apiEndpoint) throw new Error('Gemini API endpoint is not configured');
+        if (!config.apiKey) throw new Error('Gemini API key is not configured');
 
         const prompt = isArticle ?
           `You are an expert in German "Leichte Sprache".
@@ -104,47 +166,25 @@ const PROVIDERS = {
            Respond with properly formatted HTML only.` :
           `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
 
-        const requestBody = {
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7
-          }
-        };
-
         const response = await fetch(`${config.apiEndpoint}/${config.model}:generateContent?key=${config.apiKey}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(requestBody)
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7 }
+          })
         });
 
         const data = await response.json();
         if (!response.ok) {
-          const errorDetails = {
-            message: data.error?.message || 'Unknown error',
-            request: {
-              endpoint: config.apiEndpoint,
-              model: config.model,
-              text: text
-            },
-            response: data,
-            status: response.status,
-            statusText: response.statusText
-          };
-          throw new Error(`Gemini API error: ${JSON.stringify(errorDetails, null, 2)}`);
+          ApiErrorHandler.handleApiError(data, config, text, 'Gemini');
         }
 
         let translation = data.candidates[0].content.parts[0].text;
-        translation = translation.replace(/^'''|'''$/g, '').trim();
-        return translation;
+        return translation.replace(/^'''|'''$/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
-          throw new Error('Invalid response from Gemini API. Please check your API endpoint configuration.');
+          ApiErrorHandler.handleSyntaxError('Gemini');
         }
         throw error;
       }
@@ -153,10 +193,7 @@ const PROVIDERS = {
   claude: {
     async translate(text, config, isArticle = false) {
       try {
-        // Validate configuration
-        if (!config.apiKey) {
-          throw new Error('Claude API key is not configured');
-        }
+        if (!config.apiKey) throw new Error('Claude API key is not configured');
 
         const prompt = isArticle ?
           `You are an expert in German "Leichte Sprache".
@@ -175,16 +212,6 @@ const PROVIDERS = {
            
            Respond with properly formatted HTML only.` :
           `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
-
-        const requestBody = {
-          model: config.model,
-          messages: [{
-            role: 'user',
-            content: prompt
-          }],
-          max_tokens: 1000,
-          temperature: 0.7
-        };
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -194,31 +221,24 @@ const PROVIDERS = {
             'anthropic-version': '2023-06-01',
             'anthropic-dangerous-direct-browser-access': 'true'
           },
-          body: JSON.stringify(requestBody)
+          body: JSON.stringify({
+            model: config.model,
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 1000,
+            temperature: 0.7
+          })
         });
 
         const data = await response.json();
         if (!response.ok) {
-          const errorDetails = {
-            message: data.error?.message || 'Unknown error',
-            request: {
-              endpoint: 'https://api.anthropic.com/v1/messages',
-              model: config.model,
-              text: text
-            },
-            response: data,
-            status: response.status,
-            statusText: response.statusText
-          };
-          throw new Error(`Claude API error: ${JSON.stringify(errorDetails, null, 2)}`);
+          ApiErrorHandler.handleApiError(data, config, text, 'Claude');
         }
 
         let translation = data.content[0].text;
-        translation = translation.replace(/^'''|'''$/g, '').trim();
-        return translation;
+        return translation.replace(/^'''|'''$/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
-          throw new Error('Invalid response from Claude API. Please check your API configuration.');
+          ApiErrorHandler.handleSyntaxError('Claude');
         }
         throw error;
       }
@@ -227,10 +247,7 @@ const PROVIDERS = {
   llama: {
     async translate(text, config, isArticle = false) {
       try {
-        // Validate configuration
-        if (!config.apiEndpoint) {
-          throw new Error('Llama API endpoint is not configured');
-        }
+        if (!config.apiEndpoint) throw new Error('Llama API endpoint is not configured');
 
         const prompt = isArticle ?
           `You are an expert in German "Leichte Sprache".
@@ -250,44 +267,30 @@ const PROVIDERS = {
            Respond with properly formatted HTML only.` :
           `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
 
-        const requestBody = {
-          model: config.model,
-          prompt: prompt,
-          temperature: 0.7,
-          max_tokens: 1000
-        };
-
         const response = await fetch(config.apiEndpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` })
           },
-          body: JSON.stringify(requestBody)
+          body: JSON.stringify({
+            model: config.model,
+            prompt: prompt,
+            temperature: 0.7,
+            max_tokens: 1000
+          })
         });
 
         const data = await response.json();
         if (!response.ok) {
-          const errorDetails = {
-            message: data.error?.message || 'Unknown error',
-            request: {
-              endpoint: config.apiEndpoint,
-              model: config.model,
-              text: text
-            },
-            response: data,
-            status: response.status,
-            statusText: response.statusText
-          };
-          throw new Error(`Llama API error: ${JSON.stringify(errorDetails, null, 2)}`);
+          ApiErrorHandler.handleApiError(data, config, text, 'Llama');
         }
 
         let translation = data.generated_text;
-        translation = translation.replace(/^'''|'''$/g, '').trim();
-        return translation;
+        return translation.replace(/^'''|'''$/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
-          throw new Error('Invalid response from Llama API. Please check your API endpoint configuration.');
+          ApiErrorHandler.handleSyntaxError('Llama');
         }
         throw error;
       }
@@ -322,122 +325,72 @@ async function loadApiConfig() {
 chrome.runtime.onInstalled.addListener(loadApiConfig);
 chrome.runtime.onStartup.addListener(loadApiConfig);
 
-// Translation cache using chrome.storage.local for persistence
-async function getCachedTranslation(text) {
-  try {
-    const result = await chrome.storage.local.get(['translationCache']);
-    const cache = result.translationCache || {};
-    return cache[text];
-  } catch (error) {
-    console.error('Error reading from cache:', error);
-    return null;
-  }
-}
-
-async function cacheTranslation(text, translation) {
-  try {
-    const result = await chrome.storage.local.get(['translationCache']);
-    const cache = result.translationCache || {};
-    
-    // Add new translation
-    cache[text] = translation;
-    
-    // Limit cache size to 100 entries
-    const entries = Object.entries(cache);
-    if (entries.length > 100) {
-      const newCache = Object.fromEntries(entries.slice(-100));
-      await chrome.storage.local.set({ translationCache: newCache });
-    } else {
-      await chrome.storage.local.set({ translationCache: cache });
+// Translation cache
+class TranslationCache {
+  static async get(text) {
+    try {
+      const result = await chrome.storage.local.get(['translationCache']);
+      return (result.translationCache || {})[text];
+    } catch (error) {
+      console.error('Error reading from cache:', error);
+      return null;
     }
-  } catch (error) {
-    console.error('Error writing to cache:', error);
+  }
+
+  static async set(text, translation) {
+    try {
+      const result = await chrome.storage.local.get(['translationCache']);
+      const cache = result.translationCache || {};
+      cache[text] = translation;
+      
+      const entries = Object.entries(cache);
+      if (entries.length > 100) {
+        const newCache = Object.fromEntries(entries.slice(-100));
+        await chrome.storage.local.set({ translationCache: newCache });
+      } else {
+        await chrome.storage.local.set({ translationCache: cache });
+      }
+    } catch (error) {
+      console.error('Error writing to cache:', error);
+    }
   }
 }
 
 // Initialize context menu
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed/updated, creating context menu');
-  // Remove existing menu item if it exists
-  chrome.contextMenus.removeAll(() => {
-    // Create menu items
-    chrome.contextMenus.create({
-      id: MENU_ITEMS.SELECTION,
-      title: 'Markierten Text in Leichte Sprache übersetzen',
-      contexts: ['selection']
-    }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('Error creating selection menu item:', chrome.runtime.lastError);
-      }
-    });
-
-    chrome.contextMenus.create({
-      id: MENU_ITEMS.ARTICLE,
-      title: 'Artikel in Leichte Sprache übersetzen',
-      contexts: ['all']
-    }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('Error creating article menu item:', chrome.runtime.lastError);
-      }
-    });
-
-    // Check if full page translation is enabled
-    chrome.storage.sync.get(['experimentalFeatures'], (items) => {
-      if (items.experimentalFeatures?.fullPageTranslation) {
-        chrome.contextMenus.create({
-          id: MENU_ITEMS.FULLPAGE,
-          title: 'Ganze Seite in Leichte Sprache übersetzen (Beta)',
-          contexts: ['all']
-        }, () => {
-          if (chrome.runtime.lastError) {
-            console.error('Error creating fullpage menu item:', chrome.runtime.lastError);
-          } else {
-            console.log('Context menu items created successfully');
-          }
-        });
-      } else {
-        console.log('Full page translation is disabled');
-      }
-    });
+  chrome.storage.sync.get(['experimentalFeatures'], (items) => {
+    MenuManager.setupContextMenu(items.experimentalFeatures);
   });
 });
 
-// Listen for API configuration updates
+// Message handling
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Background script received message:', message);
   
   if (message.action === 'translateText' || message.action === 'translateArticle' || message.action === 'translateSection') {
-    // Handle translation
-    console.log(`Received ${message.action} request`);
-    
     const content = message.action === 'translateArticle' || message.action === 'translateSection' ? message.html : message.text;
     const isHtml = message.action === 'translateArticle' || message.action === 'translateSection';
     
     (async () => {
       try {
         const translation = await handleTranslation(content, isHtml);
-        
-        // Send translation to content script
         chrome.tabs.sendMessage(sender.tab.id, {
           action: 'showTranslation',
           translation: translation,
           id: message.id
         });
 
-        // Send success response for section translation
         if (message.action === 'translateSection') {
           sendResponse({ success: true });
         }
       } catch (error) {
         console.error('Error translating:', error);
-        
-        // Send error to content script
         chrome.tabs.sendMessage(sender.tab.id, {
           action: 'showError',
           error: error.message
         });
 
-        // Send error response for section translation
         if (message.action === 'translateSection') {
           sendResponse({ success: false, error: error.message });
         }
@@ -446,45 +399,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   else if (message.action === 'updateApiConfig') {
-    console.log('Updating API configuration');
     try {
-      if (!message.config) {
-        throw new Error('No configuration provided');
-      }
+      if (!message.config) throw new Error('No configuration provided');
       
       API_CONFIG = { ...API_CONFIG, ...message.config };
-      
       console.log('API Configuration updated:', {
         provider: API_CONFIG.provider,
         model: API_CONFIG.model
       });
 
-      // Update context menu based on experimental features
       chrome.storage.sync.get(['experimentalFeatures'], (items) => {
-        chrome.contextMenus.removeAll(() => {
-          // Recreate selection menu item
-          chrome.contextMenus.create({
-            id: MENU_ITEMS.SELECTION,
-            title: 'Markierten Text in Leichte Sprache übersetzen',
-            contexts: ['selection']
-          });
-
-          // Recreate article menu item
-          chrome.contextMenus.create({
-            id: MENU_ITEMS.ARTICLE,
-            title: 'Artikel in Leichte Sprache übersetzen',
-            contexts: ['all']
-          });
-
-          // Add full page menu item if enabled
-          if (items.experimentalFeatures?.fullPageTranslation) {
-            chrome.contextMenus.create({
-              id: MENU_ITEMS.FULLPAGE,
-              title: 'Ganze Seite in Leichte Sprache übersetzen (Beta)',
-              contexts: ['all']
-            });
-          }
-        });
+        MenuManager.setupContextMenu(items.experimentalFeatures);
       });
       
       sendResponse({ success: true });
@@ -494,42 +419,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   }
   
-  // Return true to indicate we'll send a response asynchronously
   return true;
 });
 
-// Handle translation
+// Translation handler
 async function handleTranslation(text, isArticle = false) {
   console.log('Starting translation with provider:', API_CONFIG.provider);
   
   try {
-    // Check cache first
-    const cachedTranslation = await getCachedTranslation(text);
+    const cachedTranslation = await TranslationCache.get(text);
     if (cachedTranslation) {
       console.log('Found translation in cache');
       return cachedTranslation;
     }
 
-    // Reload configuration to ensure it's fresh
     await loadApiConfig();
 
-    // Validate API configuration
     if (!API_CONFIG.provider) {
       throw new Error('No translation provider selected. Please configure a provider in the extension settings.');
     }
 
-    // Get provider handler
     const provider = PROVIDERS[API_CONFIG.provider];
     if (!provider) {
       throw new Error(`Unsupported provider: ${API_CONFIG.provider}`);
     }
 
-    // Validate required configuration
     if (provider === PROVIDERS.gpt4 && !API_CONFIG.apiEndpoint) {
       throw new Error('OpenAI API endpoint is not configured. Please check your extension settings.');
     }
 
-    // Log configuration (without sensitive data)
     console.log('Translation configuration:', {
       provider: API_CONFIG.provider,
       model: API_CONFIG.model,
@@ -538,12 +456,8 @@ async function handleTranslation(text, isArticle = false) {
       isArticle: isArticle
     });
 
-    // Perform translation
     const translation = await provider.translate(text, API_CONFIG, isArticle);
-    
-    // Cache the result
-    await cacheTranslation(text, translation);
-
+    await TranslationCache.set(text, translation);
     return translation;
   } catch (error) {
     console.error('Translation error:', error);
@@ -551,148 +465,120 @@ async function handleTranslation(text, isArticle = false) {
   }
 }
 
-// Listen for context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  console.log('Context menu clicked:', info.menuItemId);
-  
-  if (info.menuItemId === MENU_ITEMS.SELECTION || info.menuItemId === MENU_ITEMS.ARTICLE || info.menuItemId === MENU_ITEMS.FULLPAGE) {
-    if (info.menuItemId === MENU_ITEMS.SELECTION) {
-      if (!info.selectionText) return;
-      console.log('Selected text:', info.selectionText.substring(0, 50) + '...');
+// Content script management
+class ContentScriptManager {
+  static async checkIfLoaded(tab) {
+    try {
+      const response = await new Promise(resolve => {
+        chrome.tabs.sendMessage(tab.id, { action: 'ping' }, response => {
+          if (chrome.runtime.lastError) {
+            resolve(null);
+          } else {
+            resolve(response);
+          }
+        });
+      });
+      return response?.status === 'ok';
+    } catch (error) {
+      return false;
     }
-    console.log('Current API configuration:', {
-      provider: API_CONFIG.provider,
-      model: API_CONFIG.model
-    });
+  }
 
-    // Helper function to check if content script is loaded
-    const checkContentScript = async () => {
-      try {
-        const response = await new Promise(resolve => {
-          chrome.tabs.sendMessage(tab.id, { action: 'ping' }, response => {
+  static async inject(tab) {
+    try {
+      await chrome.scripting.insertCSS({
+        target: { tabId: tab.id },
+        files: ['src/content/overlay.css']
+      });
+
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['src/content/content.js']
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const isLoaded = await this.checkIfLoaded(tab);
+      if (!isLoaded) {
+        throw new Error('Content script failed to initialize after injection');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Failed to inject content script:', error);
+      return false;
+    }
+  }
+
+  static async sendMessage(tab, message) {
+    try {
+      if (message.action === 'ping') {
+        return new Promise((resolve, reject) => {
+          chrome.tabs.sendMessage(tab.id, message, response => {
             if (chrome.runtime.lastError) {
-              resolve(null);
+              reject(chrome.runtime.lastError);
             } else {
               resolve(response);
             }
           });
         });
-        return response?.status === 'ok';
-      } catch (error) {
-        return false;
       }
-    };
+      
+      chrome.tabs.sendMessage(tab.id, message);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
+  }
+}
 
-    // Helper function to inject content script and styles
-    const injectContentScript = async () => {
-      try {
-        // First inject CSS
-        await chrome.scripting.insertCSS({
-          target: { tabId: tab.id },
-          files: ['src/content/overlay.css']
-        });
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  console.log('Context menu clicked:', info.menuItemId);
+  
+  if (info.menuItemId === MENU_ITEMS.SELECTION || info.menuItemId === MENU_ITEMS.ARTICLE || info.menuItemId === MENU_ITEMS.FULLPAGE) {
+    if (info.menuItemId === MENU_ITEMS.SELECTION && !info.selectionText) return;
+    
+    console.log('Current API configuration:', {
+      provider: API_CONFIG.provider,
+      model: API_CONFIG.model
+    });
 
-        // Then inject JS
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['src/content/content.js']
-        });
-
-        // Wait for script to initialize
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Verify script is loaded
-        const isLoaded = await checkContentScript();
-        if (!isLoaded) {
-          throw new Error('Content script failed to initialize after injection');
-        }
-
-        return true;
-      } catch (error) {
-        console.error('Failed to inject content script:', error);
-        return false;
-      }
-    };
-
-    // Helper function to send message to content script
-    const sendMessage = async (message) => {
-      try {
-        // For ping messages, we expect a response
-        if (message.action === 'ping') {
-          return new Promise((resolve, reject) => {
-            chrome.tabs.sendMessage(tab.id, message, response => {
-              if (chrome.runtime.lastError) {
-                reject(chrome.runtime.lastError);
-              } else {
-                resolve(response);
-              }
-            });
-          });
-        }
-        
-        // For other messages, just send without waiting for response
-        chrome.tabs.sendMessage(tab.id, message);
-      } catch (error) {
-        console.error('Error sending message:', error);
-        throw error;
-      }
-    };
-
-    // Main translation function
     const performTranslation = async () => {
       try {
-        // Check if content script is loaded
-        let isLoaded = await checkContentScript();
+        let isLoaded = await ContentScriptManager.checkIfLoaded(tab);
         
-        // If not loaded, try to inject it
         if (!isLoaded) {
           console.log('Content script not loaded, injecting...');
-          const injected = await injectContentScript();
+          const injected = await ContentScriptManager.inject(tab);
           if (!injected) {
             throw new Error('Failed to inject content script');
           }
-          isLoaded = await checkContentScript();
+          isLoaded = await ContentScriptManager.checkIfLoaded(tab);
           if (!isLoaded) {
             throw new Error('Content script failed to initialize');
           }
         }
 
-          if (info.menuItemId === MENU_ITEMS.ARTICLE) {
-            // Start article mode
-            sendMessage({
-              action: 'startArticleMode'
-            });
-          } else if (info.menuItemId === MENU_ITEMS.FULLPAGE) {
-            console.log('Starting full page translation mode');
-            // Start full page translation mode
-            sendMessage({
-              action: 'startFullPageMode'
-            });
-          } else {
-            // Show loading state immediately
-            sendMessage({
-              action: 'startTranslation'
-            });
-
-            // Perform translation
-            console.log('Starting translation...');
-            const translation = await handleTranslation(info.selectionText);
-            console.log('Translation completed, showing result');
-
-            // Show translation result
-            sendMessage({
-              action: 'showTranslation',
-              translation: translation
-            });
-          }
+        if (info.menuItemId === MENU_ITEMS.ARTICLE) {
+          ContentScriptManager.sendMessage(tab, { action: 'startArticleMode' });
+        } else if (info.menuItemId === MENU_ITEMS.FULLPAGE) {
+          ContentScriptManager.sendMessage(tab, { action: 'startFullPageMode' });
+        } else {
+          ContentScriptManager.sendMessage(tab, { action: 'startTranslation' });
+          const translation = await handleTranslation(info.selectionText);
+          ContentScriptManager.sendMessage(tab, {
+            action: 'showTranslation',
+            translation: translation
+          });
+        }
       } catch (error) {
         console.error('Error during translation:', error);
         try {
-          // Ensure content script is loaded for error display
-          if (!await checkContentScript()) {
-            await injectContentScript();
+          if (!await ContentScriptManager.checkIfLoaded(tab)) {
+            await ContentScriptManager.inject(tab);
           }
-          sendMessage({
+          ContentScriptManager.sendMessage(tab, {
             action: 'showError',
             error: error.message
           });
@@ -702,12 +588,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       }
     };
 
-    // Execute translation
     performTranslation().catch(error => {
       console.error('Critical error:', error);
     });
   }
 });
 
-// Log when background script is loaded
 console.log('Klartext background script loaded');

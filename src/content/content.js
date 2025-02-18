@@ -659,21 +659,11 @@ class PageTranslator {
   constructor() {
     this.sections = [];
     this.currentSection = 0;
-    this.excludeComments = true;
   }
 
   async initialize() {
     try {
       console.log('Initializing page translator');
-      
-      // Get settings
-      const settings = await new Promise(resolve => {
-        chrome.storage.sync.get({
-          excludeComments: true
-        }, resolve);
-      });
-      
-      this.excludeComments = settings.excludeComments;
       
       // Find all content sections
       this.sections = this.getContentSections();
@@ -1133,9 +1123,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'updateSettings':
         console.log('Updating settings:', message.settings);
-        if (message.settings.excludeComments !== undefined && pageTranslator) {
-          pageTranslator.excludeComments = message.settings.excludeComments;
-        }
         if (message.settings.textSize) {
           // Remove any existing text size classes
           document.body.classList.remove('klartext-text-normal', 'klartext-text-gross', 'klartext-text-sehr-gross');
