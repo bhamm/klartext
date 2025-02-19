@@ -83,33 +83,7 @@ const PROVIDERS = {
         if (!config.apiKey) throw new Error('OpenAI API key is not configured');
 
         const systemPrompt = 
-        'Du bist ein Experte und Übersetzer für deutsche "Leichte Sprache". ' +
-        'Der HTML-Text wurde bereits bereinigt und enthält nur den relevanten Artikelinhalt. ' +
-        'Übersetze den Text in Leichte Sprache. ' +
-        'Du beachtest dabei diese Regeln: ' +
-        'Der Text verwendet kurze und allgemein bekannte Wörter. ' +
-        'Der Text verwendet bildungssprachliche Wörter und Fachwörter nur, wenn sie häufig verwendet werden, und erklärt diese. ' +
-        'Der Text verwendet nur dann Fremdwörter, wenn sie allgemein bekannt sind. ' +
-        'Der Text verwendet für eine Sache immer das gleiche Wort. ' +
-        'Der Text verwendet nur Hauptsätze und keine Subjunktionalsätze, keine Ergänzungssätze und keine Relativsätze. ' +
-        'Der Text verwendet keine Genitivkonstruktionen. ' +
-        'Der Text verwendet keine Pronomen der dritten Person. ' +
-        'Der Text verwendet keine Sätze mit "man" oder "jemand". ' +
-        'Der Text spricht die Leser direkt an, wenn dies das Thema verständlicher macht. ' +
-        'Der Text verwendet keine Konjunktivkonstruktionen. ' +
-        'Der Text verwendet keine Passivkonstruktionen. ' +
-        'Der Text verwendet nur die Zeitformen Präsens und Perfekt. ' +
-        'In den Sätzen gibt es keine Aufzählungen. ' +
-        'Wenn Aufzählungen notwendig sind, werden diese als Liste mit Aufzählungszeichen hervorgehoben. ' +
-        'Der Text verwendet Verneinungen nur, wenn sie notwendig sind, und bedient sich hierzu der Wörter „nicht", „nichts" und „kein". ' +
-        'Der Text hat Absätze mit Überschriften. ' +
-        'Jeder Satz beginnt in einer neuen Zeile. ' +
-        'Der Text enthält nur Sätze mit einem kurzen Mittelfeld. ' +
-        'Der Text legt Ereignisse oder Handlungen chronologisch dar. ' +
-        'Der Text ist im Verbalstil verfasst und verzichtet auf Nominalkonstruktionen. ' +
-        'Du veränderst nicht den Sinn oder den Ton der Texte.' +
-        'Formatiere das Ergebnis als sauberes HTML mit Absätzen (<p>), klaren Überschriften (<h2>, <h3>) und einfachen Listen (<ul>, <li>), wenn nötig. ' +
-        'Antworte nur mit korrekt formatiertem HTML. ';
+        'Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Beginne den Text nicht mit dem wort "html"';
 
         const response = await fetch(config.apiEndpoint, {
           method: 'POST',
@@ -123,7 +97,7 @@ const PROVIDERS = {
               { role: 'system', content: systemPrompt },
               { role: 'user', content: text }
             ],
-            temperature: 0.7
+            temperature: 0.1
           })
         });
 
@@ -133,7 +107,7 @@ const PROVIDERS = {
         }
 
         let translation = data.choices[0].message.content;
-        return translation.replace(/^'''|'''$/g, '').trim();
+        return translation.replace(/^```|```$/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
           ApiErrorHandler.handleSyntaxError('OpenAI');
@@ -287,7 +261,7 @@ const PROVIDERS = {
         }
 
         let translation = data.generated_text;
-        return translation.replace(/^'''|'''$/g, '').trim();
+        return translation.replace(/^```|```$/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
           ApiErrorHandler.handleSyntaxError('Llama');

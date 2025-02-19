@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Klartext - Leichte Sprache",
-  "version": "1.2.8",
-  "description": "Translates German texts into 'Leichte Sprache' for better accessibility",
+  "version": "1.2.9",
+  "description": "Übersetzt deutsche Texte in 'Leichte Sprache' für bessere Zugänglichkeit",
   "permissions": [
     "contextMenus",
     "storage",
@@ -14,9 +14,7 @@
   "host_permissions": [
     "https://api.openai.com/*",
     "https://generativelanguage.googleapis.com/*",
-    "https://api.anthropic.com/*",
-    "file://*/*",
-    "<all_urls>"
+    "https://api.anthropic.com/*"
   ],
   "background": {
     "service_worker": "src/background/background.js",
