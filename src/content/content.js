@@ -351,6 +351,55 @@ class TranslationOverlay {
       
       this.content.appendChild(errorContainer);
 
+      // Create feedback button
+      const feedbackButton = document.createElement('button');
+      feedbackButton.className = 'klartext-feedback';
+      feedbackButton.textContent = 'Fehler melden';
+      feedbackButton.setAttribute('aria-label', 'Diesen Fehler melden');
+      feedbackButton.addEventListener('click', async () => {
+        try {
+          const provider = await new Promise(resolve => {
+            chrome.storage.sync.get(['provider', 'model'], items => {
+              resolve(`${items.provider || 'unknown'} (${items.model || 'unknown'})`);
+            });
+          });
+
+          // Try to parse error details if it's a JSON string
+          let errorDetails = message;
+          try {
+            if (message.includes('{')) {
+              const jsonStart = message.indexOf('{');
+              const jsonString = message.slice(jsonStart);
+              const parsedError = JSON.parse(jsonString);
+              errorDetails = JSON.stringify(parsedError, null, 2);
+            }
+          } catch (e) {
+            console.error('Error parsing error details:', e);
+          }
+
+          const issueTitle = encodeURIComponent('Fehler: Klartext Extension');
+          const issueBody = encodeURIComponent(
+            `## Fehlerbericht\n\n` +
+            `### Fehlermeldung\n\`\`\`json\n${errorDetails}\n\`\`\`\n\n` +
+            `### Kontext\n` +
+            `- URL: ${window.location.href}\n` +
+            `- Extension: ${chrome.runtime.getManifest().name}\n` +
+            `- Version: ${chrome.runtime.getManifest().version}\n` +
+            `- Provider: ${provider}\n\n` +
+            `### Zusätzliche Informationen\n` +
+            `[Bitte beschreiben Sie hier, was Sie gemacht haben, als der Fehler auftrat]\n`
+          );
+
+          window.open(
+            `${REPO_URL}/issues/new?title=${issueTitle}&body=${issueBody}&labels=bug`,
+            '_blank'
+          );
+        } catch (error) {
+          console.error('Error creating error report:', error);
+        }
+      });
+      this.content.appendChild(feedbackButton);
+
       // Show overlay and backdrop with animation
       this.backdrop.classList.add('visible');
       this.overlay.classList.add('visible');
