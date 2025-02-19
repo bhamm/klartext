@@ -9,14 +9,14 @@ const PROVIDERS = {
   },
   gemini: {
     name: 'Google Gemini',
-    models: ['gemini-pro', 'gemini-pro-vision'],
+    models: ['gemini-2.0-flash', 'gemini-2.0-flash-lite-preview-02-05', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'],
     defaultEndpoint: 'https://generativelanguage.googleapis.com/v1/models',
     keyPlaceholder: 'Ihr Google API-Schlüssel',
     keyHint: 'Google Cloud API-Schlüssel'
   },
   claude: {
     name: 'Anthropic Claude',
-    models: ['claude-2', 'claude-instant'],
+    models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
     defaultEndpoint: 'https://api.anthropic.com/v1/messages',
     keyPlaceholder: 'sk-...',
     keyHint: 'Anthropic API-Schlüssel beginnt mit "sk-"'

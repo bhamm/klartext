@@ -320,26 +320,31 @@
 .klartext-translation h3 { font-size: 1.5em; }
 
 .klartext-translation p {
+  font-family: 'Open Sans', Verdana, sans-serif;
   margin: 1.5em 0;
   max-width: 70ch;
 }
 
 .klartext-translation ul,
 .klartext-translation ol {
+  font-family: 'Open Sans', Verdana, sans-serif;
   margin: 1.5em 0;
   padding-left: 2.5em;
 }
 
 .klartext-translation li {
+  font-family: 'Open Sans', Verdana, sans-serif;
   margin: 0.8em 0;
   line-height: 1.8;
 }
 
 .klartext-translation ul li {
+  font-family: 'Open Sans', Verdana, sans-serif;
   list-style-type: disc;
 }
 
 .klartext-translation ol li {
+  font-family: 'Open Sans', Verdana, sans-serif;
   list-style-type: decimal;
 }
 

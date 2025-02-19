@@ -122,30 +122,15 @@ const PROVIDERS = {
         if (!config.apiEndpoint) throw new Error('Gemini API endpoint is not configured');
         if (!config.apiKey) throw new Error('Gemini API key is not configured');
 
-        const prompt = isArticle ?
-          `You are an expert in German "Leichte Sprache".
-           
-           The provided HTML has been cleaned and contains only the relevant article content.
-           Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules.
-           
-           Format the result as clean HTML with:
-           - Short paragraphs (<p>)
-           - Clear headings (<h2>, <h3>)
-           - Simple lists (<ul>, <li>) where appropriate
-           - One sentence per line
-           
-           Input HTML:
-           ${text}
-           
-           Respond with properly formatted HTML only.` :
-          `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
+        const prompt = 
+        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Beginne den Text nicht mit dem wort "html". Input HTML:\n\n${text}`;
 
         const response = await fetch(`${config.apiEndpoint}/${config.model}:generateContent?key=${config.apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7 }
+            generationConfig: { temperature: 0.1 }
           })
         });
 
@@ -155,7 +140,7 @@ const PROVIDERS = {
         }
 
         let translation = data.candidates[0].content.parts[0].text;
-        return translation.replace(/^'''|'''$/g, '').trim();
+        return translation.replace(/(^```html|^```|```$|^html)/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
           ApiErrorHandler.handleSyntaxError('Gemini');
@@ -169,23 +154,8 @@ const PROVIDERS = {
       try {
         if (!config.apiKey) throw new Error('Claude API key is not configured');
 
-        const prompt = isArticle ?
-          `You are an expert in German "Leichte Sprache".
-           
-           The provided HTML has been cleaned and contains only the relevant article content.
-           Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules.
-           
-           Format the result as clean HTML with:
-           - Short paragraphs (<p>)
-           - Clear headings (<h2>, <h3>)
-           - Simple lists (<ul>, <li>) where appropriate
-           - One sentence per line
-           
-           Input HTML:
-           ${text}
-           
-           Respond with properly formatted HTML only.` :
-          `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
+        const prompt = 
+        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Erstelle immer gültigen HTML-Code. Antworte direkt mit dem Inhalt, ohne eine Einführung. Input HTML:\n\n${text}`;
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -198,8 +168,8 @@ const PROVIDERS = {
           body: JSON.stringify({
             model: config.model,
             messages: [{ role: 'user', content: prompt }],
-            max_tokens: 1000,
-            temperature: 0.7
+            max_tokens: 4096,
+            temperature: 0.1
           })
         });
 
@@ -209,7 +179,7 @@ const PROVIDERS = {
         }
 
         let translation = data.content[0].text;
-        return translation.replace(/^'''|'''$/g, '').trim();
+        return translation.replace(/(^```html|^```|```$|^html)/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
           ApiErrorHandler.handleSyntaxError('Claude');
