@@ -489,8 +489,8 @@ class TranslationOverlay {
             else s.classList.remove('selected');
           });
 
-          // Show feedback button
-          feedbackButton.classList.add('visible');
+          // Show feedback button for translation feedback
+          feedbackButton.style.display = 'block';
         });
 
         stars.push(star);
@@ -540,11 +540,12 @@ class TranslationOverlay {
       includeContainer.appendChild(includeCheckbox);
       includeContainer.appendChild(includeLabel);
 
-      // Create feedback button
+      // Create feedback button (initially hidden)
       const feedbackButton = document.createElement('button');
       feedbackButton.className = 'klartext-feedback';
       feedbackButton.textContent = 'Mitteilung senden';
       feedbackButton.setAttribute('aria-label', 'Mitteilung zur Übersetzung geben');
+      feedbackButton.style.display = 'none';
 
       // Add feedback button click handler
       feedbackButton.addEventListener('click', async () => {
