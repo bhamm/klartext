@@ -27,6 +27,7 @@ yarn-error.log*
 # Chrome Extension specific
 *.pem
 *.crx
+src/config/api-keys.json
 
 # Testing
 coverage/

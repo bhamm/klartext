@@ -6,13 +6,25 @@ const MENU_ITEMS = {
 };
 const REPO_URL = 'https://github.com/bhamm/klartext';
 
+// Load provider API keys from config file
+let PROVIDER_KEYS = {};
+fetch(chrome.runtime.getURL('src/config/api-keys.json'))
+  .then(response => response.json())
+  .then(data => {
+    PROVIDER_KEYS = data;
+    console.log('Provider API keys loaded');
+  })
+  .catch(error => {
+    console.error('Error loading provider API keys:', error);
+  });
+
 // Utility class for API error handling
 class ApiErrorHandler {
   static createErrorDetails(error, config, text, provider) {
     return {
       message: error?.message || 'Unknown error',
       request: {
-        endpoint: config.apiEndpoint || 'https://api.anthropic.com/v1/messages',
+        endpoint: config.apiEndpoint,
         model: config.model,
         text: text
       },
@@ -29,6 +41,40 @@ class ApiErrorHandler {
 
   static handleSyntaxError(provider) {
     throw new Error(`Invalid response from ${provider} API. Please check your API configuration.`);
+  }
+}
+
+// Canny feedback handler
+class CannyFeedback {
+  static async submitFeedback({ rating, comment, details }) {
+    try {
+      const version = chrome.runtime.getManifest().version;
+      const response = await fetch('https://canny.io/api/v1/posts/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          apiKey: PROVIDER_KEYS.canny?.apiKey,
+          authorID: PROVIDER_KEYS.canny?.userID,
+          boardID: PROVIDER_KEYS.canny?.boardID,
+          categoryID: PROVIDER_KEYS.canny?.categoryID,
+          title: `Translation Feedback (${rating} stars)`,
+          details: `Comment:\n${comment}\n\nOriginal Text:\n${details.originalText}\n\nTranslated Text:\n${details.translatedText}\n\nContext:\n- URL: ${details.url}\n- Provider: ${details.provider}\n- Model: ${details.model}\n- Version: ${version}`
+        })
+      });
+
+      console.log('Feedback submitted to Canny:', response);
+
+      if (!response.ok) {
+        throw new Error('Failed to submit feedback to Canny');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      throw error;
+    }
   }
 }
 
@@ -76,40 +122,14 @@ class MenuManager {
 
 // Provider configurations with translation handlers
 const PROVIDERS = {
-  gpt4: {
+  openAI: {
     async translate(text, config, isArticle = false) {
       try {
         if (!config.apiEndpoint) throw new Error('OpenAI API endpoint is not configured');
-        if (!config.apiKey) throw new Error('OpenAI API key is not configured');
+        if (!config.apiKey) throw new Error('OpenAI API key not found in config file or extension settings');
 
         const systemPrompt = 
-        'Du bist ein Experte und Übersetzer für deutsche "Leichte Sprache". ' +
-        'Der HTML-Text wurde bereits bereinigt und enthält nur den relevanten Artikelinhalt. ' +
-        'Übersetze den Text in Leichte Sprache. ' +
-        'Du beachtest dabei diese Regeln: ' +
-        'Der Text verwendet kurze und allgemein bekannte Wörter. ' +
-        'Der Text verwendet bildungssprachliche Wörter und Fachwörter nur, wenn sie häufig verwendet werden, und erklärt diese. ' +
-        'Der Text verwendet nur dann Fremdwörter, wenn sie allgemein bekannt sind. ' +
-        'Der Text verwendet für eine Sache immer das gleiche Wort. ' +
-        'Der Text verwendet nur Hauptsätze und keine Subjunktionalsätze, keine Ergänzungssätze und keine Relativsätze. ' +
-        'Der Text verwendet keine Genitivkonstruktionen. ' +
-        'Der Text verwendet keine Pronomen der dritten Person. ' +
-        'Der Text verwendet keine Sätze mit "man" oder "jemand". ' +
-        'Der Text spricht die Leser direkt an, wenn dies das Thema verständlicher macht. ' +
-        'Der Text verwendet keine Konjunktivkonstruktionen. ' +
-        'Der Text verwendet keine Passivkonstruktionen. ' +
-        'Der Text verwendet nur die Zeitformen Präsens und Perfekt. ' +
-        'In den Sätzen gibt es keine Aufzählungen. ' +
-        'Wenn Aufzählungen notwendig sind, werden diese als Liste mit Aufzählungszeichen hervorgehoben. ' +
-        'Der Text verwendet Verneinungen nur, wenn sie notwendig sind, und bedient sich hierzu der Wörter „nicht", „nichts" und „kein". ' +
-        'Der Text hat Absätze mit Überschriften. ' +
-        'Jeder Satz beginnt in einer neuen Zeile. ' +
-        'Der Text enthält nur Sätze mit einem kurzen Mittelfeld. ' +
-        'Der Text legt Ereignisse oder Handlungen chronologisch dar. ' +
-        'Der Text ist im Verbalstil verfasst und verzichtet auf Nominalkonstruktionen. ' +
-        'Du veränderst nicht den Sinn oder den Ton der Texte.' +
-        'Formatiere das Ergebnis als sauberes HTML mit Absätzen (<p>), klaren Überschriften (<h2>, <h3>) und einfachen Listen (<ul>, <li>), wenn nötig. ' +
-        'Antworte nur mit korrekt formatiertem HTML. ';
+        'Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Beginne den Text nicht mit dem wort "html"';
 
         const response = await fetch(config.apiEndpoint, {
           method: 'POST',
@@ -123,7 +143,7 @@ const PROVIDERS = {
               { role: 'system', content: systemPrompt },
               { role: 'user', content: text }
             ],
-            temperature: 0.7
+            temperature: 0.1
           })
         });
 
@@ -133,7 +153,7 @@ const PROVIDERS = {
         }
 
         let translation = data.choices[0].message.content;
-        return translation.replace(/^'''|'''$/g, '').trim();
+        return translation.replace(/^```|```$/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
           ApiErrorHandler.handleSyntaxError('OpenAI');
@@ -142,36 +162,21 @@ const PROVIDERS = {
       }
     }
   },
-  gemini: {
+  google: {
     async translate(text, config, isArticle = false) {
       try {
         if (!config.apiEndpoint) throw new Error('Gemini API endpoint is not configured');
-        if (!config.apiKey) throw new Error('Gemini API key is not configured');
+        if (!config.apiKey) throw new Error('Gemini API key not found in config file or extension settings');
 
-        const prompt = isArticle ?
-          `You are an expert in German "Leichte Sprache".
-           
-           The provided HTML has been cleaned and contains only the relevant article content.
-           Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules.
-           
-           Format the result as clean HTML with:
-           - Short paragraphs (<p>)
-           - Clear headings (<h2>, <h3>)
-           - Simple lists (<ul>, <li>) where appropriate
-           - One sentence per line
-           
-           Input HTML:
-           ${text}
-           
-           Respond with properly formatted HTML only.` :
-          `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
+        const prompt = 
+        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Beginne den Text nicht mit dem wort "html". Input HTML:\n\n${text}`;
 
         const response = await fetch(`${config.apiEndpoint}/${config.model}:generateContent?key=${config.apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7 }
+            generationConfig: { temperature: 0.1 }
           })
         });
 
@@ -181,7 +186,7 @@ const PROVIDERS = {
         }
 
         let translation = data.candidates[0].content.parts[0].text;
-        return translation.replace(/^'''|'''$/g, '').trim();
+        return translation.replace(/(^```html|^```|```$|^html)/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
           ApiErrorHandler.handleSyntaxError('Gemini');
@@ -190,30 +195,15 @@ const PROVIDERS = {
       }
     }
   },
-  claude: {
+  antrophic: {
     async translate(text, config, isArticle = false) {
       try {
-        if (!config.apiKey) throw new Error('Claude API key is not configured');
+        if (!config.apiKey) throw new Error('Claude API key not found in config file or extension settings');
 
-        const prompt = isArticle ?
-          `You are an expert in German "Leichte Sprache".
-           
-           The provided HTML has been cleaned and contains only the relevant article content.
-           Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules.
-           
-           Format the result as clean HTML with:
-           - Short paragraphs (<p>)
-           - Clear headings (<h2>, <h3>)
-           - Simple lists (<ul>, <li>) where appropriate
-           - One sentence per line
-           
-           Input HTML:
-           ${text}
-           
-           Respond with properly formatted HTML only.` :
-          `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
+        const prompt = 
+        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Erstelle immer gültigen HTML-Code. Antworte direkt mit dem Inhalt, ohne eine Einführung. Input HTML:\n\n${text}`;
 
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        const response = await fetch(config.apiEndpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -224,8 +214,8 @@ const PROVIDERS = {
           body: JSON.stringify({
             model: config.model,
             messages: [{ role: 'user', content: prompt }],
-            max_tokens: 1000,
-            temperature: 0.7
+            max_tokens: 4096,
+            temperature: 0.1
           })
         });
 
@@ -235,7 +225,7 @@ const PROVIDERS = {
         }
 
         let translation = data.content[0].text;
-        return translation.replace(/^'''|'''$/g, '').trim();
+        return translation.replace(/(^```html|^```|```$|^html)/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
           ApiErrorHandler.handleSyntaxError('Claude');
@@ -244,28 +234,13 @@ const PROVIDERS = {
       }
     }
   },
-  llama: {
+  local: {
     async translate(text, config, isArticle = false) {
       try {
-        if (!config.apiEndpoint) throw new Error('Llama API endpoint is not configured');
+        if (!config.apiEndpoint) throw new Error('Local API endpoint is not configured');
 
-        const prompt = isArticle ?
-          `You are an expert in German "Leichte Sprache".
-           
-           The provided HTML has been cleaned and contains only the relevant article content.
-           Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules.
-           
-           Format the result as clean HTML with:
-           - Short paragraphs (<p>)
-           - Clear headings (<h2>, <h3>)
-           - Simple lists (<ul>, <li>) where appropriate
-           - One sentence per line
-           
-           Input HTML:
-           ${text}
-           
-           Respond with properly formatted HTML only.` :
-          `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
+        const prompt = 
+        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Erstelle immer gültigen HTML-Code. Antworte direkt mit dem Inhalt, ohne eine Einführung. Input HTML:\n\n${text}`;
 
         const response = await fetch(config.apiEndpoint, {
           method: 'POST',
@@ -276,8 +251,8 @@ const PROVIDERS = {
           body: JSON.stringify({
             model: config.model,
             prompt: prompt,
-            temperature: 0.7,
-            max_tokens: 1000
+            temperature: 0.1,
+            max_tokens: 4000
           })
         });
 
@@ -287,7 +262,7 @@ const PROVIDERS = {
         }
 
         let translation = data.generated_text;
-        return translation.replace(/^'''|'''$/g, '').trim();
+        return translation.replace(/^```|```$/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
           ApiErrorHandler.handleSyntaxError('Llama');
@@ -300,22 +275,48 @@ const PROVIDERS = {
 
 // Current API configuration
 let API_CONFIG = {
-  provider: 'gpt4',
-  model: 'gpt-4',
+  provider: 'openAI',
+  model: 'gpt-4-turbo',
   apiKey: '',
   apiEndpoint: ''
 };
 
-// Load API configuration from storage
+// Load API configuration from storage and config file
 async function loadApiConfig() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], (items) => {
       console.log('Loading API configuration from storage');
+      
+      // Update provider and model from storage
       if (items.provider) API_CONFIG.provider = items.provider;
       if (items.model) API_CONFIG.model = items.model;
-      if (items.apiKey) API_CONFIG.apiKey = items.apiKey;
-      if (items.apiEndpoint) API_CONFIG.apiEndpoint = items.apiEndpoint;
-      console.log('API configuration loaded:', { provider: API_CONFIG.provider, model: API_CONFIG.model });
+      
+      // Use API key and endpoint from config file if available, otherwise use stored values
+      if (API_CONFIG.provider && PROVIDER_KEYS[API_CONFIG.provider]) {
+        const providerConfig = PROVIDER_KEYS[API_CONFIG.provider];
+        if (providerConfig.apiKey) {
+          API_CONFIG.apiKey = providerConfig.apiKey;
+        } else if (items.apiKey) {
+          API_CONFIG.apiKey = items.apiKey;
+        }
+        
+        if (providerConfig.apiEndpoint) {
+          API_CONFIG.apiEndpoint = providerConfig.apiEndpoint;
+        } else if (items.apiEndpoint) {
+          API_CONFIG.apiEndpoint = items.apiEndpoint;
+        }
+      } else {
+        if (items.apiKey) API_CONFIG.apiKey = items.apiKey;
+        if (items.apiEndpoint) API_CONFIG.apiEndpoint = items.apiEndpoint;
+      }
+      
+      console.log('API configuration loaded:', { 
+        provider: API_CONFIG.provider, 
+        model: API_CONFIG.model,
+        hasApiKey: !!API_CONFIG.apiKey,
+        hasEndpoint: !!API_CONFIG.apiEndpoint
+      });
+      
       resolve(API_CONFIG);
     });
   });
@@ -418,6 +419,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: false, error: error.message });
     }
   }
+  else if (message.action === 'submitFeedback') {
+    (async () => {
+      try {
+        const result = await CannyFeedback.submitFeedback(message.feedback);
+        sendResponse({ success: true, result });
+      } catch (error) {
+        console.error('Error submitting feedback:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    return true;
+  }
   
   return true;
 });
@@ -444,7 +457,7 @@ async function handleTranslation(text, isArticle = false) {
       throw new Error(`Unsupported provider: ${API_CONFIG.provider}`);
     }
 
-    if (provider === PROVIDERS.gpt4 && !API_CONFIG.apiEndpoint) {
+    if (provider === PROVIDERS.openAI && !API_CONFIG.apiEndpoint) {
       throw new Error('OpenAI API endpoint is not configured. Please check your extension settings.');
     }
 

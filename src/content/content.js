@@ -317,7 +317,11 @@ class TranslationOverlay {
 
       this.content.appendChild(translationContainer);
 
-      // Create rating container
+      // Create feedback container
+      const feedbackContainer = document.createElement('div');
+      feedbackContainer.className = 'klartext-feedback-container';
+
+      // Create rating container with label first
       const ratingContainer = document.createElement('div');
       ratingContainer.className = 'klartext-rating';
 
@@ -330,13 +334,6 @@ class TranslationOverlay {
       // Create stars container
       const starsContainer = document.createElement('div');
       starsContainer.className = 'klartext-stars';
-      ratingContainer.appendChild(starsContainer);
-
-      // Create feedback button (hidden by default)
-      const feedbackButton = document.createElement('button');
-      feedbackButton.className = 'klartext-feedback';
-      feedbackButton.textContent = 'Mitteilung senden';
-      feedbackButton.setAttribute('aria-label', 'Mitteilung zur Übersetzung geben');
 
       // Create and add stars
       const stars = [];
@@ -364,25 +361,8 @@ class TranslationOverlay {
             else s.classList.remove('selected');
           });
 
-          // Store rating
-          try {
-            await chrome.storage.local.set({
-              [`rating_${Date.now()}`]: {
-                rating: i,
-                text: translation,
-                url: window.location.href
-              }
-            });
-          } catch (error) {
-            console.error('Error storing rating:', error);
-          }
-
-          // Show feedback button for low ratings
-          if (i < 3) {
-            feedbackButton.classList.add('visible');
-          } else {
-            feedbackButton.classList.remove('visible');
-          }
+          // Show feedback button
+          feedbackButton.classList.add('visible');
         });
 
         stars.push(star);
@@ -394,6 +374,50 @@ class TranslationOverlay {
         stars.forEach(s => s.classList.remove('hover'));
       });
 
+      // Add stars container after label
+      ratingContainer.appendChild(starsContainer);
+
+      // Add comment container
+      const commentContainer = document.createElement('div');
+      commentContainer.className = 'klartext-comment-container';
+
+      // Add comment label
+      const commentLabel = document.createElement('label');
+      commentLabel.textContent = 'Zusätzlicher Kommentar (optional):';
+      commentLabel.htmlFor = 'klartext-comment';
+      commentContainer.appendChild(commentLabel);
+
+      // Add comment textarea
+      const commentInput = document.createElement('textarea');
+      commentInput.id = 'klartext-comment';
+      commentInput.className = 'klartext-comment';
+      commentInput.placeholder = 'Ihr Kommentar zur Übersetzung...';
+      commentContainer.appendChild(commentInput);
+
+      // Add include texts checkbox container
+      const includeContainer = document.createElement('div');
+      includeContainer.className = 'klartext-include-container';
+
+      // Add checkbox
+      const includeCheckbox = document.createElement('input');
+      includeCheckbox.type = 'checkbox';
+      includeCheckbox.id = 'klartext-include-texts';
+      includeCheckbox.checked = true;
+
+      // Add checkbox label
+      const includeLabel = document.createElement('label');
+      includeLabel.htmlFor = 'klartext-include-texts';
+      includeLabel.textContent = 'Original- und übersetzten Text einschließen';
+
+      includeContainer.appendChild(includeCheckbox);
+      includeContainer.appendChild(includeLabel);
+
+      // Create feedback button
+      const feedbackButton = document.createElement('button');
+      feedbackButton.className = 'klartext-feedback';
+      feedbackButton.textContent = 'Mitteilung senden';
+      feedbackButton.setAttribute('aria-label', 'Mitteilung zur Übersetzung geben');
+
       // Add feedback button click handler
       feedbackButton.addEventListener('click', async () => {
         try {
@@ -404,31 +428,51 @@ class TranslationOverlay {
             });
           });
 
-          const issueTitle = encodeURIComponent('Feedback: Übersetzung in Leichte Sprache');
-          const issueBody = encodeURIComponent(
-            `## Feedback zur Übersetzung\n\n` +
-            `### Originaltext\n\`\`\`\n${originalText}\n\`\`\`\n\n` +
-            `### Übersetzung\n\`\`\`\n${translation}\n\`\`\`\n\n` +
-            `### Feedback\n[Bitte beschreiben Sie hier Ihr Feedback zur Übersetzung]\n\n` +
-            `### Technische Details\n` +
-            `- Extension: ${chrome.runtime.getManifest().name}\n` +
-            `- Version: ${chrome.runtime.getManifest().version}\n` +
-            `- URL: ${window.location.href}\n` +
-            `- Provider: ${provider}\n`
-          );
+          // Get selected rating and comment
+          const rating = starsContainer.querySelectorAll('.selected').length;
+          const comment = commentInput.value.trim();
+          const includedTexts = includeCheckbox.checked;
 
-          window.open(
-            `${REPO_URL}/issues/new?title=${issueTitle}&body=${issueBody}`,
-            '_blank'
-          );
+          // Submit feedback to Canny
+          chrome.runtime.sendMessage({
+            action: 'submitFeedback',
+            feedback: {
+              rating,
+              category: 'Translation Quality',
+              comment,
+              details: includedTexts ? {
+                originalText,
+                translatedText: translation,
+                url: window.location.href,
+                provider: provider.split(' ')[0],
+                model: provider.split(' ')[1].replace(/[()]/g, '')
+              } : {
+                url: window.location.href,
+                provider: provider.split(' ')[0],
+                model: provider.split(' ')[1].replace(/[()]/g, '')
+              }
+            }
+          }, response => {
+            if (response.success) {
+              feedbackButton.textContent = 'Danke für Ihr Feedback!';
+              feedbackButton.disabled = true;
+            } else {
+              this.showError('Fehler beim Senden des Feedbacks');
+            }
+          });
         } catch (error) {
           console.error('Error creating feedback:', error);
           this.showError('Fehler beim Erstellen des Feedbacks');
         }
       });
-      // Add components to overlay
-      this.content.appendChild(ratingContainer);
-      this.content.appendChild(feedbackButton);
+
+      // Add components to overlay in proper sequence
+      feedbackContainer.appendChild(ratingContainer);      // Rating label and stars
+      feedbackContainer.appendChild(commentContainer);     // Comment field
+      feedbackContainer.appendChild(includeContainer);     // Checkbox
+      feedbackContainer.appendChild(feedbackButton);       // Submit button
+
+      this.content.appendChild(feedbackContainer);
 
       // Show overlay and backdrop with animation
       this.backdrop.classList.add('visible');

@@ -1,30 +1,30 @@
 // Provider configurations
 const PROVIDERS = {
-  gpt4: {
+  openAI: {
     name: 'OpenAI',
     models: ['gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1', 'gpt-4o-mini', 'gpt-4o', 'o3-mini'],
     defaultEndpoint: 'https://api.openai.com/v1/chat/completions',
     keyPlaceholder: 'sk-...',
     keyHint: 'OpenAI API-Schlüssel beginnt mit "sk-"'
   },
-  gemini: {
+  google: {
     name: 'Google Gemini',
-    models: ['gemini-pro', 'gemini-pro-vision'],
+    models: ['gemini-2.0-flash', 'gemini-2.0-flash-lite-preview-02-05', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'],
     defaultEndpoint: 'https://generativelanguage.googleapis.com/v1/models',
     keyPlaceholder: 'Ihr Google API-Schlüssel',
     keyHint: 'Google Cloud API-Schlüssel'
   },
-  claude: {
+  anthropic: {
     name: 'Anthropic Claude',
-    models: ['claude-2', 'claude-instant'],
+    models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
     defaultEndpoint: 'https://api.anthropic.com/v1/messages',
     keyPlaceholder: 'sk-...',
     keyHint: 'Anthropic API-Schlüssel beginnt mit "sk-"'
   },
-  llama: {
-    name: 'Meta Llama 2',
+  local: {
+    name: 'Local Model',
     models: ['llama-2-70b', 'llama-2-13b', 'llama-2-7b'],
-    defaultEndpoint: 'http://localhost:8080/completion',
+    defaultEndpoint: 'http://localhost:1234/completion',
     keyPlaceholder: 'Optional für lokale Installation',
     keyHint: 'API-Schlüssel optional bei lokaler Installation'
   }
@@ -44,7 +44,7 @@ const statusDiv = document.getElementById('status');
 // Load saved settings
 chrome.storage.sync.get(
   {
-    provider: 'gpt4',
+    provider: 'openAI',
     model: '',
     apiKey: '',
     apiEndpoint: '',
