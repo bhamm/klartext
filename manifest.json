@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klartext - Leichte Sprache",
-  "version": "1.3.2",
+  "version": "1.4.5",
   "description": "Übersetzt deutsche Texte in 'Leichte Sprache' für bessere Zugänglichkeit",
   "permissions": [
     "contextMenus",
@@ -15,7 +15,8 @@
     "https://api.openai.com/*",
     "https://generativelanguage.googleapis.com/*",
     "https://api.anthropic.com/*",
-    "http://localhost:1234/*"
+    "http://localhost:1234/*",
+    "https://canny.io/*"
   ],
   "background": {
     "service_worker": "src/background/background.js",

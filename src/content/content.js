@@ -317,6 +317,163 @@ class TranslationOverlay {
 
       this.content.appendChild(translationContainer);
 
+      // Create feedback container
+      const feedbackContainer = document.createElement('div');
+      feedbackContainer.className = 'klartext-feedback-container';
+
+      // Create rating container with label first
+      const ratingContainer = document.createElement('div');
+      ratingContainer.className = 'klartext-rating';
+
+      // Add rating label
+      const ratingLabel = document.createElement('div');
+      ratingLabel.className = 'klartext-rating-label';
+      ratingLabel.textContent = 'Wie gut ist diese Übersetzung?';
+      ratingContainer.appendChild(ratingLabel);
+
+      // Create stars container
+      const starsContainer = document.createElement('div');
+      starsContainer.className = 'klartext-stars';
+
+      // Create and add stars
+      const stars = [];
+      for (let i = 1; i <= 5; i++) {
+        const star = document.createElement('span');
+        star.className = 'klartext-star';
+        star.textContent = '★';
+        star.setAttribute('role', 'button');
+        star.setAttribute('aria-label', `${i} Sterne`);
+        star.setAttribute('data-rating', i);
+
+        // Hover effect
+        star.addEventListener('mouseenter', () => {
+          stars.forEach((s, index) => {
+            if (index < i) s.classList.add('hover');
+            else s.classList.remove('hover');
+          });
+        });
+
+        // Click handler
+        star.addEventListener('click', async () => {
+          // Update visual state
+          stars.forEach((s, index) => {
+            if (index < i) s.classList.add('selected');
+            else s.classList.remove('selected');
+          });
+
+          // Show feedback button
+          feedbackButton.classList.add('visible');
+        });
+
+        stars.push(star);
+        starsContainer.appendChild(star);
+      }
+
+      // Mouse leave handler for stars container
+      starsContainer.addEventListener('mouseleave', () => {
+        stars.forEach(s => s.classList.remove('hover'));
+      });
+
+      // Add stars container after label
+      ratingContainer.appendChild(starsContainer);
+
+      // Add comment container
+      const commentContainer = document.createElement('div');
+      commentContainer.className = 'klartext-comment-container';
+
+      // Add comment label
+      const commentLabel = document.createElement('label');
+      commentLabel.textContent = 'Zusätzlicher Kommentar (optional):';
+      commentLabel.htmlFor = 'klartext-comment';
+      commentContainer.appendChild(commentLabel);
+
+      // Add comment textarea
+      const commentInput = document.createElement('textarea');
+      commentInput.id = 'klartext-comment';
+      commentInput.className = 'klartext-comment';
+      commentInput.placeholder = 'Ihr Kommentar zur Übersetzung...';
+      commentContainer.appendChild(commentInput);
+
+      // Add include texts checkbox container
+      const includeContainer = document.createElement('div');
+      includeContainer.className = 'klartext-include-container';
+
+      // Add checkbox
+      const includeCheckbox = document.createElement('input');
+      includeCheckbox.type = 'checkbox';
+      includeCheckbox.id = 'klartext-include-texts';
+      includeCheckbox.checked = true;
+
+      // Add checkbox label
+      const includeLabel = document.createElement('label');
+      includeLabel.htmlFor = 'klartext-include-texts';
+      includeLabel.textContent = 'Original- und übersetzten Text einschließen';
+
+      includeContainer.appendChild(includeCheckbox);
+      includeContainer.appendChild(includeLabel);
+
+      // Create feedback button
+      const feedbackButton = document.createElement('button');
+      feedbackButton.className = 'klartext-feedback';
+      feedbackButton.textContent = 'Mitteilung senden';
+      feedbackButton.setAttribute('aria-label', 'Mitteilung zur Übersetzung geben');
+
+      // Add feedback button click handler
+      feedbackButton.addEventListener('click', async () => {
+        try {
+          const originalText = window.getSelection().toString();
+          const provider = await new Promise(resolve => {
+            chrome.storage.sync.get(['provider', 'model'], items => {
+              resolve(`${items.provider || 'unknown'} (${items.model || 'unknown'})`);
+            });
+          });
+
+          // Get selected rating and comment
+          const rating = starsContainer.querySelectorAll('.selected').length;
+          const comment = commentInput.value.trim();
+          const includedTexts = includeCheckbox.checked;
+
+          // Submit feedback to Canny
+          chrome.runtime.sendMessage({
+            action: 'submitFeedback',
+            feedback: {
+              rating,
+              category: 'Translation Quality',
+              comment,
+              details: includedTexts ? {
+                originalText,
+                translatedText: translation,
+                url: window.location.href,
+                provider: provider.split(' ')[0],
+                model: provider.split(' ')[1].replace(/[()]/g, '')
+              } : {
+                url: window.location.href,
+                provider: provider.split(' ')[0],
+                model: provider.split(' ')[1].replace(/[()]/g, '')
+              }
+            }
+          }, response => {
+            if (response.success) {
+              feedbackButton.textContent = 'Danke für Ihr Feedback!';
+              feedbackButton.disabled = true;
+            } else {
+              this.showError('Fehler beim Senden des Feedbacks');
+            }
+          });
+        } catch (error) {
+          console.error('Error creating feedback:', error);
+          this.showError('Fehler beim Erstellen des Feedbacks');
+        }
+      });
+
+      // Add components to overlay in proper sequence
+      feedbackContainer.appendChild(ratingContainer);      // Rating label and stars
+      feedbackContainer.appendChild(commentContainer);     // Comment field
+      feedbackContainer.appendChild(includeContainer);     // Checkbox
+      feedbackContainer.appendChild(feedbackButton);       // Submit button
+
+      this.content.appendChild(feedbackContainer);
+
       // Show overlay and backdrop with animation
       this.backdrop.classList.add('visible');
       this.overlay.classList.add('visible');

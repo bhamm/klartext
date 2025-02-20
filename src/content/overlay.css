@@ -394,9 +394,53 @@
   font-family: 'Open Sans', Verdana, sans-serif;
 }
 
+/* Rating styles */
+.klartext-rating {
+  margin-top: 3rem;
+  text-align: center;
+  font-family: 'Open Sans', Verdana, sans-serif;
+}
+
+.klartext-rating-label {
+  margin-bottom: 1rem;
+  color: #1a1a1a;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.klartext-stars {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+.klartext-star {
+  font-size: 1.8rem;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0.3rem;
+  border: 2px solid transparent;
+  border-radius: 6px;
+}
+
+.klartext-star:hover,
+.klartext-star.hover {
+  color: #ecc94b;
+}
+
+.klartext-star:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.klartext-star.selected {
+  color: #d69e2e;
+}
+
 .klartext-feedback {
   display: inline-block;
-  margin: 1.5rem auto 0;
+  margin: 2rem auto 0;
   padding: 0.8rem 1.5rem;
   background: #e53e3e;
   color: #ffffff;
@@ -407,6 +451,11 @@
   font-weight: 500;
   transition: all 0.2s ease;
   font-family: 'Open Sans', Verdana, sans-serif;
+  justify-content: center;
+}
+
+.klartext-error .klartext-feedback {
+  margin-top: 2.5rem;
 }
 
 .klartext-feedback:hover {
@@ -417,4 +466,36 @@
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+.klartext-comment-container {
+  margin: 15px 0;
+}
+
+.klartext-comment {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-top: 5px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.klartext-include-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.klartext-include-container input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.klartext-include-container label {
+  color: #1a1a1a;
+  font-size: 14px;
 }

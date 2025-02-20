@@ -6,6 +6,18 @@ const MENU_ITEMS = {
 };
 const REPO_URL = 'https://github.com/bhamm/klartext';
 
+// Load Canny config from api-keys.json
+let CANNY_CONFIG = {};
+fetch(chrome.runtime.getURL('src/config/api-keys.json'))
+  .then(response => response.json())
+  .then(data => {
+    CANNY_CONFIG = data.canny;
+    console.log('Canny config loaded');
+  })
+  .catch(error => {
+    console.error('Error loading Canny config:', error);
+  });
+
 // Utility class for API error handling
 class ApiErrorHandler {
   static createErrorDetails(error, config, text, provider) {
@@ -29,6 +41,40 @@ class ApiErrorHandler {
 
   static handleSyntaxError(provider) {
     throw new Error(`Invalid response from ${provider} API. Please check your API configuration.`);
+  }
+}
+
+// Canny feedback handler
+class CannyFeedback {
+  static async submitFeedback({ rating, comment, details }) {
+    try {
+      const version = chrome.runtime.getManifest().version;
+      const response = await fetch('https://canny.io/api/v1/posts/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          apiKey: CANNY_CONFIG.apiKey,
+          authorID: CANNY_CONFIG.userID,
+          boardID: CANNY_CONFIG.boardID,
+          categoryID: CANNY_CONFIG.categoryID,
+          title: `Translation Feedback (${rating} stars)`,
+          details: `Comment:\n${comment}\n\nOriginal Text:\n${details.originalText}\n\nTranslated Text:\n${details.translatedText}\n\nContext:\n- URL: ${details.url}\n- Provider: ${details.provider}\n- Model: ${details.model}\n- Version: ${version}`
+        })
+      });
+
+      console.log('Feedback submitted to Canny:', response);
+
+      if (!response.ok) {
+        throw new Error('Failed to submit feedback to Canny');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      throw error;
+    }
   }
 }
 
@@ -76,7 +122,7 @@ class MenuManager {
 
 // Provider configurations with translation handlers
 const PROVIDERS = {
-  gpt4: {
+  openAI: {
     async translate(text, config, isArticle = false) {
       try {
         if (!config.apiEndpoint) throw new Error('OpenAI API endpoint is not configured');
@@ -116,7 +162,7 @@ const PROVIDERS = {
       }
     }
   },
-  gemini: {
+  google: {
     async translate(text, config, isArticle = false) {
       try {
         if (!config.apiEndpoint) throw new Error('Gemini API endpoint is not configured');
@@ -149,7 +195,7 @@ const PROVIDERS = {
       }
     }
   },
-  claude: {
+  antrophic: {
     async translate(text, config, isArticle = false) {
       try {
         if (!config.apiKey) throw new Error('Claude API key is not configured');
@@ -188,28 +234,13 @@ const PROVIDERS = {
       }
     }
   },
-  llama: {
+  local: {
     async translate(text, config, isArticle = false) {
       try {
-        if (!config.apiEndpoint) throw new Error('Llama API endpoint is not configured');
+        if (!config.apiEndpoint) throw new Error('Local API endpoint is not configured');
 
-        const prompt = isArticle ?
-          `You are an expert in German "Leichte Sprache".
-           
-           The provided HTML has been cleaned and contains only the relevant article content.
-           Translate the text into "Leichte Sprache" following Netzwerk für deutsche Sprache rules.
-           
-           Format the result as clean HTML with:
-           - Short paragraphs (<p>)
-           - Clear headings (<h2>, <h3>)
-           - Simple lists (<ul>, <li>) where appropriate
-           - One sentence per line
-           
-           Input HTML:
-           ${text}
-           
-           Respond with properly formatted HTML only.` :
-          `Translate the following German text into "Leichte Sprache" following the rules of the Netzwerk für deutsche Sprache:\n\n${text}`;
+        const prompt = 
+        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Erstelle immer gültigen HTML-Code. Antworte direkt mit dem Inhalt, ohne eine Einführung. Input HTML:\n\n${text}`;
 
         const response = await fetch(config.apiEndpoint, {
           method: 'POST',
@@ -220,8 +251,8 @@ const PROVIDERS = {
           body: JSON.stringify({
             model: config.model,
             prompt: prompt,
-            temperature: 0.7,
-            max_tokens: 1000
+            temperature: 0.1,
+            max_tokens: 4000
           })
         });
 
@@ -244,8 +275,8 @@ const PROVIDERS = {
 
 // Current API configuration
 let API_CONFIG = {
-  provider: 'gpt4',
-  model: 'gpt-4',
+  provider: 'openAI',
+  model: 'gpt-4-turbo',
   apiKey: '',
   apiEndpoint: ''
 };
@@ -362,6 +393,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: false, error: error.message });
     }
   }
+  else if (message.action === 'submitFeedback') {
+    (async () => {
+      try {
+        const result = await CannyFeedback.submitFeedback(message.feedback);
+        sendResponse({ success: true, result });
+      } catch (error) {
+        console.error('Error submitting feedback:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    return true;
+  }
   
   return true;
 });
@@ -388,7 +431,7 @@ async function handleTranslation(text, isArticle = false) {
       throw new Error(`Unsupported provider: ${API_CONFIG.provider}`);
     }
 
-    if (provider === PROVIDERS.gpt4 && !API_CONFIG.apiEndpoint) {
+    if (provider === PROVIDERS.openAI && !API_CONFIG.apiEndpoint) {
       throw new Error('OpenAI API endpoint is not configured. Please check your extension settings.');
     }
 

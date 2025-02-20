@@ -122,13 +122,15 @@ klartext/
 ├── src/
 │   ├── background/        # Service Worker
 │   │   └── background.js
-│   ├── content/           # Content Scripts
+│   ├── config/           # Konfigurationsdateien
+│   │   └── api-keys.json # API-Schlüssel (nicht im Git)
+│   ├── content/          # Content Scripts
 │   │   ├── content.js
 │   │   └── overlay.css
-│   └── popup/            # Popup UI
+│   └── popup/           # Popup UI
 │       ├── popup.html
 │       └── popup.js
-└── icons/                # Extension-Icons
+└── icons/               # Extension-Icons
     ├── icon16.png
     ├── icon48.png
     └── icon128.png
@@ -142,6 +144,21 @@ klartext/
    cd klartext
    npm install
    ```
+
+2. API-Schlüssel konfigurieren:
+   - Erstellen Sie die Datei `src/config/api-keys.json`
+   - Fügen Sie die API-Konfiguration hinzu:
+     ```json
+     {
+       "canny": {
+         "apiKey": "Ihr-Canny-API-Schlüssel",
+         "boardID": "Ihr-Board-ID",
+         "categoryID": "Ihre-Kategorie-ID",
+         "userID": "Ihre-User-ID"
+       }
+     }
+     ```
+   - Diese Datei wird nicht in Git versioniert
 
 2. Icons generieren:
    ```bash
