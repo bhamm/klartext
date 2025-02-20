@@ -6,16 +6,16 @@ const MENU_ITEMS = {
 };
 const REPO_URL = 'https://github.com/bhamm/klartext';
 
-// Load Canny config from api-keys.json
-let CANNY_CONFIG = {};
+// Load provider API keys from config file
+let PROVIDER_KEYS = {};
 fetch(chrome.runtime.getURL('src/config/api-keys.json'))
   .then(response => response.json())
   .then(data => {
-    CANNY_CONFIG = data.canny;
-    console.log('Canny config loaded');
+    PROVIDER_KEYS = data;
+    console.log('Provider API keys loaded');
   })
   .catch(error => {
-    console.error('Error loading Canny config:', error);
+    console.error('Error loading provider API keys:', error);
   });
 
 // Utility class for API error handling
@@ -24,7 +24,7 @@ class ApiErrorHandler {
     return {
       message: error?.message || 'Unknown error',
       request: {
-        endpoint: config.apiEndpoint || 'https://api.anthropic.com/v1/messages',
+        endpoint: config.apiEndpoint,
         model: config.model,
         text: text
       },
@@ -55,10 +55,10 @@ class CannyFeedback {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          apiKey: CANNY_CONFIG.apiKey,
-          authorID: CANNY_CONFIG.userID,
-          boardID: CANNY_CONFIG.boardID,
-          categoryID: CANNY_CONFIG.categoryID,
+          apiKey: PROVIDER_KEYS.canny?.apiKey,
+          authorID: PROVIDER_KEYS.canny?.userID,
+          boardID: PROVIDER_KEYS.canny?.boardID,
+          categoryID: PROVIDER_KEYS.canny?.categoryID,
           title: `Translation Feedback (${rating} stars)`,
           details: `Comment:\n${comment}\n\nOriginal Text:\n${details.originalText}\n\nTranslated Text:\n${details.translatedText}\n\nContext:\n- URL: ${details.url}\n- Provider: ${details.provider}\n- Model: ${details.model}\n- Version: ${version}`
         })
@@ -126,7 +126,7 @@ const PROVIDERS = {
     async translate(text, config, isArticle = false) {
       try {
         if (!config.apiEndpoint) throw new Error('OpenAI API endpoint is not configured');
-        if (!config.apiKey) throw new Error('OpenAI API key is not configured');
+        if (!config.apiKey) throw new Error('OpenAI API key not found in config file or extension settings');
 
         const systemPrompt = 
         'Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Beginne den Text nicht mit dem wort "html"';
@@ -166,7 +166,7 @@ const PROVIDERS = {
     async translate(text, config, isArticle = false) {
       try {
         if (!config.apiEndpoint) throw new Error('Gemini API endpoint is not configured');
-        if (!config.apiKey) throw new Error('Gemini API key is not configured');
+        if (!config.apiKey) throw new Error('Gemini API key not found in config file or extension settings');
 
         const prompt = 
         `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Beginne den Text nicht mit dem wort "html". Input HTML:\n\n${text}`;
@@ -198,12 +198,12 @@ const PROVIDERS = {
   antrophic: {
     async translate(text, config, isArticle = false) {
       try {
-        if (!config.apiKey) throw new Error('Claude API key is not configured');
+        if (!config.apiKey) throw new Error('Claude API key not found in config file or extension settings');
 
         const prompt = 
         `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Erstelle immer gültigen HTML-Code. Antworte direkt mit dem Inhalt, ohne eine Einführung. Input HTML:\n\n${text}`;
 
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        const response = await fetch(config.apiEndpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -281,16 +281,42 @@ let API_CONFIG = {
   apiEndpoint: ''
 };
 
-// Load API configuration from storage
+// Load API configuration from storage and config file
 async function loadApiConfig() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], (items) => {
       console.log('Loading API configuration from storage');
+      
+      // Update provider and model from storage
       if (items.provider) API_CONFIG.provider = items.provider;
       if (items.model) API_CONFIG.model = items.model;
-      if (items.apiKey) API_CONFIG.apiKey = items.apiKey;
-      if (items.apiEndpoint) API_CONFIG.apiEndpoint = items.apiEndpoint;
-      console.log('API configuration loaded:', { provider: API_CONFIG.provider, model: API_CONFIG.model });
+      
+      // Use API key and endpoint from config file if available, otherwise use stored values
+      if (API_CONFIG.provider && PROVIDER_KEYS[API_CONFIG.provider]) {
+        const providerConfig = PROVIDER_KEYS[API_CONFIG.provider];
+        if (providerConfig.apiKey) {
+          API_CONFIG.apiKey = providerConfig.apiKey;
+        } else if (items.apiKey) {
+          API_CONFIG.apiKey = items.apiKey;
+        }
+        
+        if (providerConfig.apiEndpoint) {
+          API_CONFIG.apiEndpoint = providerConfig.apiEndpoint;
+        } else if (items.apiEndpoint) {
+          API_CONFIG.apiEndpoint = items.apiEndpoint;
+        }
+      } else {
+        if (items.apiKey) API_CONFIG.apiKey = items.apiKey;
+        if (items.apiEndpoint) API_CONFIG.apiEndpoint = items.apiEndpoint;
+      }
+      
+      console.log('API configuration loaded:', { 
+        provider: API_CONFIG.provider, 
+        model: API_CONFIG.model,
+        hasApiKey: !!API_CONFIG.apiKey,
+        hasEndpoint: !!API_CONFIG.apiEndpoint
+      });
+      
       resolve(API_CONFIG);
     });
   });
