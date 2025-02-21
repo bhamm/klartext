@@ -551,11 +551,17 @@ class TranslationOverlay {
       feedbackButton.addEventListener('click', async () => {
         try {
           const originalText = window.getSelection().toString();
-          const provider = await new Promise(resolve => {
+          const { provider, model } = await new Promise(resolve => {
             chrome.storage.sync.get(['provider', 'model'], items => {
-              resolve(`${items.provider || 'unknown'} (${items.model || 'unknown'})`);
+              resolve({
+                provider: items.provider,
+                model: items.model
+              });
             });
           });
+
+          console.log('Provider:', provider);
+          console.log('Model:', model);
 
           // Get selected rating and comment
           const rating = starsContainer.querySelectorAll('.selected').length;
@@ -570,15 +576,17 @@ class TranslationOverlay {
               category: 'Translation Quality',
               comment,
               details: includedTexts ? {
-                originalText,
+                originalText: originalText,
                 translatedText: translation,
                 url: window.location.href,
-                provider: provider.split(' ')[0],
-                model: provider.split(' ')[1].replace(/[()]/g, '')
+                provider: provider,
+                model: model
               } : {
-                url: window.location.href,
-                provider: provider.split(' ')[0],
-                model: provider.split(' ')[1].replace(/[()]/g, '')
+                originalText: 'not provided',
+                translatedText: 'not provided',
+                url: 'not provided',
+                provider: provider,
+                model: model
               }
             }
           }, response => {
@@ -644,9 +652,12 @@ class TranslationOverlay {
       feedbackButton.setAttribute('aria-label', 'Diesen Fehler melden');
       feedbackButton.addEventListener('click', async () => {
         try {
-          const provider = await new Promise(resolve => {
+          const { provider, model } = await new Promise(resolve => {
             chrome.storage.sync.get(['provider', 'model'], items => {
-              resolve(`${items.provider || 'unknown'} (${items.model || 'unknown'})`);
+              resolve({
+                provider: items.provider,
+                model: items.model
+              });
             });
           });
 
@@ -671,7 +682,8 @@ class TranslationOverlay {
             `- URL: ${window.location.href}\n` +
             `- Extension: ${chrome.runtime.getManifest().name}\n` +
             `- Version: ${chrome.runtime.getManifest().version}\n` +
-            `- Provider: ${provider}\n\n` +
+            `- Provider: ${provider}\n` +
+            `- Model: ${model}\n\n` +
             `### Zusätzliche Informationen\n` +
             `[Bitte beschreiben Sie hier, was Sie gemacht haben, als der Fehler auftrat]\n`
           );
