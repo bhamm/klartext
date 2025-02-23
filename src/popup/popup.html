@@ -244,6 +244,40 @@
     .instructions li {
       margin-bottom: 4px;
     }
+
+    .donations {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .donations h2 {
+      font-size: 16px;
+      margin: 0 0 8px;
+      color: #2c5282;
+    }
+
+    .donations p {
+      font-size: 14px;
+      margin: 0 0 16px;
+      color: #4a5568;
+    }
+
+    .bmc-button {
+      display: flex;
+      justify-content: center;
+      text-decoration: none;
+      transition: transform 0.2s ease;
+    }
+
+    .bmc-button:hover {
+      transform: scale(1.02);
+    }
+
+    .bmc-button img {
+      width: 180px;
+      height: auto;
+    }
   </style>
 </head>
 <body>
@@ -368,6 +402,14 @@
       <li>Der Text wird vorgelesen und das aktuelle Wort hervorgehoben</li>
       <li>Klicken Sie erneut zum Pausieren/Fortsetzen</li>
     </ul>
+  </div>
+
+  <div class="donations">
+    <h2>Unterstützen</h2>
+    <p>Wenn dir Klartext gefällt, kannst du die Entwicklung unterstützen:</p>
+    <a href="https://www.buymeacoffee.com/danke_von_klartext" target="_blank" class="bmc-button">
+      <img src="bmc-button.png" alt="Buy Me A Coffee">
+    </a>
   </div>
 
   <script src="popup.js"></script>
