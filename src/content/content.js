@@ -156,6 +156,128 @@ class TranslationOverlay {
       this.content.className = 'klartext-content';
       this.overlay.appendChild(this.content);
 
+      // Create header controls
+      const headerControls = document.createElement('div');
+      headerControls.className = 'klartext-header-controls';
+
+      // Create text size button group
+      const textSizeGroup = document.createElement('div');
+      textSizeGroup.className = 'klartext-text-size-group';
+
+      // Create text size buttons
+      const sizes = [
+        { id: 'normal', label: 'A' },
+        { id: 'gross', label: 'A+' },
+        { id: 'sehr-gross', label: 'A++' }
+      ];
+
+      sizes.forEach(size => {
+        const button = document.createElement('button');
+        button.className = 'klartext-text-size-button';
+        button.textContent = size.label;
+        button.setAttribute('data-size', size.id);
+        button.setAttribute('aria-label', `Textgröße ${size.label}`);
+        button.onclick = () => {
+          // Remove active class from all buttons
+          textSizeGroup.querySelectorAll('.klartext-text-size-button').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          // Add active class to clicked button
+          button.classList.add('active');
+          // Update translation text size
+          const translation = this.overlay.querySelector('.klartext-translation');
+          if (translation) {
+            translation.classList.remove('klartext-text-normal', 'klartext-text-gross', 'klartext-text-sehr-gross');
+            translation.classList.add(`klartext-text-${size.id}`);
+          }
+        };
+        textSizeGroup.appendChild(button);
+      });
+
+      // Create print button
+      const printButton = document.createElement('button');
+      printButton.className = 'klartext-print';
+      printButton.innerHTML = '🖨️';
+      printButton.setAttribute('aria-label', 'Drucken');
+      printButton.addEventListener('click', () => {
+        // Create a new window for printing
+        const printWindow = window.open('', '_blank');
+        
+        // Add complete HTML structure and styles
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Leichte Sprache Übersetzung</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 20px;
+                font-family: 'Open Sans', Verdana, sans-serif;
+              }
+              .klartext-translation {
+                font-family: 'Open Sans', Verdana, sans-serif;
+                line-height: 1.8;
+                color: #1a1a1a;
+                max-width: 800px;
+                margin: 0 auto;
+              }
+              .klartext-translation h1 { font-size: 2em; margin: 0.67em 0; }
+              .klartext-translation h2 { font-size: 1.75em; margin: 0.75em 0; }
+              .klartext-translation h3 { font-size: 1.5em; margin: 0.83em 0; }
+              .klartext-translation p { margin: 1em 0; }
+              .klartext-translation ul, .klartext-translation ol { margin: 1em 0; padding-left: 40px; }
+              .klartext-translation li { margin: 0.5em 0; }
+              @media print {
+                body { padding: 0; }
+                .klartext-translation { max-width: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="klartext-translation">
+        `);
+        
+        // Get translation content and remove TTS button
+        const translation = this.overlay.querySelector('.klartext-translation');
+        if (translation) {
+          // Clone the translation to avoid modifying the original
+          const printContent = translation.cloneNode(true);
+          // Remove TTS button
+          const ttsButton = printContent.querySelector('.klartext-tts-button');
+          if (ttsButton) {
+            ttsButton.remove();
+          }
+          printWindow.document.write(printContent.innerHTML);
+        }
+        
+        // Close HTML structure
+        printWindow.document.write(`
+            </div>
+          </body>
+          </html>
+        `);
+        
+        // Close the document and wait for load before printing
+        printWindow.document.close();
+        
+        // Wait for window to load before printing
+        printWindow.onload = () => {
+          printWindow.focus(); // Focus window to ensure print dialog appears
+          setTimeout(() => {
+            printWindow.print();
+            // Only close after print dialog is closed
+            const checkPrintDialogClosed = setInterval(() => {
+              if (printWindow.document.readyState === 'complete') {
+                clearInterval(checkPrintDialogClosed);
+                printWindow.close();
+              }
+            }, 1000);
+          }, 250);
+        };
+      });
+
       // Create close button
       this.closeButton = document.createElement('button');
       this.closeButton.className = 'klartext-close';
@@ -165,7 +287,13 @@ class TranslationOverlay {
         console.log('Close button clicked');
         this.hide();
       });
-      this.overlay.appendChild(this.closeButton);
+
+      // Add components to header controls
+      headerControls.appendChild(textSizeGroup);
+      headerControls.appendChild(printButton);
+      headerControls.appendChild(this.closeButton);
+
+      this.overlay.appendChild(headerControls);
 
       // Add keyboard event listener for accessibility
       document.addEventListener('keydown', (e) => {
@@ -361,8 +489,8 @@ class TranslationOverlay {
             else s.classList.remove('selected');
           });
 
-          // Show feedback button
-          feedbackButton.classList.add('visible');
+          // Show feedback button for translation feedback
+          feedbackButton.style.display = 'block';
         });
 
         stars.push(star);
@@ -412,21 +540,28 @@ class TranslationOverlay {
       includeContainer.appendChild(includeCheckbox);
       includeContainer.appendChild(includeLabel);
 
-      // Create feedback button
+      // Create feedback button (initially hidden)
       const feedbackButton = document.createElement('button');
       feedbackButton.className = 'klartext-feedback';
       feedbackButton.textContent = 'Mitteilung senden';
       feedbackButton.setAttribute('aria-label', 'Mitteilung zur Übersetzung geben');
+      feedbackButton.style.display = 'none';
 
       // Add feedback button click handler
       feedbackButton.addEventListener('click', async () => {
         try {
           const originalText = window.getSelection().toString();
-          const provider = await new Promise(resolve => {
+          const { provider, model } = await new Promise(resolve => {
             chrome.storage.sync.get(['provider', 'model'], items => {
-              resolve(`${items.provider || 'unknown'} (${items.model || 'unknown'})`);
+              resolve({
+                provider: items.provider,
+                model: items.model
+              });
             });
           });
+
+          console.log('Provider:', provider);
+          console.log('Model:', model);
 
           // Get selected rating and comment
           const rating = starsContainer.querySelectorAll('.selected').length;
@@ -441,15 +576,17 @@ class TranslationOverlay {
               category: 'Translation Quality',
               comment,
               details: includedTexts ? {
-                originalText,
+                originalText: originalText,
                 translatedText: translation,
                 url: window.location.href,
-                provider: provider.split(' ')[0],
-                model: provider.split(' ')[1].replace(/[()]/g, '')
+                provider: provider,
+                model: model
               } : {
-                url: window.location.href,
-                provider: provider.split(' ')[0],
-                model: provider.split(' ')[1].replace(/[()]/g, '')
+                originalText: 'not provided',
+                translatedText: 'not provided',
+                url: 'not provided',
+                provider: provider,
+                model: model
               }
             }
           }, response => {
@@ -515,9 +652,12 @@ class TranslationOverlay {
       feedbackButton.setAttribute('aria-label', 'Diesen Fehler melden');
       feedbackButton.addEventListener('click', async () => {
         try {
-          const provider = await new Promise(resolve => {
+          const { provider, model } = await new Promise(resolve => {
             chrome.storage.sync.get(['provider', 'model'], items => {
-              resolve(`${items.provider || 'unknown'} (${items.model || 'unknown'})`);
+              resolve({
+                provider: items.provider,
+                model: items.model
+              });
             });
           });
 
@@ -542,7 +682,8 @@ class TranslationOverlay {
             `- URL: ${window.location.href}\n` +
             `- Extension: ${chrome.runtime.getManifest().name}\n` +
             `- Version: ${chrome.runtime.getManifest().version}\n` +
-            `- Provider: ${provider}\n\n` +
+            `- Provider: ${provider}\n` +
+            `- Model: ${model}\n\n` +
             `### Zusätzliche Informationen\n` +
             `[Bitte beschreiben Sie hier, was Sie gemacht haben, als der Fehler auftrat]\n`
           );

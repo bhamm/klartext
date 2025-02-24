@@ -12,7 +12,13 @@ fetch(chrome.runtime.getURL('src/config/api-keys.json'))
   .then(response => response.json())
   .then(data => {
     PROVIDER_KEYS = data;
-    console.log('Provider API keys loaded');
+    // Store default provider and model in chrome.storage
+    chrome.storage.sync.set({
+      provider: API_CONFIG.provider,
+      model: API_CONFIG.model
+    }, () => {
+      console.log('Provider API keys and defaults loaded');
+    });
   })
   .catch(error => {
     console.error('Error loading provider API keys:', error);
@@ -153,7 +159,7 @@ const PROVIDERS = {
         }
 
         let translation = data.choices[0].message.content;
-        return translation.replace(/^```|```$/g, '').trim();
+        return translation.replace(/(^```html|^```|```$|^html)/g, '').trim();
       } catch (error) {
         if (error.name === 'SyntaxError') {
           ApiErrorHandler.handleSyntaxError('OpenAI');
@@ -291,23 +297,17 @@ async function loadApiConfig() {
       if (items.provider) API_CONFIG.provider = items.provider;
       if (items.model) API_CONFIG.model = items.model;
       
-      // Use API key and endpoint from config file if available, otherwise use stored values
-      if (API_CONFIG.provider && PROVIDER_KEYS[API_CONFIG.provider]) {
-        const providerConfig = PROVIDER_KEYS[API_CONFIG.provider];
-        if (providerConfig.apiKey) {
-          API_CONFIG.apiKey = providerConfig.apiKey;
-        } else if (items.apiKey) {
-          API_CONFIG.apiKey = items.apiKey;
-        }
-        
-        if (providerConfig.apiEndpoint) {
-          API_CONFIG.apiEndpoint = providerConfig.apiEndpoint;
-        } else if (items.apiEndpoint) {
-          API_CONFIG.apiEndpoint = items.apiEndpoint;
-        }
-      } else {
-        if (items.apiKey) API_CONFIG.apiKey = items.apiKey;
-        if (items.apiEndpoint) API_CONFIG.apiEndpoint = items.apiEndpoint;
+      // Prioritize user-provided keys and endpoints from storage
+      if (items.apiKey) {
+        API_CONFIG.apiKey = items.apiKey;
+      } else if (API_CONFIG.provider && PROVIDER_KEYS[API_CONFIG.provider]?.apiKey) {
+        API_CONFIG.apiKey = PROVIDER_KEYS[API_CONFIG.provider].apiKey;
+      }
+
+      if (items.apiEndpoint) {
+        API_CONFIG.apiEndpoint = items.apiEndpoint;
+      } else if (API_CONFIG.provider && PROVIDER_KEYS[API_CONFIG.provider]?.apiEndpoint) {
+        API_CONFIG.apiEndpoint = PROVIDER_KEYS[API_CONFIG.provider].apiEndpoint;
       }
       
       console.log('API configuration loaded:', { 
@@ -404,13 +404,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!message.config) throw new Error('No configuration provided');
       
       API_CONFIG = { ...API_CONFIG, ...message.config };
-      console.log('API Configuration updated:', {
+      
+      // Store updated config in chrome.storage
+      chrome.storage.sync.set({
         provider: API_CONFIG.provider,
-        model: API_CONFIG.model
-      });
+        model: API_CONFIG.model,
+        apiKey: API_CONFIG.apiKey,
+        apiEndpoint: API_CONFIG.apiEndpoint
+      }, () => {
+        console.log('API Configuration updated:', {
+          provider: API_CONFIG.provider,
+          model: API_CONFIG.model
+        });
 
-      chrome.storage.sync.get(['experimentalFeatures'], (items) => {
-        MenuManager.setupContextMenu(items.experimentalFeatures);
+        chrome.storage.sync.get(['experimentalFeatures'], (items) => {
+          MenuManager.setupContextMenu(items.experimentalFeatures);
+        });
       });
       
       sendResponse({ success: true });

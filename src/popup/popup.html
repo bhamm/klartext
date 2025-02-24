@@ -59,6 +59,22 @@
       box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
     }
 
+    input[type="password"], .select-input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+      background-color: #ffffff;
+    }
+
+    input[type="password"]:focus, .select-input:focus {
+      outline: none;
+      border-color: #3182ce;
+      box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+    }
+
     .select-input {
       cursor: pointer;
     }
@@ -224,6 +240,7 @@
       font-size: 14px;
       line-height: 1.5;
       margin-top: 16px;
+      border-top: 1px solid #e2e8f0;
     }
 
     .instructions h2 {
@@ -244,6 +261,40 @@
     .instructions li {
       margin-bottom: 4px;
     }
+
+    .donations {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .donations h2 {
+      font-size: 16px;
+      margin: 0 0 8px;
+      color: #2c5282;
+    }
+
+    .donations p {
+      font-size: 14px;
+      margin: 0 0 16px;
+      color: #4a5568;
+    }
+
+    .bmc-button {
+      display: flex;
+      justify-content: center;
+      text-decoration: none;
+      transition: transform 0.2s ease;
+    }
+
+    .bmc-button:hover {
+      transform: scale(1.02);
+    }
+
+    .bmc-button img {
+      width: 180px;
+      height: auto;
+    }
   </style>
 </head>
 <body>
@@ -261,15 +312,15 @@
 
   <div class="form-group">
     <label for="api-key">API-Schlüssel</label>
-    <input type="text" id="api-key" placeholder="Ihr API-Schlüssel" autocomplete="off">
+    <input type="password" id="api-key" placeholder="Ihr API-Schlüssel" autocomplete="off">
     <small class="api-hint" id="api-hint"></small>
   </div>
 
   <div class="form-group">
-    <label for="api-endpoint">API-Endpoint</label>
+    <label for="api-endpoint">API-Endpunkt</label>
     <input type="text" id="api-endpoint" placeholder="https://..." autocomplete="off">
     <small class="endpoint-hint">
-      Standard-Endpoints:<br>
+      Standart-Endpunkte:<br>
       • OpenAI: https://api.openai.com/v1/chat/completions<br>
       • Google: https://generativelanguage.googleapis.com/v1/models<br>
       • Anthropic: https://api.anthropic.com/v1/messages<br>
@@ -335,6 +386,14 @@
 
   <button class="save-button">Speichern</button>
   <div id="status" class="status"></div>
+
+  <div class="donations">
+    <h2>Unterstützen</h2>
+    <p>Wenn dir Klartext gefällt, kannst du die Entwicklung unterstützen:</p>
+    <a href="https://www.buymeacoffee.com/danke_von_klartext" target="_blank" class="bmc-button">
+      <img src="bmc-button.png" alt="Buy Me A Coffee">
+    </a>
+  </div>
 
   <div class="instructions">
     <h2>Anleitung</h2>

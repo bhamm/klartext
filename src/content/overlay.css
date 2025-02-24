@@ -1,3 +1,58 @@
+/* CSS Reset for overlay */
+.klartext-overlay * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+  font-style: normal;
+  text-decoration: none;
+  border-collapse: collapse;
+  text-align: left;
+  line-height: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  word-spacing: normal;
+  white-space: normal;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+/* Base styles for all overlay elements */
+.klartext-overlay {
+  font-family: 'Open Sans', Verdana, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  text-align: left;
+}
+
+/* Button base styles */
+.klartext-overlay button {
+  font-family: 'Open Sans', Verdana, sans-serif;
+  font-size: 16px;
+  line-height: normal;
+  text-align: center;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  font-weight: normal;
+  text-decoration: none;
+}
+
+/* Form element base styles */
+.klartext-overlay input,
+.klartext-overlay textarea {
+  font-family: 'Open Sans', Verdana, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  margin: 0;
+  padding: 8px;
+}
+
 /* Translation styles */
 .klartext-section {
   position: relative;
@@ -35,6 +90,71 @@
   color: #1a1a1a;
   font-size: 1rem;
   font-weight: 500;
+}
+
+/* Header controls */
+.klartext-header-controls {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #f8f9fa;
+  padding: 0.25rem;
+  border-radius: 6px;
+}
+
+.klartext-text-size-group {
+  display: flex;
+  gap: 0.125rem;
+  margin-right: 0.5rem;
+  border-right: 1px solid #e2e8f0;
+  padding-right: 0.5rem;
+}
+
+.klartext-text-size-button {
+  padding: 0.35rem 0.5rem;
+  min-width: 2rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.klartext-text-size-button:hover {
+  border-color: #3498db;
+  color: #1a1a1a;
+}
+
+.klartext-text-size-button.active {
+  background: #3498db;
+  color: white;
+  border-color: #2980b9;
+}
+
+/* Print and close buttons */
+.klartext-print,
+.klartext-close {
+  padding: 0.35rem 0.5rem;
+  font-size: 1.1rem;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.klartext-print:hover,
+.klartext-close:hover {
+  border-color: #3498db;
+  color: #1a1a1a;
 }
 
 /* Controls */
@@ -255,32 +375,6 @@
   transform: translate(-50%, -50%) scale(1);
 }
 
-.klartext-close {
-  position: absolute;
-  top: 1.2rem;
-  right: 1.2rem;
-  background: none;
-  border: 2px solid transparent;
-  font-size: 1.5rem;
-  line-height: 1;
-  padding: 0.5rem;
-  cursor: pointer;
-  color: #4a5568;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.klartext-close:hover {
-  background-color: #f0f0f0;
-  color: #1a1a1a;
-}
-
-.klartext-close:focus {
-  outline: none;
-  border-color: #3498db;
-  background-color: #f0f0f0;
-}
-
 .klartext-content {
   margin-top: 1rem;
 }
@@ -303,17 +397,63 @@
   border-radius: 8px;
 }
 
-/* Text size classes */
-.klartext-text-normal .klartext-translation {
+/* Global text size classes (from settings) */
+body.klartext-text-normal .klartext-translation:not(.klartext-overlay .klartext-translation) {
   font-size: 16px;
 }
 
-.klartext-text-gross .klartext-translation {
+body.klartext-text-gross .klartext-translation:not(.klartext-overlay .klartext-translation) {
   font-size: 18px;
 }
 
-.klartext-text-sehr-gross .klartext-translation {
+body.klartext-text-sehr-gross .klartext-translation:not(.klartext-overlay .klartext-translation) {
   font-size: 20px;
+}
+
+/* Overlay-specific text size classes */
+.klartext-overlay .klartext-translation.klartext-text-normal {
+  font-size: 16px;
+}
+
+.klartext-overlay .klartext-translation.klartext-text-gross {
+  font-size: 18px;
+}
+
+.klartext-overlay .klartext-translation.klartext-text-sehr-gross {
+  font-size: 20px;
+}
+
+/* Print styles */
+@media print {
+  body > *:not(.klartext-overlay) {
+    display: none !important;
+  }
+  
+  .klartext-overlay {
+    position: relative;
+    transform: none;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    box-shadow: none;
+    background: none;
+  }
+  
+  .klartext-print,
+  .klartext-close,
+  .klartext-text-size-button,
+  .klartext-backdrop,
+  .klartext-feedback-container {
+    display: none !important;
+  }
+  
+  .klartext-translation {
+    background: none;
+    padding: 0;
+    margin: 0;
+  }
 }
 
 .klartext-translation h1,
@@ -406,6 +546,7 @@
   color: #1a1a1a;
   font-size: 1.1rem;
   font-weight: 500;
+  text-align: center;
 }
 
 .klartext-stars {
@@ -439,6 +580,7 @@
 }
 
 .klartext-feedback {
+  text-align: center;
   display: inline-block;
   margin: 2rem auto 0;
   padding: 0.8rem 1.5rem;

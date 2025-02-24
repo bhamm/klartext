@@ -41,46 +41,66 @@ const excludeCommentsCheckbox = document.getElementById('exclude-comments');
 const saveButton = document.querySelector('.save-button');
 const statusDiv = document.getElementById('status');
 
-// Load saved settings
-chrome.storage.sync.get(
-  {
-    provider: 'openAI',
-    model: '',
-    apiKey: '',
-    apiEndpoint: '',
-    textSize: 'normal',
-    experimentalFeatures: {
-      fullPageTranslation: false
-    },
-    compareView: false,
-    excludeComments: true
-  },
-  (items) => {
-    const provider = items.provider;
-    const config = PROVIDERS[provider];
-    
-    providerSelect.value = provider;
-    apiKeyInput.value = items.apiKey;
-    // Use default endpoint if none is saved
-    apiEndpointInput.value = items.apiEndpoint || config.defaultEndpoint;
-    document.querySelector(`input[name="text-size"][value="${items.textSize}"]`).checked = true;
-    compareViewCheckbox.checked = items.compareView;
-    excludeCommentsCheckbox.checked = items.excludeComments;
-    
-    // Initialize experimental features
-    const enableFullpageCheckbox = document.getElementById('enable-fullpage');
-    const fullpageSettings = document.getElementById('fullpage-settings');
-    
-    enableFullpageCheckbox.checked = items.experimentalFeatures?.fullPageTranslation || false;
-    fullpageSettings.classList.toggle('enabled', enableFullpageCheckbox.checked);
-    
-    // Update UI and save settings to ensure default endpoint is stored
-    updateProviderUI(provider, items.model);
-    if (!items.apiEndpoint) {
-      saveSettings().catch(console.error);
-    }
+// Load API keys from config
+let apiKeys = {};
+
+async function loadApiKeys() {
+  try {
+    const response = await fetch(chrome.runtime.getURL('src/config/api-keys.json'));
+    apiKeys = await response.json();
+  } catch (error) {
+    console.error('Error loading API keys:', error);
   }
-);
+}
+
+// Load saved settings
+async function loadSettings() {
+  await loadApiKeys();
+  
+  chrome.storage.sync.get(
+    {
+      provider: 'openAI',
+      model: '',
+      apiKey: '',
+      apiEndpoint: '',
+      textSize: 'normal',
+      experimentalFeatures: {
+        fullPageTranslation: false
+      },
+      compareView: false,
+      excludeComments: true
+    },
+    (items) => {
+      const provider = items.provider;
+      const config = PROVIDERS[provider];
+      
+      providerSelect.value = provider;
+      // Use API key from config if available, otherwise use saved key
+      apiKeyInput.value = apiKeys[provider]?.apiKey || items.apiKey;
+      // Use API endpoint from config if available, otherwise use saved endpoint or default
+      apiEndpointInput.value = apiKeys[provider]?.apiEndpoint || items.apiEndpoint || config.defaultEndpoint;
+      document.querySelector(`input[name="text-size"][value="${items.textSize}"]`).checked = true;
+      compareViewCheckbox.checked = items.compareView;
+      excludeCommentsCheckbox.checked = items.excludeComments;
+      
+      // Initialize experimental features
+      const enableFullpageCheckbox = document.getElementById('enable-fullpage');
+      const fullpageSettings = document.getElementById('fullpage-settings');
+      
+      enableFullpageCheckbox.checked = items.experimentalFeatures?.fullPageTranslation || false;
+      fullpageSettings.classList.toggle('enabled', enableFullpageCheckbox.checked);
+      
+      // Update UI and save settings to ensure default endpoint is stored
+      updateProviderUI(provider, items.model);
+      if (!items.apiEndpoint) {
+        saveSettings().catch(console.error);
+      }
+    }
+  );
+}
+
+// Initialize settings when popup opens
+loadSettings().catch(console.error);
 
 // Update UI based on selected provider
 function updateProviderUI(provider, selectedModel = '') {
@@ -250,8 +270,15 @@ providerSelect.addEventListener('change', () => {
   const provider = providerSelect.value;
   const config = PROVIDERS[provider];
   
-  // Reset endpoint to default when provider changes
-  apiEndpointInput.value = config.defaultEndpoint;
+  // Use API key and endpoint from api-keys.json if available
+  if (apiKeys[provider]) {
+    apiKeyInput.value = apiKeys[provider].apiKey || '';
+    apiEndpointInput.value = apiKeys[provider].apiEndpoint || config.defaultEndpoint;
+  } else {
+    apiKeyInput.value = '';
+    apiEndpointInput.value = config.defaultEndpoint;
+  }
+  
   updateProviderUI(provider);
 });
 
