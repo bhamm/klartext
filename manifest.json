@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klartext - Leichte Sprache",
-  "version": "1.5.9",
+  "version": "1.5.12",
   "description": "Übersetzt deutsche Texte in 'Leichte Sprache' für bessere Zugänglichkeit",
   "permissions": [
     "contextMenus",
@@ -19,20 +19,20 @@
     "https://canny.io/*"
   ],
   "background": {
-    "service_worker": "src/background/background.js",
+    "service_worker": "dist/background/background.js",
     "type": "module"
   },
   "web_accessible_resources": [{
     "resources": [
-      "src/content/content.js",
-      "src/content/overlay.css",
-      "src/config/api-keys.json",
-      "src/popup/bmc-button.png"
+      "dist/content/content.js",
+      "dist/content/overlay.css",
+      "dist/config/api-keys.json",
+      "dist/popup/bmc-button.png"
     ],
     "matches": ["<all_urls>"]
   }],
   "action": {
-    "default_popup": "src/popup/popup.html",
+    "default_popup": "dist/popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
