@@ -7,17 +7,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
-    "types": ["jest", "chrome", "@types/jest"],
+    "rootDir": ".",
     "outDir": "dist",
-    "rootDir": "src",
     "sourceMap": true,
     "jsx": "react",
     "allowJs": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "types": ["chrome", "jest", "node"]
   },
   "include": [
     "src/**/*.ts",

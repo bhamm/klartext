@@ -17,5 +17,29 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: 'tsconfig.json'
     }]
+  },
+  testTimeout: 30000, // Increased timeout for Puppeteer tests
+  globals: {
+    'ts-jest': {
+      tsconfig: 'tsconfig.json'
+    }
+  },
+  testEnvironmentOptions: {
+    'jest-environment-node': {
+      // Required for Puppeteer
+      globals: {
+        Uint8Array: Uint8Array,
+        Uint16Array: Uint16Array,
+        Uint32Array: Uint32Array,
+        Int8Array: Int8Array,
+        Int16Array: Int16Array,
+        Int32Array: Int32Array,
+        Float32Array: Float32Array,
+        Float64Array: Float64Array,
+        Uint8ClampedArray: Uint8ClampedArray,
+        ArrayBuffer: ArrayBuffer,
+        DataView: DataView,
+      }
+    }
   }
 };

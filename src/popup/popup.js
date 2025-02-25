@@ -46,7 +46,7 @@ let apiKeys = {};
 
 async function loadApiKeys() {
   try {
-    const response = await fetch(chrome.runtime.getURL('src/config/api-keys.json'));
+    const response = await fetch(chrome.runtime.getURL('dist/config/api-keys.json'));
     apiKeys = await response.json();
   } catch (error) {
     console.error('Error loading API keys:', error);
@@ -76,9 +76,9 @@ async function loadSettings() {
       
       providerSelect.value = provider;
       // Use API key from config if available, otherwise use saved key
-      apiKeyInput.value = apiKeys[provider]?.apiKey || items.apiKey;
+      apiKeyInput.value = apiKeys.providers?.[provider]?.apiKey || items.apiKey;
       // Use API endpoint from config if available, otherwise use saved endpoint or default
-      apiEndpointInput.value = apiKeys[provider]?.apiEndpoint || items.apiEndpoint || config.defaultEndpoint;
+      apiEndpointInput.value = apiKeys.providers?.[provider]?.apiEndpoint || items.apiEndpoint || config.defaultEndpoint;
       document.querySelector(`input[name="text-size"][value="${items.textSize}"]`).checked = true;
       compareViewCheckbox.checked = items.compareView;
       excludeCommentsCheckbox.checked = items.excludeComments;
@@ -271,9 +271,9 @@ providerSelect.addEventListener('change', () => {
   const config = PROVIDERS[provider];
   
   // Use API key and endpoint from api-keys.json if available
-  if (apiKeys[provider]) {
-    apiKeyInput.value = apiKeys[provider].apiKey || '';
-    apiEndpointInput.value = apiKeys[provider].apiEndpoint || config.defaultEndpoint;
+  if (apiKeys.providers?.[provider]) {
+    apiKeyInput.value = apiKeys.providers[provider].apiKey || '';
+    apiEndpointInput.value = apiKeys.providers[provider].apiEndpoint || config.defaultEndpoint;
   } else {
     apiKeyInput.value = '';
     apiEndpointInput.value = config.defaultEndpoint;
