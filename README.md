@@ -2,6 +2,14 @@
 
 Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um sie für Menschen mit eingeschränktem Sprachverständnis zugänglicher zu machen.
 
+## Version 1.5.23
+
+Die aktuelle Version enthält folgende Verbesserungen:
+- Verbesserte Textverarbeitung mit optimierter Zeichensetzungsbehandlung
+- Neue HTML-Bereinigungsfunktionen für bessere Artikelerkennung
+- Optimierte Seitenübersetzung mit intelligenter Textaufteilung
+- Verbesserte Typensicherheit und Fehlerbehandlung
+
 ## Features
 
 - Text-zu-Sprache Funktion:
@@ -108,6 +116,16 @@ Die Erweiterung bietet eine flexible Architektur für verschiedene KI-Provider:
 - **API-Konfiguration:** Anpassbare Endpoints und Modelle
 - **Caching:** Lokaler Cache für häufig übersetzte Texte
 - **Fehlerbehandlung:** Robuste Fehlerbehandlung für API-Aufrufe
+- **HTML-Bereinigung:** Intelligente Filterung von irrelevanten Elementen
+  - Entfernung von Werbung, Navigation, Formularen und versteckten Elementen
+  - Kommentarbereinigung für bessere Textqualität
+  - Optimierte Artikelerkennung
+- **Textverarbeitung:** Verbesserte Verarbeitung von Text für Sprachausgabe
+  - Intelligente Zeichensetzungsbehandlung
+  - Optimierte Wortaufteilung für Text-zu-Sprache
+- **Seitenübersetzung:** Effiziente Verarbeitung großer Textmengen
+  - Automatische Aufteilung in übersetzbare Abschnitte
+  - Intelligente Größenbegrenzung für optimale API-Nutzung
 
 ## Entwicklung
 
@@ -116,21 +134,34 @@ Die Erweiterung bietet eine flexible Architektur für verschiedene KI-Provider:
 ```
 klartext/
 ├── manifest.json           # Extension-Konfiguration
-├── _locales/              # Lokalisierungsdateien
+├── _locales/               # Lokalisierungsdateien
 │   └── de/
 │       └── messages.json
 ├── src/
-│   ├── background/        # Service Worker
-│   │   └── background.js
-│   ├── config/           # Konfigurationsdateien
-│   │   └── api-keys.json # API-Schlüssel (nicht im Git)
-│   ├── content/          # Content Scripts
-│   │   ├── content.js
-│   │   └── overlay.css
-│   └── popup/           # Popup UI
-│       ├── popup.html
-│       └── popup.js
-└── icons/               # Extension-Icons
+│   ├── background/         # Service Worker & Backend
+│   │   ├── background.ts
+│   │   └── providers/      # KI-Provider Implementierungen
+│   ├── config/             # Konfigurationsdateien
+│   │   └── api-keys.json   # API-Schlüssel (nicht im Git)
+│   ├── content/            # Content Scripts
+│   │   ├── index.ts        # Haupteinstiegspunkt
+│   │   ├── overlay.css     # Styling für Overlay
+│   │   ├── controllers/    # Controller-Komponenten
+│   │   ├── services/       # Service-Komponenten
+│   │   ├── ui/             # UI-Komponenten
+│   │   ├── utils/          # Hilfsfunktionen
+│   │   │   ├── dom-utils.ts    # DOM-Manipulationsfunktionen
+│   │   │   └── html-cleaner.ts # HTML-Bereinigungsfunktionen
+│   │   └── types/          # TypeScript-Typdefinitionen
+│   ├── settings/           # Einstellungs-UI
+│   │   ├── settings.html
+│   │   └── components/     # UI-Komponenten
+│   └── shared/             # Gemeinsam genutzte Module
+│       └── types/          # Gemeinsame Typdefinitionen
+├── test/                   # Testdateien
+│   ├── content/            # Tests für Content Scripts
+│   └── extension/          # Integrationstests
+└── icons/                  # Extension-Icons
     ├── icon16.png
     ├── icon48.png
     └── icon128.png
