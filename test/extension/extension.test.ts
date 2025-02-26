@@ -64,7 +64,7 @@ describe('Klartext Extension Tests', () => {
 
     // Create a new page and load the popup directly
     popupPage = await browser.newPage();
-    await popupPage.goto(`chrome-extension://${await worker.evaluate(() => chrome.runtime.id)}/dist/popup/popup.html`);
+    await popupPage.goto(`chrome-extension://${await worker.evaluate(() => chrome.runtime.id)}/dist/settings/settings.html`);
     // Wait for the page to be fully loaded
     await popupPage.waitForSelector('#provider-select');
     // Wait for storage to be initialized

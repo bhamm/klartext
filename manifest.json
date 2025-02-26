@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klartext - Leichte Sprache",
-  "version": "1.5.15",
+  "version": "1.5.18",
   "description": "Übersetzt deutsche Texte in 'Leichte Sprache' für bessere Zugänglichkeit",
   "permissions": [
     "contextMenus",
@@ -27,12 +27,12 @@
       "dist/content/content.js",
       "dist/content/overlay.css",
       "dist/config/api-keys.json",
-      "dist/popup/bmc-button.png"
+      "dist/settings/bmc-button.png"
     ],
     "matches": ["<all_urls>"]
   }],
   "action": {
-    "default_popup": "dist/popup/popup.html",
+    "default_popup": "dist/settings/settings.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

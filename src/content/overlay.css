@@ -287,6 +287,17 @@
   100% { transform: rotate(360deg); }
 }
 
+/* Word highlighting for TTS */
+.klartext-word {
+  display: inline;
+}
+
+.klartext-word.active {
+  background: #023551;
+  border-radius: 3px;
+  padding: 0.1em 0.2em;
+  margin: -0.1em -0.2em;
+}
 
 /* Original/Translation toggle */
 .klartext-section {
