@@ -1,5 +1,25 @@
+import { translate } from './providers';
+import { 
+  ErrorDetails, 
+  ProviderConfig, 
+  ConfigStore, 
+  FeedbackDetails, 
+  MenuItemConfig,
+  ExperimentalFeatures 
+} from '../shared/types/error';
+import {
+  ApiConfig,
+  StorageItems,
+  TranslationMessage,
+  ConfigMessage,
+  FeedbackMessage,
+  PingResponse,
+  Tab,
+  Message
+} from '../shared/types/api';
+
 // Constants
-const MENU_ITEMS = {
+const MENU_ITEMS: { [key: string]: string } = {
   SELECTION: 'translate-selection-to-leichte-sprache',
   ARTICLE: 'translate-article-to-leichte-sprache',
   FULLPAGE: 'translate-fullpage-to-leichte-sprache'
@@ -7,11 +27,11 @@ const MENU_ITEMS = {
 const REPO_URL = 'https://github.com/bhamm/klartext';
 
 // Load provider API keys from config file
-let PROVIDER_KEYS = {};
-fetch(chrome.runtime.getURL('src/config/api-keys.json'))
+let CONFIG_STORE: ConfigStore = { providers: {} };
+fetch(chrome.runtime.getURL('dist/config/api-keys.json'))
   .then(response => response.json())
-  .then(data => {
-    PROVIDER_KEYS = data;
+  .then((data: ConfigStore) => {
+    CONFIG_STORE = data;
     // Store default provider and model in chrome.storage
     chrome.storage.sync.set({
       provider: API_CONFIG.provider,
@@ -20,39 +40,40 @@ fetch(chrome.runtime.getURL('src/config/api-keys.json'))
       console.log('Provider API keys and defaults loaded');
     });
   })
-  .catch(error => {
+  .catch((error: Error) => {
     console.error('Error loading provider API keys:', error);
   });
 
 // Utility class for API error handling
 class ApiErrorHandler {
-  static createErrorDetails(error, config, text, provider) {
+  static createErrorDetails(error: unknown, config: ApiConfig, text: string, provider: string): ErrorDetails {
+    const err = error as { message?: string; status?: number; statusText?: string };
     return {
-      message: error?.message || 'Unknown error',
+      message: err?.message || 'Unknown error',
       request: {
         endpoint: config.apiEndpoint,
         model: config.model,
         text: text
       },
       response: error,
-      status: error?.status,
-      statusText: error?.statusText
+      status: err?.status,
+      statusText: err?.statusText
     };
   }
 
-  static handleApiError(error, config, text, provider) {
+  static handleApiError(error: unknown, config: ApiConfig, text: string, provider: string): never {
     const errorDetails = this.createErrorDetails(error, config, text, provider);
     throw new Error(`${provider} API error: ${JSON.stringify(errorDetails, null, 2)}`);
   }
 
-  static handleSyntaxError(provider) {
+  static handleSyntaxError(provider: string): never {
     throw new Error(`Invalid response from ${provider} API. Please check your API configuration.`);
   }
 }
 
 // Canny feedback handler
 class CannyFeedback {
-  static async submitFeedback({ rating, comment, details }) {
+  static async submitFeedback(feedback: FeedbackDetails) {
     try {
       const version = chrome.runtime.getManifest().version;
       const response = await fetch('https://canny.io/api/v1/posts/create', {
@@ -61,12 +82,12 @@ class CannyFeedback {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          apiKey: PROVIDER_KEYS.canny?.apiKey,
-          authorID: PROVIDER_KEYS.canny?.userID,
-          boardID: PROVIDER_KEYS.canny?.boardID,
-          categoryID: PROVIDER_KEYS.canny?.categoryID,
-          title: `Translation Feedback (${rating} stars)`,
-          details: `Comment:\n${comment}\n\nOriginal Text:\n${details.originalText}\n\nTranslated Text:\n${details.translatedText}\n\nContext:\n- URL: ${details.url}\n- Provider: ${details.provider}\n- Model: ${details.model}\n- Version: ${version}`
+          apiKey: CONFIG_STORE.canny?.apiKey,
+          authorID: CONFIG_STORE.canny?.userID,
+          boardID: CONFIG_STORE.canny?.boardID,
+          categoryID: CONFIG_STORE.canny?.categoryID,
+          title: `Translation Feedback (${feedback.rating} stars)`,
+          details: `Comment:\n${feedback.comment}\n\nOriginal Text:\n${feedback.details.originalText}\n\nTranslated Text:\n${feedback.details.translatedText}\n\nContext:\n- URL: ${feedback.details.url}\n- Provider: ${feedback.details.provider}\n- Model: ${feedback.details.model}\n- Version: ${version}`
         })
       });
 
@@ -86,7 +107,7 @@ class CannyFeedback {
 
 // Menu manager for context menu operations
 class MenuManager {
-  static createMenuItem(id, title, contexts, callback) {
+  static createMenuItem(id: string, title: string, contexts: chrome.contextMenus.ContextType[], callback?: () => void) {
     chrome.contextMenus.create({
       id,
       title,
@@ -100,18 +121,20 @@ class MenuManager {
     });
   }
 
-  static setupContextMenu(experimentalFeatures) {
+  static setupContextMenu(experimentalFeatures: ExperimentalFeatures) {
     chrome.contextMenus.removeAll(() => {
       this.createMenuItem(
         MENU_ITEMS.SELECTION,
         'Markierten Text in Leichte Sprache übersetzen',
-        ['selection']
+        ['selection'],
+        () => {}
       );
 
       this.createMenuItem(
         MENU_ITEMS.ARTICLE,
         'Artikel in Leichte Sprache übersetzen',
-        ['all']
+        ['all'],
+        () => {}
       );
 
       if (experimentalFeatures?.fullPageTranslation) {
@@ -126,188 +149,45 @@ class MenuManager {
   }
 }
 
-// Provider configurations with translation handlers
-const PROVIDERS = {
-  openAI: {
-    async translate(text, config, isArticle = false) {
-      try {
-        if (!config.apiEndpoint) throw new Error('OpenAI API endpoint is not configured');
-        if (!config.apiKey) throw new Error('OpenAI API key not found in config file or extension settings');
-
-        const systemPrompt = 
-        'Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Beginne den Text nicht mit dem wort "html"';
-
-        const response = await fetch(config.apiEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.apiKey}`
-          },
-          body: JSON.stringify({
-            model: config.model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: text }
-            ],
-            temperature: 0.1
-          })
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-          ApiErrorHandler.handleApiError(data, config, text, 'OpenAI');
-        }
-
-        let translation = data.choices[0].message.content;
-        return translation.replace(/(^```html|^```|```$|^html)/g, '').trim();
-      } catch (error) {
-        if (error.name === 'SyntaxError') {
-          ApiErrorHandler.handleSyntaxError('OpenAI');
-        }
-        throw error;
-      }
-    }
-  },
-  google: {
-    async translate(text, config, isArticle = false) {
-      try {
-        if (!config.apiEndpoint) throw new Error('Gemini API endpoint is not configured');
-        if (!config.apiKey) throw new Error('Gemini API key not found in config file or extension settings');
-
-        const prompt = 
-        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Beginne den Text nicht mit dem wort "html". Input HTML:\n\n${text}`;
-
-        const response = await fetch(`${config.apiEndpoint}/${config.model}:generateContent?key=${config.apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.1 }
-          })
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-          ApiErrorHandler.handleApiError(data, config, text, 'Gemini');
-        }
-
-        let translation = data.candidates[0].content.parts[0].text;
-        return translation.replace(/(^```html|^```|```$|^html)/g, '').trim();
-      } catch (error) {
-        if (error.name === 'SyntaxError') {
-          ApiErrorHandler.handleSyntaxError('Gemini');
-        }
-        throw error;
-      }
-    }
-  },
-  antrophic: {
-    async translate(text, config, isArticle = false) {
-      try {
-        if (!config.apiKey) throw new Error('Claude API key not found in config file or extension settings');
-
-        const prompt = 
-        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Erstelle immer gültigen HTML-Code. Antworte direkt mit dem Inhalt, ohne eine Einführung. Input HTML:\n\n${text}`;
-
-        const response = await fetch(config.apiEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': config.apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true'
-          },
-          body: JSON.stringify({
-            model: config.model,
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 4096,
-            temperature: 0.1
-          })
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-          ApiErrorHandler.handleApiError(data, config, text, 'Claude');
-        }
-
-        let translation = data.content[0].text;
-        return translation.replace(/(^```html|^```|```$|^html)/g, '').trim();
-      } catch (error) {
-        if (error.name === 'SyntaxError') {
-          ApiErrorHandler.handleSyntaxError('Claude');
-        }
-        throw error;
-      }
-    }
-  },
-  local: {
-    async translate(text, config, isArticle = false) {
-      try {
-        if (!config.apiEndpoint) throw new Error('Local API endpoint is not configured');
-
-        const prompt = 
-        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, <p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige nicht relevante Inhalte. Erstelle immer gültigen HTML-Code. Antworte direkt mit dem Inhalt, ohne eine Einführung. Input HTML:\n\n${text}`;
-
-        const response = await fetch(config.apiEndpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` })
-          },
-          body: JSON.stringify({
-            model: config.model,
-            prompt: prompt,
-            temperature: 0.1,
-            max_tokens: 4000
-          })
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-          ApiErrorHandler.handleApiError(data, config, text, 'Llama');
-        }
-
-        let translation = data.generated_text;
-        return translation.replace(/^```|```$/g, '').trim();
-      } catch (error) {
-        if (error.name === 'SyntaxError') {
-          ApiErrorHandler.handleSyntaxError('Llama');
-        }
-        throw error;
-      }
-    }
-  }
-};
-
 // Current API configuration
-let API_CONFIG = {
-  provider: 'openAI',
+let API_CONFIG: ApiConfig = {
+  provider: 'openAI', // Must match the key in providers object
   model: 'gpt-4-turbo',
   apiKey: '',
   apiEndpoint: ''
 };
 
+// Helper function to normalize provider names
+function normalizeProviderName(provider: string): string {
+  const providerMap: { [key: string]: string } = {
+    'openai': 'openAI',
+    'openAI': 'openAI',
+    'OPENAI': 'openAI'
+  };
+  return providerMap[provider.toLowerCase()] || provider;
+}
+
 // Load API configuration from storage and config file
-async function loadApiConfig() {
+async function loadApiConfig(): Promise<ApiConfig> {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], (items) => {
+    chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], (items: StorageItems) => {
       console.log('Loading API configuration from storage');
       
       // Update provider and model from storage
-      if (items.provider) API_CONFIG.provider = items.provider;
+      if (items.provider) API_CONFIG.provider = normalizeProviderName(items.provider);
       if (items.model) API_CONFIG.model = items.model;
       
       // Prioritize user-provided keys and endpoints from storage
       if (items.apiKey) {
         API_CONFIG.apiKey = items.apiKey;
-      } else if (API_CONFIG.provider && PROVIDER_KEYS[API_CONFIG.provider]?.apiKey) {
-        API_CONFIG.apiKey = PROVIDER_KEYS[API_CONFIG.provider].apiKey;
+      } else if (API_CONFIG.provider && CONFIG_STORE.providers[API_CONFIG.provider]?.apiKey) {
+        API_CONFIG.apiKey = CONFIG_STORE.providers[API_CONFIG.provider].apiKey;
       }
 
       if (items.apiEndpoint) {
         API_CONFIG.apiEndpoint = items.apiEndpoint;
-      } else if (API_CONFIG.provider && PROVIDER_KEYS[API_CONFIG.provider]?.apiEndpoint) {
-        API_CONFIG.apiEndpoint = PROVIDER_KEYS[API_CONFIG.provider].apiEndpoint;
+      } else if (API_CONFIG.provider && CONFIG_STORE.providers[API_CONFIG.provider]?.apiEndpoint) {
+        API_CONFIG.apiEndpoint = CONFIG_STORE.providers[API_CONFIG.provider].apiEndpoint;
       }
       
       console.log('API configuration loaded:', { 
@@ -328,7 +208,7 @@ chrome.runtime.onStartup.addListener(loadApiConfig);
 
 // Translation cache
 class TranslationCache {
-  static async get(text) {
+  static async get(text: string): Promise<string | null> {
     try {
       const result = await chrome.storage.local.get(['translationCache']);
       return (result.translationCache || {})[text];
@@ -338,7 +218,7 @@ class TranslationCache {
     }
   }
 
-  static async set(text, translation) {
+  static async set(text: string, translation: string): Promise<void> {
     try {
       const result = await chrome.storage.local.get(['translationCache']);
       const cache = result.translationCache || {};
@@ -360,13 +240,13 @@ class TranslationCache {
 // Initialize context menu
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed/updated, creating context menu');
-  chrome.storage.sync.get(['experimentalFeatures'], (items) => {
-    MenuManager.setupContextMenu(items.experimentalFeatures);
+  chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
+    MenuManager.setupContextMenu(items.experimentalFeatures || {});
   });
 });
 
 // Message handling
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessage | FeedbackMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
   console.log('Background script received message:', message);
   
   if (message.action === 'translateText' || message.action === 'translateArticle' || message.action === 'translateSection') {
@@ -375,25 +255,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     
     (async () => {
       try {
+        if (!content) throw new Error('No content provided for translation');
         const translation = await handleTranslation(content, isHtml);
-        chrome.tabs.sendMessage(sender.tab.id, {
-          action: 'showTranslation',
-          translation: translation,
-          id: message.id
-        });
+        if (sender.tab?.id) {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            action: 'showTranslation',
+            translation: translation,
+            id: message.id
+          });
+        }
 
         if (message.action === 'translateSection') {
           sendResponse({ success: true });
         }
       } catch (error) {
         console.error('Error translating:', error);
-        chrome.tabs.sendMessage(sender.tab.id, {
-          action: 'showError',
-          error: error.message
-        });
+        if (sender.tab?.id) {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            action: 'showError',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
 
         if (message.action === 'translateSection') {
-          sendResponse({ success: false, error: error.message });
+          sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
         }
       }
     })();
@@ -417,15 +302,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           model: API_CONFIG.model
         });
 
-        chrome.storage.sync.get(['experimentalFeatures'], (items) => {
-          MenuManager.setupContextMenu(items.experimentalFeatures);
+        chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
+          MenuManager.setupContextMenu(items.experimentalFeatures || {});
         });
       });
       
       sendResponse({ success: true });
     } catch (error) {
       console.error('Error updating API configuration:', error);
-      sendResponse({ success: false, error: error.message });
+      sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
   }
   else if (message.action === 'submitFeedback') {
@@ -435,7 +320,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, result });
       } catch (error) {
         console.error('Error submitting feedback:', error);
-        sendResponse({ success: false, error: error.message });
+        sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
       }
     })();
     return true;
@@ -445,7 +330,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Translation handler
-async function handleTranslation(text, isArticle = false) {
+async function handleTranslation(text: string, isArticle = false): Promise<string> {
   console.log('Starting translation with provider:', API_CONFIG.provider);
   
   try {
@@ -461,15 +346,6 @@ async function handleTranslation(text, isArticle = false) {
       throw new Error('No translation provider selected. Please configure a provider in the extension settings.');
     }
 
-    const provider = PROVIDERS[API_CONFIG.provider];
-    if (!provider) {
-      throw new Error(`Unsupported provider: ${API_CONFIG.provider}`);
-    }
-
-    if (provider === PROVIDERS.openAI && !API_CONFIG.apiEndpoint) {
-      throw new Error('OpenAI API endpoint is not configured. Please check your extension settings.');
-    }
-
     console.log('Translation configuration:', {
       provider: API_CONFIG.provider,
       model: API_CONFIG.model,
@@ -478,7 +354,7 @@ async function handleTranslation(text, isArticle = false) {
       isArticle: isArticle
     });
 
-    const translation = await provider.translate(text, API_CONFIG, isArticle);
+    const translation = await translate(text, API_CONFIG, isArticle);
     await TranslationCache.set(text, translation);
     return translation;
   } catch (error) {
@@ -489,14 +365,19 @@ async function handleTranslation(text, isArticle = false) {
 
 // Content script management
 class ContentScriptManager {
-  static async checkIfLoaded(tab) {
+  static async checkIfLoaded(tab: chrome.tabs.Tab): Promise<boolean> {
+    if (!tab.id) return false;
     try {
-      const response = await new Promise(resolve => {
+      const response = await new Promise<PingResponse | null>(resolve => {
+        if (!tab.id) {
+          resolve(null);
+          return;
+        }
         chrome.tabs.sendMessage(tab.id, { action: 'ping' }, response => {
           if (chrome.runtime.lastError) {
             resolve(null);
           } else {
-            resolve(response);
+            resolve(response as PingResponse);
           }
         });
       });
@@ -506,16 +387,17 @@ class ContentScriptManager {
     }
   }
 
-  static async inject(tab) {
+  static async inject(tab: chrome.tabs.Tab): Promise<boolean> {
+    if (!tab.id) return false;
     try {
       await chrome.scripting.insertCSS({
         target: { tabId: tab.id },
-        files: ['src/content/overlay.css']
+        files: ['dist/content/overlay.css']
       });
 
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['src/content/content.js']
+        files: ['dist/content/content.js']
       });
 
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -532,10 +414,15 @@ class ContentScriptManager {
     }
   }
 
-  static async sendMessage(tab, message) {
+  static async sendMessage(tab: chrome.tabs.Tab, message: Message): Promise<void> {
+    if (!tab.id) return;
     try {
       if (message.action === 'ping') {
         return new Promise((resolve, reject) => {
+          if (!tab.id) {
+            reject(new Error('Tab ID is undefined'));
+            return;
+          }
           chrome.tabs.sendMessage(tab.id, message, response => {
             if (chrome.runtime.lastError) {
               reject(chrome.runtime.lastError);
@@ -546,6 +433,7 @@ class ContentScriptManager {
         });
       }
       
+      if (!tab.id) return;
       chrome.tabs.sendMessage(tab.id, message);
     } catch (error) {
       console.error('Error sending message:', error);
@@ -556,6 +444,8 @@ class ContentScriptManager {
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (!tab?.id) return;
+  
   console.log('Context menu clicked:', info.menuItemId);
   
   if (info.menuItemId === MENU_ITEMS.SELECTION || info.menuItemId === MENU_ITEMS.ARTICLE || info.menuItemId === MENU_ITEMS.FULLPAGE) {
@@ -586,7 +476,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
           ContentScriptManager.sendMessage(tab, { action: 'startArticleMode' });
         } else if (info.menuItemId === MENU_ITEMS.FULLPAGE) {
           ContentScriptManager.sendMessage(tab, { action: 'startFullPageMode' });
-        } else {
+        } else if (info.selectionText) {
           ContentScriptManager.sendMessage(tab, { action: 'startTranslation' });
           const translation = await handleTranslation(info.selectionText);
           ContentScriptManager.sendMessage(tab, {
@@ -602,7 +492,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
           }
           ContentScriptManager.sendMessage(tab, {
             action: 'showError',
-            error: error.message
+            error: error instanceof Error ? error.message : 'Unknown error'
           });
         } catch (e) {
           console.error('Failed to show error:', e);

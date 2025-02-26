@@ -7,35 +7,26 @@ const PAUSE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 class SpeechController {
   constructor() {
     this.utterance = null;
-    this.currentWordIndex = 0;
     this.words = [];
     this.isPlaying = false;
     this.button = null;
+    this.debugMode = false; // Disable debug logging
   }
 
   setup(text, words, button) {
     this.words = words;
     this.button = button;
-    this.currentWordIndex = 0;
+    
+    // Log for debugging
+    if (this.debugMode) {
+      console.log('Setting up speech with', words.length, 'words');
+    }
     
     // Create utterance
     this.utterance = new SpeechSynthesisUtterance(text);
     this.utterance.lang = 'de-DE';
     this.utterance.rate = 0.9;
     
-    // Handle word boundaries
-    this.utterance.onboundary = (event) => {
-      if (event.name === 'word' && this.currentWordIndex < this.words.length) {
-        // Remove highlight from previous word
-        if (this.currentWordIndex > 0) {
-          this.words[this.currentWordIndex - 1].classList.remove('active');
-        }
-        // Add highlight to current word
-        this.words[this.currentWordIndex].classList.add('active');
-        this.currentWordIndex++;
-      }
-    };
-
     // Handle end of speech
     this.utterance.onend = () => {
       this.stop();
@@ -55,6 +46,7 @@ class SpeechController {
     this.button.innerHTML = PAUSE_ICON + 'Pause';
     this.button.classList.add('playing');
     
+    // Start speech
     speechSynthesis.speak(this.utterance);
   }
 
@@ -75,10 +67,6 @@ class SpeechController {
   stop() {
     speechSynthesis.cancel();
     this.isPlaying = false;
-    this.currentWordIndex = 0;
-    
-    // Remove all highlights
-    this.words.forEach(word => word.classList.remove('active'));
     
     // Reset button
     if (this.button) {
@@ -373,13 +361,19 @@ class TranslationOverlay {
       let allWords = [];
       let plainText = '';
 
+      // Process text into words for speech synthesis
+      const processText = (text) => {
+        // Simple text processing - no need for complex word spans
+        return text.split(/\s+/).filter(word => word.trim().length > 0);
+      };
+
       // Check if translation is HTML
       if (translation.trim().startsWith('<')) {
         // Parse HTML content
         const parser = new DOMParser();
         const doc = parser.parseFromString(translation, 'text/html');
         
-        // Process each text node
+        // Extract plain text
         const textNodes = [];
         const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
         let node;
@@ -388,24 +382,12 @@ class TranslationOverlay {
           plainText += node.textContent + ' ';
         }
 
-        // Add HTML to container
+        // Add HTML to container directly without word spans
         translationContainer.innerHTML = translation;
-
-        // Wrap words in spans for text-to-speech
-        textNodes.forEach(textNode => {
-          const words = textNode.textContent.trim().split(/\s+/);
-          const spans = words.map((word, index) => {
-            const span = document.createElement('span');
-            span.className = 'klartext-word';
-            span.textContent = word + (index < words.length - 1 ? ' ' : '');
-            allWords.push(span);
-            return span;
-          });
-
-          const fragment = document.createDocumentFragment();
-          spans.forEach(span => fragment.appendChild(span));
-          textNode.parentNode.replaceChild(fragment, textNode);
-        });
+        
+        // Process words for speech
+        const words = processText(plainText);
+        words.forEach(word => allWords.push(word));
       } else {
         // Process plain text
         plainText = translation;
@@ -413,17 +395,14 @@ class TranslationOverlay {
         paragraphs.forEach(paragraph => {
           if (paragraph.trim()) {
             const p = document.createElement('p');
-            const words = paragraph.trim().replace(/\s+/g, ' ').split(' ');
-            words.forEach((word, index) => {
-              const span = document.createElement('span');
-              span.className = 'klartext-word';
-              span.textContent = word + (index < words.length - 1 ? ' ' : '');
-              p.appendChild(span);
-              allWords.push(span);
-            });
+            p.textContent = paragraph.trim();
             translationContainer.appendChild(p);
           }
         });
+        
+        // Process words for speech
+        const words = processText(plainText);
+        words.forEach(word => allWords.push(word));
       }
 
       // Create text-to-speech button
@@ -1198,43 +1177,17 @@ class PageTranslator {
 
   completeTranslation() {
     // Get all text for speech
-    const textNodes = [];
-    const walker = document.createTreeWalker(
-      document.body,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode: node => {
-          if (node.parentElement.closest('.original')) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      }
-    );
-    
     let plainText = '';
-    let node;
-    while (node = walker.nextNode()) {
-      textNodes.push(node);
-      plainText += node.textContent + ' ';
-    }
-    
-    // Wrap words in spans
     const allWords = [];
-    textNodes.forEach(textNode => {
-      const words = textNode.textContent.trim().split(/\s+/);
-      const spans = words.map((word, index) => {
-        const span = document.createElement('span');
-        span.className = 'klartext-word';
-        span.textContent = word + (index < words.length - 1 ? ' ' : '');
-        allWords.push(span);
-        return span;
-      });
-
-      const fragment = document.createDocumentFragment();
-      spans.forEach(span => fragment.appendChild(span));
-      textNode.parentNode.replaceChild(fragment, textNode);
+    
+    // Extract text from translated sections
+    document.querySelectorAll('.klartext-section').forEach(section => {
+      plainText += section.textContent + ' ';
     });
+    
+    // Process words for speech
+    const words = plainText.split(/\s+/).filter(word => word.trim().length > 0);
+    words.forEach(word => allWords.push(word));
     
     // Setup TTS
     controls.setupTTS(plainText, allWords);
