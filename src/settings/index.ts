@@ -1,16 +1,17 @@
 /**
  * Main entry point for the popup
  */
-import { initProviderSelector } from './components/provider-selector.js';
-import { initSettingsPanel } from './components/settings-panel.js';
-import { loadApiKeys, loadSettings, saveAllSettings } from './services/settings-service.js';
-import { validateForm } from './services/validation-service.js';
-import { getElement, getElementByClass, showStatus, addSafeEventListener } from './utils/dom-utils.js';
+import { initProviderSelector } from './components/provider-selector';
+import { initSettingsPanel } from './components/settings-panel';
+import { loadApiKeys, loadSettings, saveAllSettings } from './services/settings-service';
+import { validateForm } from './services/validation-service';
+import { getElement, getElementByClass, showStatus, addSafeEventListener } from './utils/dom-utils';
+import { Settings } from '../shared/types/settings';
 
 /**
  * Initialize the settings page
  */
-async function initSettings() {
+async function initSettings(): Promise<void> {
   try {
     console.log('Initializing settings page...');
     
@@ -24,7 +25,7 @@ async function initSettings() {
     // Initialize components
     const providerSelector = initProviderSelector({ 
       apiKeys,
-      onProviderChange: (provider) => {
+      onProviderChange: (provider: string) => {
         console.log(`Provider changed to: ${provider}`);
       }
     });
@@ -42,7 +43,7 @@ async function initSettings() {
     console.log('Initial values set');
     
     // Set up save button
-    const saveButton = getElementByClass('save-button');
+    const saveButton = getElementByClass<HTMLButtonElement>('save-button');
     if (!saveButton) {
       console.error('Save button not found by class name');
       throw new Error('Save button not found');
@@ -62,12 +63,12 @@ async function initSettings() {
         const formData = {
           ...providerConfig,
           ...settingsValues
-        };
+        } as Settings;
         
         // Validate form
         const validation = validateForm(formData);
         if (!validation.success) {
-          showStatus(validation.error, 'error');
+          showStatus(validation.error || 'Validation error', 'error');
           return;
         }
         
@@ -86,8 +87,8 @@ async function initSettings() {
     });
     
     // Set up Enter key in inputs
-    const apiKeyInput = getElement('api-key');
-    const apiEndpointInput = getElement('api-endpoint');
+    const apiKeyInput = getElement<HTMLInputElement>('api-key');
+    const apiEndpointInput = getElement<HTMLInputElement>('api-endpoint');
     
     if (apiKeyInput && apiEndpointInput) {
       [apiKeyInput, apiEndpointInput].forEach(input => {
@@ -103,7 +104,11 @@ async function initSettings() {
     console.log('Popup initialized successfully');
   } catch (error) {
     console.error('Error initializing popup:', error);
-    showStatus(`Initialisierungsfehler: ${error.message}`, 'error');
+    if (error instanceof Error) {
+      showStatus(`Initialisierungsfehler: ${error.message}`, 'error');
+    } else {
+      showStatus('Ein unbekannter Fehler ist aufgetreten', 'error');
+    }
   }
 }
 

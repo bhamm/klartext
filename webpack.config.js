@@ -18,7 +18,7 @@ module.exports = {
     // Entry points for each component
     background: './src/background/background.ts', // Background service worker
     content: './src/content/content.js',         // Content script
-    settings: './src/settings/index.js'          // Settings UI (refactored to modular architecture)
+    settings: './src/settings/index.ts'          // Settings UI (refactored to modular architecture with TypeScript)
   },
   output: {
     path: path.resolve(__dirname, 'dist'),    // Output to dist directory

@@ -1,14 +1,16 @@
 /**
  * Service for managing extension settings
  */
-import { DEFAULT_SETTINGS, mergeWithDefaults, validateSettings } from '../models/settings.js';
-import { getDefaultModel, getDefaultEndpoint } from '../constants/providers.js';
+import { DEFAULT_SETTINGS, mergeWithDefaults, validateSettings } from '../models/settings';
+import { getDefaultModel, getDefaultEndpoint } from '../constants/providers';
+import { Settings, ApiKeysConfig, SettingsResponse } from '../../shared/types/settings';
+import { ProviderConfig } from '../../shared/types/provider';
 
 /**
  * Load API keys from config file
- * @returns {Promise<Object>} API keys configuration
+ * @returns API keys configuration
  */
-export async function loadApiKeys() {
+export async function loadApiKeys(): Promise<ApiKeysConfig> {
   try {
     console.log('Loading API keys from config file...');
     const url = chrome.runtime.getURL('dist/config/api-keys.json');
@@ -19,7 +21,7 @@ export async function loadApiKeys() {
       throw new Error(`Failed to load API keys: ${response.status} ${response.statusText}`);
     }
     
-    const data = await response.json();
+    const data = await response.json() as ApiKeysConfig;
     console.log('API keys loaded successfully');
     return data;
   } catch (error) {
@@ -30,9 +32,9 @@ export async function loadApiKeys() {
 
 /**
  * Load settings from Chrome storage
- * @returns {Promise<Object>} Settings object
+ * @returns Settings object
  */
-export async function loadSettings() {
+export async function loadSettings(): Promise<Settings> {
   console.log('Loading settings from Chrome storage...');
   return new Promise((resolve) => {
     chrome.storage.sync.get(DEFAULT_SETTINGS, (items) => {
@@ -42,7 +44,7 @@ export async function loadSettings() {
         console.error('Error loading settings:', chrome.runtime.lastError);
       }
       
-      const settings = mergeWithDefaults(items);
+      const settings = mergeWithDefaults(items as Partial<Settings>);
       console.log('Settings after merging with defaults:', settings);
       
       // Ensure model is set if empty
@@ -65,10 +67,10 @@ export async function loadSettings() {
 
 /**
  * Save settings to Chrome storage
- * @param {Object} settings - Settings to save
- * @returns {Promise<Object>} Saved settings
+ * @param settings - Settings to save
+ * @returns Saved settings
  */
-export async function saveSettings(settings) {
+export async function saveSettings(settings: Settings): Promise<Settings> {
   console.log('Saving settings to Chrome storage:', settings);
   
   if (!validateSettings(settings)) {
@@ -89,19 +91,27 @@ export async function saveSettings(settings) {
   });
 }
 
+interface ApiConfigResponse {
+  success: boolean;
+  error?: string;
+}
+
 /**
  * Update API configuration in background script
- * @param {Object} config - API configuration
- * @returns {Promise<Object>} Response from background script
+ * @param config - API configuration
+ * @returns Response from background script
  */
-export async function updateApiConfig(config) {
+export async function updateApiConfig(config: ProviderConfig & { 
+  compareView?: boolean; 
+  excludeComments?: boolean;
+}): Promise<ApiConfigResponse> {
   console.log('Updating API configuration in background script:', config);
   
   return new Promise((resolve) => {
     chrome.runtime.sendMessage({
       action: 'updateApiConfig',
       config
-    }, (response) => {
+    }, (response: ApiConfigResponse | undefined) => {
       console.log('Response from background script:', response);
       if (!response) {
         console.warn('No response from background script');
@@ -113,22 +123,21 @@ export async function updateApiConfig(config) {
 
 /**
  * Update settings in content script of active tab
- * @param {Object} settings - Settings to update
- * @returns {Promise<void>}
+ * @param settings - Settings to update
  */
-export async function updateContentSettings(settings) {
+export async function updateContentSettings(settings: Settings): Promise<void> {
   // Get active tab
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
   
-  if (!activeTab || !activeTab.url || 
+  if (!activeTab || !activeTab.url || !activeTab.id ||
       !(activeTab.url.startsWith('http') || activeTab.url.startsWith('file'))) {
     return;
   }
   
   try {
     // Check if content script is already loaded
-    const pingResponse = await new Promise((resolve) => {
-      chrome.tabs.sendMessage(activeTab.id, { action: 'ping' }, (response) => {
+    const pingResponse = await new Promise<unknown>((resolve) => {
+      chrome.tabs.sendMessage(activeTab.id!, { action: 'ping' }, (response) => {
         resolve(response);
       });
     }).catch(() => null);
@@ -159,10 +168,10 @@ export async function updateContentSettings(settings) {
 
 /**
  * Save all settings and update related components
- * @param {Object} settings - Settings to save
- * @returns {Promise<Object>} Result object with success status
+ * @param settings - Settings to save
+ * @returns Result object with success status
  */
-export async function saveAllSettings(settings) {
+export async function saveAllSettings(settings: Settings): Promise<SettingsResponse> {
   console.log('Saving all settings:', settings);
   
   try {
@@ -200,6 +209,9 @@ export async function saveAllSettings(settings) {
     return { success: true };
   } catch (error) {
     console.error('Error saving all settings:', error);
-    return { success: false, error: error.message };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
   }
 }

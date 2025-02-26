@@ -1,7 +1,12 @@
 /**
  * Provider configurations for different AI translation services
  */
-export const PROVIDERS = {
+import { ProvidersConfig } from '../../shared/types/settings';
+
+/**
+ * Provider configurations
+ */
+export const PROVIDERS: ProvidersConfig = {
   openAI: {
     name: 'OpenAI',
     models: ['gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1', 'gpt-4o-mini', 'gpt-4o', 'o3-mini'],
@@ -34,20 +39,20 @@ export const PROVIDERS = {
 
 /**
  * Get the default model for a provider
- * @param {string} provider - Provider ID
- * @returns {string} Default model for the provider
+ * @param provider - Provider ID
+ * @returns Default model for the provider
  */
-export function getDefaultModel(provider) {
+export function getDefaultModel(provider: string): string {
   const config = PROVIDERS[provider];
   return config && config.models.length > 0 ? config.models[0] : '';
 }
 
 /**
  * Get the default endpoint for a provider
- * @param {string} provider - Provider ID
- * @returns {string} Default endpoint URL
+ * @param provider - Provider ID
+ * @returns Default endpoint URL
  */
-export function getDefaultEndpoint(provider) {
+export function getDefaultEndpoint(provider: string): string {
   const config = PROVIDERS[provider];
   return config ? config.defaultEndpoint : '';
 }

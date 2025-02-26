@@ -1,15 +1,16 @@
 /**
  * Service for validating user inputs
  */
-import { PROVIDERS } from '../constants/providers.js';
+import { PROVIDERS } from '../constants/providers';
+import { ValidationResult, SettingsFormData } from '../../shared/types/settings';
 
 /**
  * Validate API key format based on provider
- * @param {string} apiKey - API key to validate
- * @param {string} provider - Provider ID
- * @returns {boolean} True if API key is valid
+ * @param apiKey - API key to validate
+ * @param provider - Provider ID
+ * @returns True if API key is valid
  */
-export function validateApiKey(apiKey, provider) {
+export function validateApiKey(apiKey: string | undefined, provider: string): boolean {
   // Skip validation for local provider
   if (provider === 'local') {
     return true;
@@ -30,10 +31,10 @@ export function validateApiKey(apiKey, provider) {
 
 /**
  * Validate API endpoint format
- * @param {string} endpoint - API endpoint to validate
- * @returns {boolean} True if endpoint is valid
+ * @param endpoint - API endpoint to validate
+ * @returns True if endpoint is valid
  */
-export function validateEndpoint(endpoint) {
+export function validateEndpoint(endpoint: string | undefined): boolean {
   if (!endpoint) {
     return false;
   }
@@ -49,11 +50,11 @@ export function validateEndpoint(endpoint) {
 
 /**
  * Validate model selection
- * @param {string} model - Selected model
- * @param {string} provider - Provider ID
- * @returns {boolean} True if model is valid for the provider
+ * @param model - Selected model
+ * @param provider - Provider ID
+ * @returns True if model is valid for the provider
  */
-export function validateModel(model, provider) {
+export function validateModel(model: string | undefined, provider: string): boolean {
   if (!model || !provider) {
     return false;
   }
@@ -68,10 +69,10 @@ export function validateModel(model, provider) {
 
 /**
  * Sanitize input to prevent XSS
- * @param {string} input - Input to sanitize
- * @returns {string} Sanitized input
+ * @param input - Input to sanitize
+ * @returns Sanitized input
  */
-export function sanitizeInput(input) {
+export function sanitizeInput(input: string | undefined): string {
   if (typeof input !== 'string') {
     return '';
   }
@@ -80,10 +81,10 @@ export function sanitizeInput(input) {
 
 /**
  * Validate all form inputs
- * @param {Object} formData - Form data to validate
- * @returns {Object} Validation result with success flag and error message
+ * @param formData - Form data to validate
+ * @returns Validation result with success flag and error message
  */
-export function validateForm(formData) {
+export function validateForm(formData: Partial<SettingsFormData>): ValidationResult {
   const { provider, apiKey, apiEndpoint, model } = formData;
   
   // Validate provider
@@ -111,7 +112,7 @@ export function validateForm(formData) {
   }
   
   // Validate model
-  if (!validateModel(model, provider)) {
+  if (!model || !validateModel(model, provider)) {
     return {
       success: false,
       error: 'Ungültiges Modell für den ausgewählten Anbieter'
