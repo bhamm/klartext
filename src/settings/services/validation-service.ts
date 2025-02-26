@@ -76,7 +76,7 @@ export function sanitizeInput(input: string | undefined): string {
   if (typeof input !== 'string') {
     return '';
   }
-  return input.replace(/[<>]/g, '');
+  return input.replace(/<[^>]*>/g, '');
 }
 
 /**
