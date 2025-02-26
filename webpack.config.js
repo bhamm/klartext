@@ -17,7 +17,7 @@ module.exports = {
   entry: {
     // Entry points for each component
     background: './src/background/background.ts', // Background service worker
-    content: './src/content/index.js',           // Content script (updated to use modular architecture)
+    content: './src/content/index.ts',           // Content script (converted to TypeScript)
     settings: './src/settings/index.ts'          // Settings UI (refactored to modular architecture with TypeScript)
   },
   output: {
