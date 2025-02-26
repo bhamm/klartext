@@ -4,188 +4,170 @@
 import { SectionData } from '../types';
 
 /**
- * Clean HTML content for article translation
- * @param {string} html - The HTML content to clean
- * @returns {string} Cleaned HTML
+ * Cleans article HTML by removing unnecessary elements
+ * @param {string} html - The HTML to clean
+ * @returns {string} The cleaned HTML
  */
 export function cleanArticleHTML(html: string): string {
-  // Create a temporary div to parse HTML
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = html;
+  if (!html) return '';
   
-  // Remove script tags
-  const scripts = tempDiv.getElementsByTagName('script');
-  while (scripts.length > 0) {
-    const script = scripts[0];
-    if (script.parentNode) {
-      script.parentNode.removeChild(script);
-    }
+  try {
+    // Create a temporary div to parse HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    // Remove script tags
+    const scripts = tempDiv.querySelectorAll('script');
+    scripts.forEach(script => script.remove());
+    
+    // Remove style tags
+    const styles = tempDiv.querySelectorAll('style');
+    styles.forEach(style => style.remove());
+    
+    // Remove iframe tags
+    const iframes = tempDiv.querySelectorAll('iframe');
+    iframes.forEach(iframe => iframe.remove());
+    
+    // Remove form tags
+    const forms = tempDiv.querySelectorAll('form');
+    forms.forEach(form => form.remove());
+    
+    // Remove comments
+    removeComments(tempDiv);
+    
+    // Remove hidden elements
+    const hiddenElements = tempDiv.querySelectorAll('[style*="display: none"], [style*="visibility: hidden"], .hidden');
+    hiddenElements.forEach(element => element.remove());
+    
+    // Remove social media widgets
+    const socialWidgets = tempDiv.querySelectorAll('[class*="twitter"], [class*="facebook"], [class*="social"], [class*="share"]');
+    socialWidgets.forEach(widget => widget.remove());
+    
+    // Remove advertisement elements
+    const adElements = tempDiv.querySelectorAll('[class*="ad-"], [class*="advertisement"], [id*="ad-"]');
+    adElements.forEach(ad => ad.remove());
+    
+    // Remove navigation elements
+    const navElements = tempDiv.querySelectorAll('nav, [role="navigation"]');
+    navElements.forEach(nav => nav.remove());
+    
+    // Remove footer elements
+    const footerElements = tempDiv.querySelectorAll('footer');
+    footerElements.forEach(footer => footer.remove());
+    
+    return tempDiv.innerHTML;
+  } catch (error) {
+    console.error('Error cleaning HTML:', error);
+    return html;
   }
-  
-  // Remove style tags
-  const styles = tempDiv.getElementsByTagName('style');
-  while (styles.length > 0) {
-    const style = styles[0];
-    if (style.parentNode) {
-      style.parentNode.removeChild(style);
-    }
-  }
-  
-  // Remove SVG elements
-  const svgs = tempDiv.getElementsByTagName('svg');
-  while (svgs.length > 0) {
-    const svg = svgs[0];
-    if (svg.parentNode) {
-      svg.parentNode.removeChild(svg);
-    }
-  }
-  
-  // Remove iframes
-  const iframes = tempDiv.getElementsByTagName('iframe');
-  while (iframes.length > 0) {
-    const iframe = iframes[0];
-    if (iframe.parentNode) {
-      iframe.parentNode.removeChild(iframe);
-    }
-  }
-  
-  // Convert images to alt text or remove them
-  const images = tempDiv.getElementsByTagName('img');
-  Array.from(images).forEach(img => {
-    if (img.alt && img.parentNode) {
-      const textNode = document.createTextNode(`[Bild: ${img.alt}]`);
-      img.parentNode.replaceChild(textNode, img);
-    } else if (img.parentNode) {
-      img.parentNode.removeChild(img);
-    }
-  });
-  
-  // Convert links to plain text
-  const links = tempDiv.getElementsByTagName('a');
-  Array.from(links).forEach(link => {
-    if (link.parentNode) {
-      const textNode = document.createTextNode(link.textContent || '');
-      link.parentNode.replaceChild(textNode, link);
-    }
-  });
-  
-  // Remove all event handlers
-  const allElements = tempDiv.getElementsByTagName('*');
-  Array.from(allElements).forEach(element => {
-    // Remove all event handler attributes
-    const attrs = element.attributes;
-    for (let i = attrs.length - 1; i >= 0; i--) {
-      if (attrs[i].name.startsWith('on')) {
-        element.removeAttribute(attrs[i].name);
-      }
-    }
-  });
-  
-  // Clean the entire content
-  cleanNode(tempDiv);
-  
-  // Return cleaned HTML
-  return tempDiv.innerHTML;
 }
 
 /**
- * Recursively clean a DOM node
- * @param {Node} node - The node to clean
+ * Recursively removes comment nodes from an element
+ * @param {Node} node - The node to process
  */
-function cleanNode(node: Node): void {
-  // List of allowed HTML tags
-  const allowedTags: string[] = [
-    'article', 'section', 'main', 
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
-    'p', 'ul', 'ol', 'li', 
-    'strong', 'em', 'b', 'i'
-  ];
+function removeComments(node: Node): void {
+  const childNodes = node.childNodes;
   
-  if (node.nodeType === Node.ELEMENT_NODE) {
-    const element = node as Element;
-    if (!allowedTags.includes(element.tagName.toLowerCase())) {
-      // Check if node has a parent before replacing
-      if (element.parentNode) {
-        // Replace element with its text content
-        const textContent = element.textContent || '';
-        const textNode = document.createTextNode(textContent);
-        element.parentNode.replaceChild(textNode, element);
-      }
-      return;
-    }
+  for (let i = childNodes.length - 1; i >= 0; i--) {
+    const child = childNodes[i];
     
-    // Clean children recursively
-    Array.from(element.childNodes).forEach(child => cleanNode(child));
-    
-    // Remove all attributes except essential ones
-    const attrs = element.attributes;
-    for (let i = attrs.length - 1; i >= 0; i--) {
-      const attrName = attrs[i].name;
-      if (!['class', 'id'].includes(attrName)) {
-        element.removeAttribute(attrName);
-      }
+    if (child.nodeType === Node.COMMENT_NODE) {
+      node.removeChild(child);
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      removeComments(child);
     }
   }
 }
 
 /**
- * Split text into chunks for translation
- * @param {HTMLElement} element - The element containing text to split
- * @param {number} maxChars - Maximum characters per chunk
- * @returns {Array<SectionData>} Array of chunk objects
+ * Splits HTML content into chunks of approximately equal size
+ * @param {HTMLElement|string} input - The HTML element or content to split
+ * @param {number} chunkSize - The approximate size of each chunk in characters
+ * @returns {SectionData[]} Array of section data objects
  */
-export function splitIntoChunks(element: HTMLElement, maxChars: number): SectionData[] {
-  const chunks: SectionData[] = [];
-  let currentChunk: Element[] = [];
-  let currentLength = 0;
-  
-  // Get all text-containing elements
-  const walker = document.createTreeWalker(
-    element,
-    NodeFilter.SHOW_ELEMENT,
-    {
-      acceptNode: (node: Node): number => {
-        if ((node as Element).matches('p, h1, h2, h3, h4, h5, h6, li')) {
-          return NodeFilter.FILTER_ACCEPT;
-        }
-        return NodeFilter.FILTER_SKIP;
-      }
-    }
-  );
-  
-  let node: Node | null;
-  while (node = walker.nextNode()) {
-    const currentElement = node as Element;
-    const text = currentElement.innerHTML;
-    const length = text.length;
+export function splitIntoChunks(input: HTMLElement | string, chunkSize: number = 5000): SectionData[] {
+  try {
+    // Handle different input types
+    let html: string;
+    let originalElement: HTMLElement | null = null;
     
-    if (currentLength + length > maxChars && currentChunk.length > 0) {
-      // Create a new section with current chunk
-      const section = document.createElement('div');
-      currentChunk.forEach(n => section.appendChild(n.cloneNode(true)));
-      chunks.push({
-        originalSection: element, // Use the parent element as the original section
-        content: section.innerHTML
-      });
-      
-      // Start new chunk
-      currentChunk = [currentElement];
-      currentLength = length;
+    if (typeof input === 'string') {
+      html = input;
+    } else if (input instanceof HTMLElement) {
+      originalElement = input;
+      html = input.innerHTML;
     } else {
-      currentChunk.push(currentElement);
-      currentLength += length;
+      console.error('Invalid input type for splitIntoChunks:', input);
+      return [];
     }
-  }
-  
-  // Add remaining chunk if any
-  if (currentChunk.length > 0) {
-    const section = document.createElement('div');
-    currentChunk.forEach(n => section.appendChild(n.cloneNode(true)));
-    chunks.push({
-      originalSection: element, // Use the parent element as the original section
-      content: section.innerHTML
+    
+    if (!html) return [];
+    if (html.length <= chunkSize && originalElement) {
+      // If the content is small enough and we have an original element, return it as is
+      return [{
+        originalSection: originalElement,
+        content: html
+      }];
+    }
+    
+    // Create a temporary div to parse HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    const chunks: SectionData[] = [];
+    let currentChunk = document.createElement('div');
+    let currentSize = 0;
+    
+    // Process all child nodes
+    Array.from(tempDiv.childNodes).forEach(node => {
+      const nodeSize = (node.textContent || '').length;
+      
+      // If adding this node would exceed the chunk size, start a new chunk
+      if (currentSize > 0 && currentSize + nodeSize > chunkSize) {
+        // Create a new section element for this chunk
+        const sectionElement = document.createElement('div');
+        sectionElement.innerHTML = currentChunk.innerHTML;
+        
+        chunks.push({
+          originalSection: sectionElement,
+          content: currentChunk.innerHTML
+        });
+        
+        currentChunk = document.createElement('div');
+        currentSize = 0;
+      }
+      
+      // Clone the node and add it to the current chunk
+      const clonedNode = node.cloneNode(true);
+      currentChunk.appendChild(clonedNode);
+      currentSize += nodeSize;
     });
+    
+    // Add the last chunk if it has content
+    if (currentSize > 0) {
+      // Create a new section element for this chunk
+      const sectionElement = document.createElement('div');
+      sectionElement.innerHTML = currentChunk.innerHTML;
+      
+      chunks.push({
+        originalSection: sectionElement,
+        content: currentChunk.innerHTML
+      });
+    }
+    
+    return chunks;
+  } catch (error) {
+    console.error('Error splitting HTML into chunks:', error);
+    
+    // Return a fallback if we have an original element
+    if (input instanceof HTMLElement) {
+      return [{
+        originalSection: input,
+        content: input.innerHTML
+      }];
+    }
+    
+    return [];
   }
-  
-  return chunks;
 }

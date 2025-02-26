@@ -1,6 +1,35 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  testEnvironmentOptions: {
+    customExportConditions: ['node', 'node-addons'],
+  },
+  // Use JSDOM for content script tests
+  projects: [
+    {
+      displayName: 'content',
+      testMatch: ['<rootDir>/test/content/**/*.test.[jt]s?(x)'],
+      testEnvironment: 'jsdom',
+      transform: {
+        '^.+\\.tsx?$': ['ts-jest', {
+          tsconfig: 'tsconfig.json'
+        }]
+      }
+    },
+    {
+      displayName: 'node',
+      testMatch: [
+        '<rootDir>/src/**/__tests__/**/*.test.[jt]s?(x)',
+        '<rootDir>/test/!(content)/**/*.test.[jt]s?(x)'
+      ],
+      testEnvironment: 'node',
+      transform: {
+        '^.+\\.tsx?$': ['ts-jest', {
+          tsconfig: 'tsconfig.json'
+        }]
+      }
+    }
+  ],
   setupFilesAfterEnv: ['./jest.setup.js'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1'

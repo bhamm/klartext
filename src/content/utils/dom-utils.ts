@@ -74,6 +74,9 @@ export function findClosestMatchingElement(
   element: HTMLElement, 
   selectors: string[]
 ): HTMLElement|null {
+  // Handle null element case
+  if (!element) return null;
+  
   let result: HTMLElement|null = null;
   
   for (const selector of selectors) {
@@ -125,7 +128,13 @@ export function removeClasses(element: HTMLElement|null, classes: string[]): voi
  * @returns {string[]} Array of words
  */
 export function processTextToWords(text: string): string[] {
-  return text.split(/\s+/).filter(word => word.trim().length > 0);
+  // Remove punctuation and split by whitespace
+  const words = text
+    .replace(/[.,!?;:()[\]{}'"]/g, '')
+    .split(/\s+/)
+    .filter(word => word.trim().length > 0);
+  
+  return words;
 }
 
 /**
