@@ -207,11 +207,54 @@ klartext/
    - In Chrome die Erweiterung neu laden, um Änderungen zu sehen
    - Die Konsole im DevTools für Debug-Ausgaben prüfen
 
-5. Paket für Distribution erstellen:
+5. Tests ausführen:
+   ```bash
+   # Unit-Tests mit Jest ausführen
+   npm test
+   
+   # Selenium-Tests für die Benutzeroberfläche ausführen
+   npm run test:selenium
+   
+   # Einen einzelnen Selenium-Test ausführen
+   npm run test:selenium:single test/selenium/specs/translate-selection.test.js
+   ```
+
+6. Paket für Distribution erstellen:
    ```bash
    npm run package
    ```
    Dies erstellt eine `klartext.zip` Datei.
+
+### Selenium-Tests
+
+Die Erweiterung enthält End-to-End-Tests mit Selenium, die die Hauptfunktionen der Benutzeroberfläche testen:
+
+- **Teststruktur:**
+  ```
+  test/selenium/
+  ├── config/           # Testkonfiguration
+  ├── helpers/          # Hilfsfunktionen für Tests
+  ├── fixtures/         # Testdaten und -seiten
+  ├── specs/            # Testspezifikationen
+  │   ├── translate-selection.test.js  # Test für Textauswahl-Übersetzung
+  │   ├── article-mode.test.js         # Test für Artikel-Modus
+  │   ├── text-to-speech.test.js       # Test für Vorlesefunktion
+  │   ├── text-size.test.js            # Test für Textgrößenänderung
+  │   ├── feedback.test.js             # Test für Feedback-Funktion
+  │   └── print.test.js                # Test für Druckfunktion
+  └── runner.js         # Testrunner-Skript
+  ```
+
+- **Testausführung:**
+  - Die Tests verwenden Selenium WebDriver mit Chrome
+  - Jeder Test startet eine eigene Browser-Instanz mit der Erweiterung
+  - Die Tests simulieren Benutzerinteraktionen wie Textauswahl, Klicks und Eingaben
+  - Mocks werden für externe APIs wie SpeechSynthesis verwendet
+
+- **Anpassung der Tests:**
+  - CSS-Selektoren können in `helpers/selectors.js` angepasst werden
+  - Timeouts und andere Konfigurationen in `config/setup.js`
+  - Testdaten in `fixtures/test-page.html`
 
 ### Entwicklungshinweise
 
