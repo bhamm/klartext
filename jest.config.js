@@ -14,23 +14,24 @@ module.exports = {
         '^.+\\.tsx?$': ['ts-jest', {
           tsconfig: 'tsconfig.json'
         }]
-      }
+      },
+      setupFilesAfterEnv: ['./jest.setup.js']
     },
     {
       displayName: 'node',
       testMatch: [
         '<rootDir>/src/**/__tests__/**/*.test.[jt]s?(x)',
-        '<rootDir>/test/!(content)/**/*.test.[jt]s?(x)'
+        '<rootDir>/test/!(content|selenium)/**/*.test.[jt]s?(x)'
       ],
       testEnvironment: 'node',
       transform: {
         '^.+\\.tsx?$': ['ts-jest', {
           tsconfig: 'tsconfig.json'
         }]
-      }
+      },
+      setupFilesAfterEnv: ['./jest.setup.js']
     }
   ],
-  setupFilesAfterEnv: ['./jest.setup.js'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1'
   },

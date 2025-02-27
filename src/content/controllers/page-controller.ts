@@ -6,22 +6,42 @@ import { splitIntoChunks } from '../utils/html-cleaner';
 import { processTextToWords } from '../utils/dom-utils';
 import { speechController } from './speech-controller';
 import { PageTranslatorInterface, SectionData, TranslationControlsInterface } from '../types';
+import { TranslationControls } from '../ui/translation-controls';
 
 /**
  * Controller for translating entire pages
  */
 export class PageTranslator implements PageTranslatorInterface {
-  sections: SectionData[];
-  currentSection: number;
-  controls: TranslationControlsInterface | null;
+  private static instance: PageTranslator | null = null;
+  
+  sections!: SectionData[];
+  currentSection!: number;
+  controls!: TranslationControlsInterface | null;
 
   /**
-   * Create a new PageTranslator
+   * Protected constructor to allow inheritance in tests
    */
-  constructor() {
+  protected constructor() {
     this.sections = [];
     this.currentSection = 0;
     this.controls = null;
+  }
+
+  /**
+   * Get the singleton instance of PageTranslator
+   */
+  public static getInstance(): PageTranslator {
+    if (!PageTranslator.instance) {
+      PageTranslator.instance = new PageTranslator();
+    }
+    return PageTranslator.instance;
+  }
+
+  /**
+   * Reset the singleton instance (for testing purposes)
+   */
+  public static resetInstance(): void {
+    PageTranslator.instance = null;
   }
 
   /**
@@ -96,6 +116,7 @@ export class PageTranslator implements PageTranslatorInterface {
       if (elements.length > 0) {
         // Found main container, use only these elements
         const validElements = Array.from(elements).filter(el => {
+          if (!el || typeof el.innerText !== 'string') return false;
           const text = el.innerText.trim();
           return text.length > 0 && text.split(/\\s+/).length > 10; // Ensure it has meaningful content
         });
@@ -131,6 +152,7 @@ export class PageTranslator implements PageTranslatorInterface {
         const elements = document.querySelectorAll<HTMLElement>(selector);
         if (elements.length > 0) {
           const validElements = Array.from(elements).filter(el => {
+            if (!el || typeof el.innerText !== 'string') return false;
             const text = el.innerText.trim();
             return text.length > 0 && text.split(/\\s+/).length > 5; // Ensure paragraph has meaningful content
           });
@@ -147,6 +169,7 @@ export class PageTranslator implements PageTranslatorInterface {
     
     // Filter sections first
     const filteredSections = sections.filter(section => {
+      if (!section || typeof section.innerText !== 'string') return false;
       const text = section.innerText.trim();
       if (!text || text.split(/\\s+/).length < 5) {
         return false;
@@ -257,41 +280,45 @@ export class PageTranslator implements PageTranslatorInterface {
   }
 
   /**
-   * Append translation to a section
-   * @param {string} translation - The translated content
+   * Append translation to the page
+   * @param {string} translation - The translated HTML
    * @param {string} id - The section ID
    */
   appendTranslation(translation: string, id: string): void {
-    try {
-      const section = document.querySelector(`[data-section-id="${id}"]`);
-      if (!section) {
-        console.warn(`Section ${id} not found`);
-        return;
-      }
+    // Extract section number from ID
+    const sectionNum = parseInt(id.replace('section-', ''));
+    
+    if (isNaN(sectionNum) || sectionNum >= this.sections.length) {
+      console.error('Invalid section ID:', id);
+      return;
+    }
 
-      // Remove translating state
-      section.classList.remove('translating');
-      
-      // Store translation content
-      section.setAttribute('data-translation', translation);
-      
-      // Remove loading indicator
-      const loadingEl = section.querySelector('.klartext-loading');
-      if (loadingEl) {
-        loadingEl.remove();
-      }
-      
-      // Replace content with translation
-      section.innerHTML = translation;
-      
-      // Move to next section
-      this.currentSection++;
-      
-      // Continue translation
-      this.translateNextSection();
-    } catch (error) {
-      console.error('Error appending translation:', error);
-      this.showError(error instanceof Error ? error.message : String(error));
+    const section = this.sections[sectionNum];
+    const originalSection = section.originalSection;
+
+    // Create container for translation
+    const container = document.createElement('div');
+    container.className = 'klartext-translation-container';
+    
+    // Create translation element
+    const translationElement = document.createElement('div');
+    translationElement.className = 'klartext-translation';
+    translationElement.innerHTML = translation;
+    
+    // Add to container
+    container.appendChild(translationElement);
+    
+    // Add classes to original section
+    originalSection.classList.add('klartext-original');
+    
+    // Insert translation after original section
+    originalSection.parentNode?.insertBefore(container, originalSection.nextSibling);
+
+    // Setup TTS for this section
+    if (this.controls) {
+      const plainText = translationElement.textContent || '';
+      const words = plainText.split(/\s+/).filter(word => word.length > 0);
+      this.controls.setupTTS(plainText, words);
     }
   }
 
@@ -299,6 +326,9 @@ export class PageTranslator implements PageTranslatorInterface {
    * Complete the translation process
    */
   completeTranslation(): void {
+    // Add completed class to body
+    document.body.classList.add('klartext-translation-completed');
+    
     // Get all text for speech
     let plainText = '';
     
@@ -322,9 +352,22 @@ export class PageTranslator implements PageTranslatorInterface {
    */
   showError(message: string): void {
     console.error('Translation error:', message);
-    alert(`Fehler bei der Übersetzung: ${message}`);
+    
+    // Remove existing error container if present
+    const existingContainer = document.querySelector('.klartext-error-container');
+    if (existingContainer) {
+      existingContainer.remove();
+    }
+    
+    // Create new error container
+    const errorContainer = document.createElement('div');
+    errorContainer.className = 'klartext-error-container';
+    errorContainer.textContent = message;
+    
+    // Add to document body
+    document.body.appendChild(errorContainer);
   }
 }
 
-// Create and export a singleton instance
-export const pageTranslator = new PageTranslator();
+// Export singleton instance
+export const pageTranslator = PageTranslator.getInstance();
