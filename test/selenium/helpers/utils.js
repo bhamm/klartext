@@ -161,6 +161,117 @@ async function triggerAction(driver, action, data = {}) {
           article.classList.add('klartext-highlight');
         }
       }
+      
+      // If in full page mode, create controls and mark sections
+      if ('${action}' === 'startFullPageMode') {
+        // Create controls if they don't exist
+        if (!document.querySelector('.klartext-controls')) {
+          const controls = document.createElement('div');
+          controls.className = 'klartext-controls';
+          controls.style.display = 'block';
+          controls.style.position = 'fixed';
+          controls.style.top = '20px';
+          controls.style.right = '20px';
+          controls.style.width = '300px';
+          controls.style.backgroundColor = 'white';
+          controls.style.border = '1px solid black';
+          controls.style.zIndex = '9999';
+          controls.style.padding = '10px';
+          
+          // Create header
+          const header = document.createElement('div');
+          header.className = 'klartext-controls-header';
+          header.style.display = 'flex';
+          header.style.justifyContent = 'space-between';
+          
+          const title = document.createElement('div');
+          title.textContent = 'Leichte Sprache';
+          
+          const minimizeButton = document.createElement('button');
+          minimizeButton.className = 'klartext-minimize-button';
+          minimizeButton.innerHTML = '⟪';
+          minimizeButton.onclick = function() {
+            if (controls.classList.contains('minimized')) {
+              controls.classList.remove('minimized');
+              minimizeButton.innerHTML = '⟪';
+            } else {
+              controls.classList.add('minimized');
+              minimizeButton.innerHTML = '⟫';
+            }
+          };
+          
+          header.appendChild(title);
+          header.appendChild(minimizeButton);
+          
+          // Create progress container
+          const progressContainer = document.createElement('div');
+          progressContainer.className = 'klartext-progress-container';
+          
+          const progressBar = document.createElement('div');
+          progressBar.className = 'klartext-progress-bar';
+          progressBar.style.width = '100%';
+          progressBar.style.height = '10px';
+          progressBar.style.backgroundColor = '#eee';
+          progressBar.style.marginTop = '10px';
+          progressBar.innerHTML = '<div class="klartext-progress-fill" style="width: 0%; height: 100%; background-color: #4CAF50;"></div>';
+          
+          const progressText = document.createElement('div');
+          progressText.className = 'klartext-progress-text';
+          progressText.textContent = 'Übersetze Abschnitt 0/0';
+          
+          progressContainer.appendChild(progressBar);
+          progressContainer.appendChild(progressText);
+          
+          // Create buttons container
+          const buttonsContainer = document.createElement('div');
+          buttonsContainer.className = 'klartext-controls-buttons';
+          buttonsContainer.style.marginTop = '10px';
+          
+          const viewToggle = document.createElement('button');
+          viewToggle.className = 'klartext-view-toggle';
+          viewToggle.textContent = 'Original anzeigen';
+          viewToggle.onclick = function() {
+            if (viewToggle.textContent === 'Original anzeigen') {
+              viewToggle.textContent = 'Übersetzung anzeigen';
+            } else {
+              viewToggle.textContent = 'Original anzeigen';
+            }
+          };
+          
+          const ttsButton = document.createElement('button');
+          ttsButton.className = 'klartext-tts-button';
+          ttsButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Vorlesen';
+          
+          buttonsContainer.appendChild(viewToggle);
+          buttonsContainer.appendChild(ttsButton);
+          
+          // Add all elements to container
+          controls.appendChild(header);
+          controls.appendChild(progressContainer);
+          controls.appendChild(buttonsContainer);
+          
+          document.body.appendChild(controls);
+        }
+        
+        // Mark sections for translation
+        const sections = document.querySelectorAll('h1, h2, h3, h4, h5, h6, p');
+        sections.forEach((section, index) => {
+          section.classList.add('klartext-section');
+          section.setAttribute('data-section-id', 'section-' + index);
+          section.setAttribute('data-original', section.innerHTML);
+        });
+        
+        // Update progress
+        const progressFill = document.querySelector('.klartext-progress-fill');
+        if (progressFill) {
+          progressFill.style.width = '0%';
+        }
+        
+        const progressText = document.querySelector('.klartext-progress-text');
+        if (progressText) {
+          progressText.textContent = 'Übersetze Abschnitt 0/' + sections.length;
+        }
+      }
     }
   `);
 }
@@ -289,10 +400,96 @@ async function restorePrint(driver) {
   `);
 }
 
+/**
+ * Waits for the translation controls to appear
+ * @param {WebDriver} driver - WebDriver instance
+ */
+async function waitForControls(driver) {
+  await driver.wait(
+    until.elementLocated(By.css(selectors.controls)),
+    config.timeouts.elementWait,
+    'Translation controls did not appear'
+  );
+  
+  // Wait for visibility
+  const controls = await driver.findElement(By.css(selectors.controls));
+  await driver.wait(
+    until.elementIsVisible(controls),
+    config.timeouts.elementWait,
+    'Translation controls are not visible'
+  );
+}
+
+/**
+ * Waits for translation sections to be marked
+ * @param {WebDriver} driver - WebDriver instance
+ * @returns {Promise<Array<WebElement>>} Array of section elements
+ */
+async function waitForSections(driver) {
+  await driver.wait(
+    async () => {
+      const sections = await driver.findElements(By.css(selectors.translationSection));
+      return sections.length > 0;
+    },
+    config.timeouts.elementWait,
+    'No content sections were marked for translation'
+  );
+  
+  return await driver.findElements(By.css(selectors.translationSection));
+}
+
+/**
+ * Waits for the translation container to appear
+ * @param {WebDriver} driver - WebDriver instance
+ * @returns {Promise<WebElement>} The translation container element
+ */
+async function waitForTranslationContainer(driver) {
+  await driver.wait(
+    until.elementLocated(By.css(selectors.translationContainer)),
+    config.timeouts.elementWait,
+    'Translation container did not appear'
+  );
+  
+  const container = await driver.findElement(By.css(selectors.translationContainer));
+  await driver.wait(
+    until.elementIsVisible(container),
+    config.timeouts.elementWait,
+    'Translation container is not visible'
+  );
+  
+  return container;
+}
+
+/**
+ * Waits for the error container to appear
+ * @param {WebDriver} driver - WebDriver instance
+ * @returns {Promise<WebElement>} The error container element
+ */
+async function waitForErrorContainer(driver) {
+  await driver.wait(
+    until.elementLocated(By.css(selectors.errorContainer)),
+    config.timeouts.elementWait,
+    'Error container did not appear'
+  );
+  
+  const container = await driver.findElement(By.css(selectors.errorContainer));
+  await driver.wait(
+    until.elementIsVisible(container),
+    config.timeouts.elementWait,
+    'Error container is not visible'
+  );
+  
+  return container;
+}
+
 module.exports = {
   selectText,
   triggerAction,
   waitForOverlay,
+  waitForControls,
+  waitForSections,
+  waitForTranslationContainer,
+  waitForErrorContainer,
   mockSpeechSynthesis,
   restoreSpeechSynthesis,
   mockPrint,

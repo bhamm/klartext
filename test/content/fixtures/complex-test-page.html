@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Komplexe Testseite für Klartext</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 3fr 1fr;
+      grid-gap: 30px;
+    }
+    
+    header {
+      background-color: #f5f5f5;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .main-content {
+      grid-column: 1;
+    }
+    
+    .sidebar {
+      grid-column: 2;
+      background-color: #f9f9f9;
+      padding: 20px;
+      border-left: 1px solid #eee;
+    }
+    
+    article {
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .article-header {
+      margin-bottom: 20px;
+    }
+    
+    .article-meta {
+      color: #666;
+      font-size: 0.9em;
+      margin-bottom: 10px;
+    }
+    
+    .article-content {
+      margin-bottom: 20px;
+    }
+    
+    .article-footer {
+      font-size: 0.9em;
+      color: #666;
+    }
+    
+    .comments-section {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+    }
+    
+    .comment {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+    }
+    
+    .social-share {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    
+    .social-button {
+      padding: 5px 10px;
+      background-color: #eee;
+      border-radius: 3px;
+    }
+    
+    .advertisement {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f0f0f0;
+      border: 1px solid #ddd;
+      text-align: center;
+    }
+    
+    .hidden-content {
+      display: none;
+    }
+    
+    footer {
+      margin-top: 50px;
+      padding: 20px;
+      background-color: #f5f5f5;
+      border-top: 1px solid #ddd;
+      text-align: center;
+    }
+    
+    nav {
+      background-color: #333;
+      color: white;
+      padding: 10px 0;
+    }
+    
+    nav ul {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      justify-content: center;
+    }
+    
+    nav li {
+      margin: 0 15px;
+    }
+    
+    nav a {
+      color: white;
+      text-decoration: none;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+    
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    
+    th {
+      background-color: #f5f5f5;
+    }
+    
+    /* Additional styles for complex test cases */
+    .dynamic-content {
+      border: 1px dashed #ccc;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    
+    .nested-content {
+      padding: 10px;
+      margin: 10px 0;
+      background-color: #f8f8f8;
+      border-left: 3px solid #ddd;
+    }
+    
+    .content-with-iframe {
+      position: relative;
+      padding-bottom: 20px;
+    }
+    
+    .content-with-script {
+      position: relative;
+      margin: 15px 0;
+    }
+    
+    .ambiguous-content {
+      padding: 15px;
+      margin: 15px 0;
+      border: 1px dotted #aaa;
+    }
+    
+    .mixed-content {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin: 20px 0;
+    }
+    
+    .mixed-content-item {
+      flex: 1 1 200px;
+      padding: 10px;
+      background-color: #f9f9f9;
+    }
+    
+    .custom-layout {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-gap: 20px;
+      margin: 20px 0;
+    }
+    
+    .custom-layout-item {
+      padding: 15px;
+      background-color: #f5f5f5;
+    }
+    
+    .shadow-dom-host {
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin: 15px 0;
+    }
+    
+    .content-with-attributes {
+      padding: 15px;
+      margin: 15px 0;
+      border: 1px solid #eee;
+    }
+    
+    .content-with-attributes[data-translatable="true"] {
+      background-color: #f0f8ff;
+    }
+    
+    .content-with-attributes[data-translatable="false"] {
+      background-color: #fff0f0;
+    }
+  </style>
+</head>
+<body>
+  <nav role="navigation">
+    <ul>
+      <li><a href="#">Startseite</a></li>
+      <li><a href="#">Über uns</a></li>
+      <li><a href="#">Dienstleistungen</a></li>
+      <li><a href="#">Kontakt</a></li>
+      <li><a href="#">Blog</a></li>
+    </ul>
+  </nav>
+
+  <header>
+    <h1>Komplexe Testseite für Klartext</h1>
+    <p>Diese Seite enthält verschiedene Inhaltsstrukturen, um die Funktionalität des PageTranslators zu testen.</p>
+  </header>
+
+  <div class="container">
+    <main class="main-content" role="main">
+      <!-- Standard article with rich content -->
+      <article class="article" role="article">
+        <div class="article-header">
+          <h2>Barrierefreiheit im digitalen Zeitalter</h2>
+          <div class="article-meta">
+            Veröffentlicht am 28. Februar 2025 | Kategorie: Digitale Inklusion
+          </div>
+        </div>
+        
+        <div class="article-content">
+          <p>Die Digitalisierung hat unser Leben in vielerlei Hinsicht verändert und neue Möglichkeiten eröffnet. Allerdings profitieren nicht alle Menschen gleichermaßen von diesen Entwicklungen. Insbesondere für Menschen mit Behinderungen können digitale Angebote neue Barrieren schaffen, wenn sie nicht barrierefrei gestaltet sind.</p>
+          
+          <h3>Aktuelle Herausforderungen</h3>
+          <p>Trotz gesetzlicher Vorgaben und technischer Standards sind viele Webseiten und digitale Anwendungen nach wie vor nicht vollständig barrierefrei. Dies betrifft verschiedene Aspekte:</p>
+          
+          <ul>
+            <li>Fehlende Alternativtexte für Bilder und Grafiken</li>
+            <li>Unzureichende Tastaturbedienbarkeit</li>
+            <li>Mangelnde Kompatibilität mit Screenreadern</li>
+            <li>Komplexe Sprache ohne Alternativen in Leichter Sprache</li>
+            <li>Unzureichende Kontraste und problematische Farbkombinationen</li>
+          </ul>
+          
+          <p>Diese Barrieren erschweren oder verhindern den Zugang zu digitalen Inhalten für viele Menschen mit Behinderungen. Besonders problematisch ist dies bei essentiellen Diensten wie Online-Banking, E-Government-Angeboten oder digitalen Gesundheitsdiensten.</p>
+          
+          <h3>Lösungsansätze und Best Practices</h3>
+          <p>Um digitale Barrierefreiheit zu gewährleisten, sollten Entwickler und Content-Ersteller folgende Prinzipien beachten:</p>
+          
+          <ol>
+            <li>Frühzeitige Berücksichtigung von Barrierefreiheit im Entwicklungsprozess</li>
+            <li>Regelmäßige Überprüfung anhand etablierter Standards (z.B. WCAG)</li>
+            <li>Einbeziehung von Menschen mit Behinderungen in Testprozesse</li>
+            <li>Bereitstellung von Inhalten in verschiedenen Formaten, einschließlich Leichter Sprache</li>
+            <li>Kontinuierliche Weiterbildung des Teams zu Barrierefreiheitsthemen</li>
+          </ol>
+          
+          <h4>Technische Implementierung</h4>
+          <p>Auf technischer Ebene gibt es verschiedene Maßnahmen, die zur Verbesserung der Barrierefreiheit beitragen können:</p>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Maßnahme</th>
+                <th>Beschreibung</th>
+                <th>Nutzen</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Semantisches HTML</td>
+                <td>Verwendung von HTML-Elementen entsprechend ihrer Bedeutung</td>
+                <td>Verbessert die Struktur für Screenreader</td>
+              </tr>
+              <tr>
+                <td>ARIA-Attribute</td>
+                <td>Ergänzung von HTML mit zusätzlichen Informationen</td>
+                <td>Erhöht die Zugänglichkeit komplexer Komponenten</td>
+              </tr>
+              <tr>
+                <td>Tastaturnavigation</td>
+                <td>Sicherstellung der vollständigen Bedienbarkeit per Tastatur</td>
+                <td>Ermöglicht Nutzung ohne Maus</td>
+              </tr>
+              <tr>
+                <td>Responsive Design</td>
+                <td>Anpassung an verschiedene Bildschirmgrößen und -auflösungen</td>
+                <td>Verbessert die Nutzbarkeit auf verschiedenen Geräten</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <h4>Rechtliche Rahmenbedingungen</h4>
+          <p>In Deutschland gibt es verschiedene gesetzliche Vorgaben zur digitalen Barrierefreiheit, darunter die Barrierefreie-Informationstechnik-Verordnung (BITV 2.0) und das Behindertengleichstellungsgesetz (BGG). Auf europäischer Ebene ist insbesondere der European Accessibility Act (EAA) relevant, der bis 2025 umgesetzt werden muss.</p>
+          
+          <blockquote>
+            <p>"Barrierefreiheit ist kein 'Nice-to-have', sondern ein Menschenrecht. Digitale Angebote müssen für alle Menschen zugänglich sein, unabhängig von ihren individuellen Fähigkeiten oder Einschränkungen."</p>
+            <cite>— Prof. Dr. Maria Schmidt, Expertin für digitale Inklusion</cite>
+          </blockquote>
+          
+          <h3>Zukunftsperspektiven</h3>
+          <p>Die Entwicklung neuer Technologien bietet Chancen für verbesserte Barrierefreiheit. Künstliche Intelligenz kann beispielsweise bei der automatischen Erstellung von Alternativtexten oder der Übersetzung in Leichte Sprache unterstützen. Gleichzeitig entstehen durch neue Technologien wie Virtual Reality oder komplexe Webanwendungen auch neue Herausforderungen für die Barrierefreiheit.</p>
+        </div>
+        
+        <div class="article-footer">
+          <div class="tags">
+            Tags: Barrierefreiheit, Digitalisierung, Inklusion, Webentwicklung
+          </div>
+          
+          <div class="social-share">
+            <div class="social-button">Teilen auf Facebook</div>
+            <div class="social-button">Teilen auf Twitter</div>
+            <div class="social-button">Teilen auf LinkedIn</div>
+          </div>
+        </div>
+      </article>
+      
+      <!-- Second article with simpler structure -->
+      <article class="article">
+        <div class="article-header">
+          <h2>Leichte Sprache als Schlüssel zur digitalen Teilhabe</h2>
+          <div class="article-meta">
+            Veröffentlicht am 25. Februar 2025 | Kategorie: Leichte Sprache
+          </div>
+        </div>
+        
+        <div class="article-content">
+          <p>Komplexe Sprache stellt für viele Menschen eine erhebliche Barriere dar. Betroffen sind nicht nur Menschen mit Lernbehinderungen oder kognitiven Einschränkungen, sondern auch Menschen mit geringen Deutschkenntnissen, ältere Menschen oder Personen mit Leseschwäche.</p>
+          
+          <p>Leichte Sprache folgt bestimmten Regeln, um Texte verständlicher zu gestalten:</p>
+          
+          <ul>
+            <li>Kurze, einfache Sätze mit nur einer Aussage</li>
+            <li>Verzicht auf Fremdwörter, Fachbegriffe und Abkürzungen</li>
+            <li>Aktive Formulierungen statt Passivkonstruktionen</li>
+            <li>Vermeidung von abstrakten Begriffen und Redewendungen</li>
+            <li>Unterstützung durch Bilder und Visualisierungen</li>
+          </ul>
+          
+          <p>Die Übersetzung in Leichte Sprache erfordert spezifische Kenntnisse und sollte idealerweise von geschulten Übersetzern durchgeführt werden. Zunehmend kommen jedoch auch automatisierte Lösungen zum Einsatz, die mithilfe von künstlicher Intelligenz Texte in Leichte Sprache übertragen.</p>
+        </div>
+      </article>
+      
+      <!-- Complex nested content structure -->
+      <div class="dynamic-content">
+        <h3>Dynamisch generierte Inhalte</h3>
+        <p>Diese Sektion enthält dynamisch generierte Inhalte, die eine Herausforderung für den PageTranslator darstellen können.</p>
+        
+        <div class="nested-content">
+          <h4>Verschachtelte Inhalte</h4>
+          <p>Hier ist ein Beispiel für verschachtelte Inhalte, die in der Praxis häufig vorkommen:</p>
+          
+          <div class="nested-content">
+            <p>Diese Inhalte sind noch tiefer verschachtelt und könnten für den PageTranslator schwieriger zu erkennen sein.</p>
+            
+            <div class="nested-content">
+              <p>Eine dritte Ebene der Verschachtelung mit weiteren Inhalten, die übersetzt werden sollten.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Content with iframe (should be ignored by translator) -->
+      <div class="content-with-iframe">
+        <h3>Inhalte mit eingebetteten iframes</h3>
+        <p>Der folgende Abschnitt enthält einen iframe, der vom PageTranslator ignoriert werden sollte:</p>
+        
+        <iframe src="about:blank" width="100%" height="100" title="Beispiel-iframe"></iframe>
+        
+        <p>Dieser Text sollte jedoch übersetzt werden, obwohl er nach dem iframe steht.</p>
+      </div>
+      
+      <!-- Content with script (should be ignored by translator) -->
+      <div class="content-with-script">
+        <h3>Inhalte mit eingebetteten Scripts</h3>
+        <p>Der folgende Abschnitt enthält ein Script, das vom PageTranslator ignoriert werden sollte:</p>
+        
+        <script>
+          // Dieses Script sollte ignoriert werden
+          console.log('Test script');
+        </script>
+        
+        <p>Dieser Text sollte jedoch übersetzt werden, obwohl er nach dem Script steht.</p>
+      </div>
+      
+      <!-- Ambiguous content that might be difficult to classify -->
+      <div class="ambiguous-content">
+        <h3>Mehrdeutige Inhalte</h3>
+        <p>Diese Inhalte haben keine klare Struktur oder Klassifizierung und könnten für den PageTranslator schwierig zu erkennen sein.</p>
+        
+        <div>
+          <span>Dieser Text ist in einem generischen span-Element ohne semantische Bedeutung.</span>
+          <div>Dieser Text ist in einem generischen div-Element ohne semantische Bedeutung.</div>
+        </div>
+      </div>
+      
+      <!-- Mixed content with different elements -->
+      <div class="mixed-content">
+        <div class="mixed-content-item">
+          <h4>Gemischte Inhalte - Teil 1</h4>
+          <p>Dieser Abschnitt enthält verschiedene Arten von Inhalten in einem flexiblen Layout.</p>
+        </div>
+        
+        <div class="mixed-content-item">
+          <h4>Gemischte Inhalte - Teil 2</h4>
+          <ul>
+            <li>Listenelement 1</li>
+            <li>Listenelement 2</li>
+            <li>Listenelement 3</li>
+          </ul>
+        </div>
+        
+        <div class="mixed-content-item">
+          <h4>Gemischte Inhalte - Teil 3</h4>
+          <p>Ein weiterer Textabschnitt in einem flexiblen Layout.</p>
+        </div>
+      </div>
+      
+      <!-- Custom layout with grid -->
+      <div class="custom-layout">
+        <div class="custom-layout-item">
+          <h4>Benutzerdefiniertes Layout - Spalte 1</h4>
+          <p>Dieser Text befindet sich in einem benutzerdefinierten Grid-Layout, das für den PageTranslator eine Herausforderung darstellen könnte.</p>
+        </div>
+        
+        <div class="custom-layout-item">
+          <h4>Benutzerdefiniertes Layout - Spalte 2</h4>
+          <p>Ein weiterer Text in einem benutzerdefinierten Grid-Layout.</p>
+        </div>
+      </div>
+      
+      <!-- Content with data attributes -->
+      <div class="content-with-attributes" data-translatable="true">
+        <h3>Inhalte mit Datenattributen (übersetzbar)</h3>
+        <p>Dieser Abschnitt hat ein Datenattribut, das angibt, dass er übersetzt werden sollte.</p>
+      </div>
+      
+      <div class="content-with-attributes" data-translatable="false">
+        <h3>Inhalte mit Datenattributen (nicht übersetzbar)</h3>
+        <p>Dieser Abschnitt hat ein Datenattribut, das angibt, dass er nicht übersetzt werden sollte.</p>
+      </div>
+      
+      <!-- Advertisement (should be excluded) -->
+      <div class="advertisement">
+        <h3>Werbung</h3>
+        <p>Hier könnte Ihre Werbung stehen! Kontaktieren Sie uns für Anzeigenpreise.</p>
+      </div>
+      
+      <!-- Comments section (should be excluded) -->
+      <div class="comments-section" id="comments">
+        <h3>Kommentare (3)</h3>
+        
+        <div class="comment">
+          <div class="comment-author">Max Mustermann</div>
+          <div class="comment-date">28. Februar 2025, 10:15 Uhr</div>
+          <div class="comment-content">
+            <p>Sehr informativer Artikel! Ich arbeite selbst im Bereich Webentwicklung und versuche, Barrierefreiheit von Anfang an mitzudenken. Leider fehlt es oft an Bewusstsein für dieses wichtige Thema.</p>
+          </div>
+        </div>
+        
+        <div class="comment">
+          <div class="comment-author">Julia Schmidt</div>
+          <div class="comment-date">28. Februar 2025, 11:30 Uhr</div>
+          <div class="comment-content">
+            <p>Danke für den Hinweis auf die rechtlichen Rahmenbedingungen. Viele Unternehmen unterschätzen noch immer die Relevanz dieses Themas, auch aus rechtlicher Sicht.</p>
+          </div>
+        </div>
+        
+        <div class="comment">
+          <div class="comment-author">Thomas Müller</div>
+          <div class="comment-date">28. Februar 2025, 14:45 Uhr</div>
+          <div class="comment-content">
+            <p>Ich finde es wichtig, dass auch das Thema Leichte Sprache angesprochen wird. Oft konzentriert sich die Diskussion zu sehr auf technische Aspekte und vergisst die sprachliche Komponente der Barrierefreiheit.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+    
+    <!-- Sidebar (should be excluded) -->
+    <aside class="sidebar" role="complementary">
+      <div class="widget">
+        <h3>Über den Autor</h3>
+        <p>Dr. Michael Weber ist Experte für digitale Barrierefreiheit und berät Unternehmen und Organisationen bei der Umsetzung inklusiver digitaler Angebote.</p>
+      </div>
+      
+      <div class="widget">
+        <h3>Neueste Artikel</h3>
+        <ul>
+          <li><a href="#">Barrierefreiheit im digitalen Zeitalter</a></li>
+          <li><a href="#">Leichte Sprache als Schlüssel zur digitalen Teilhabe</a></li>
+          <li><a href="#">Inklusive Gestaltung von Benutzeroberflächen</a></li>
+          <li><a href="#">Barrierefreie PDFs erstellen</a></li>
+          <li><a href="#">Screenreader-optimierte Webseiten</a></li>
+        </ul>
+      </div>
+      
+      <div class="widget">
+        <h3>Newsletter</h3>
+        <p>Abonnieren Sie unseren Newsletter, um regelmäßig über neue Artikel informiert zu werden.</p>
+        <form>
+          <input type="email" placeholder="Ihre E-Mail-Adresse">
+          <button type="submit">Abonnieren</button>
+        </form>
+      </div>
+      
+      <div class="advertisement">
+        <h3>Sponsored Content</h3>
+        <p>Entdecken Sie unsere barrierefreien Webdesign-Services!</p>
+      </div>
+    </aside>
+  </div>
+  
+  <!-- Hidden content (should be ignored) -->
+  <div class="hidden-content">
+    <p>Dieser Text sollte nicht sichtbar sein und sollte vom PageTranslator ignoriert werden.</p>
+  </div>
+  
+  <!-- Footer (should be excluded) -->
+  <footer>
+    <p>&copy; 2025 Klartext Testseite | <a href="#">Impressum</a> | <a href="#">Datenschutz</a> | <a href="#">Kontakt</a></p>
+  </footer>
+</body>
+</html>

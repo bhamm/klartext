@@ -22,6 +22,17 @@ module.exports = {
   // Article mode
   articleHighlight: '.klartext-highlight',
   
+  // Full page translation mode
+  controls: '.klartext-controls',
+  progressBar: '.klartext-progress-bar',
+  progressFill: '.klartext-progress-fill',
+  progressText: '.klartext-progress-text',
+  minimizeButton: '.klartext-minimize-button',
+  viewToggle: '.klartext-view-toggle',
+  translationSection: '.klartext-section',
+  translationContainer: '.klartext-translation-container',
+  errorContainer: '.klartext-error-container',
+  
   // Test page elements
   testParagraph: '#test-paragraph',
   testArticle: '#test-article',

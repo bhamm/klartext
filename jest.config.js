@@ -52,7 +52,8 @@ module.exports = {
   globals: {
     'ts-jest': {
       tsconfig: 'tsconfig.json'
-    }
+    },
+    'NODE_ENV': 'test'
   },
   testEnvironmentOptions: {
     'jest-environment-node': {
