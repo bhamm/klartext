@@ -74,6 +74,8 @@ export class PageTranslator implements PageTranslatorInterface {
         this.controls.updateProgress(0, this.sections.length);
       }
       
+      // Start translation with the first section
+      this.currentSection = 0;
       await this.translateNextSection();
       
     } catch (error) {
@@ -166,7 +168,7 @@ export class PageTranslator implements PageTranslatorInterface {
         const validElements = Array.from(elements).filter(el => {
           if (!el || typeof el.innerText !== 'string') return false;
           const text = el.innerText.trim();
-          return text.length > 0 && text.split(/\\s+/).length > 10; // Ensure it has meaningful content
+          return text.length > 0 && text.split(/\s+/).length > 10; // Ensure it has meaningful content
         });
         
         if (validElements.length > 0) {
@@ -202,7 +204,7 @@ export class PageTranslator implements PageTranslatorInterface {
           const validElements = Array.from(elements).filter(el => {
             if (!el || typeof el.innerText !== 'string') return false;
             const text = el.innerText.trim();
-            return text.length > 0 && text.split(/\\s+/).length > 5; // Ensure paragraph has meaningful content
+            return text.length > 0 && text.split(/\s+/).length > 5; // Ensure paragraph has meaningful content
           });
           
           if (validElements.length > 0) {
@@ -215,11 +217,48 @@ export class PageTranslator implements PageTranslatorInterface {
       }
     }
     
+    // If still no sections found, try to find any paragraphs on the page
+    if (sections.length === 0) {
+      console.log('No specific content found, trying all paragraphs');
+      const allParagraphs = document.querySelectorAll<HTMLElement>('p:not(.klartext-loading-text)');
+      
+      if (allParagraphs.length > 0) {
+        const validParagraphs = Array.from(allParagraphs).filter(p => {
+          if (!p || typeof p.innerText !== 'string') return false;
+          const text = p.innerText.trim();
+          return text.length > 0 && text.split(/\s+/).length > 3; // Lower threshold for any paragraphs
+        });
+        
+        if (validParagraphs.length > 0) {
+          sections.push(...validParagraphs);
+          console.log(`Found ${validParagraphs.length} paragraphs on the page`);
+        }
+      }
+    }
+    
+    // If still no sections found, try to find any divs with text content
+    if (sections.length === 0) {
+      console.log('No paragraphs found, trying divs with text content');
+      const textDivs = document.querySelectorAll<HTMLElement>('div');
+      
+      const validDivs = Array.from(textDivs).filter(div => {
+        if (!div || typeof div.innerText !== 'string') return false;
+        const text = div.innerText.trim();
+        // Only consider divs with substantial text that don't have many child elements
+        return text.length > 50 && text.split(/\s+/).length > 10 && div.children.length < 5;
+      });
+      
+      if (validDivs.length > 0) {
+        sections.push(...validDivs);
+        console.log(`Found ${validDivs.length} divs with text content`);
+      }
+    }
+    
     // Filter sections first
     const filteredSections = sections.filter(section => {
       if (!section || typeof section.innerText !== 'string') return false;
       const text = section.innerText.trim();
-      if (!text || text.split(/\\s+/).length < 5) {
+      if (!text || text.split(/\s+/).length < 5) {
         return false;
       }
 
@@ -239,7 +278,8 @@ export class PageTranslator implements PageTranslatorInterface {
       );
       
       // If section has classes but none are content-related, skip it
-      if (classes.length > 0 && !hasContentClass) {
+      // Only apply this filter if we have more than one section
+      if (classes.length > 0 && !hasContentClass && sections.length > 1) {
         console.log('Skipping non-content element:', text.substring(0, 50) + '...');
         return false;
       }
@@ -247,10 +287,40 @@ export class PageTranslator implements PageTranslatorInterface {
     });
 
     // Now split filtered sections into chunks and store original references
-    const chunkedSections = filteredSections.map(section => {
+    let chunkedSections = filteredSections.map(section => {
       const chunks = splitIntoChunks(section, MAX_CHUNK_CHARS);
       return chunks;
     }).flat();
+    
+    // Last resort: if still no sections found after filtering and chunking, create a direct section from body
+    if (chunkedSections.length === 0) {
+      console.log('No content sections found after filtering, using body as direct section');
+      const bodyElement = document.body;
+      
+      if (bodyElement && bodyElement.innerText && bodyElement.innerText.trim().length > 0) {
+        console.log('Body element has text content:', bodyElement.innerText.trim().substring(0, 100) + '...');
+        console.log('Body element has HTML content:', bodyElement.innerHTML.substring(0, 100) + '...');
+        
+        // Create a direct section without chunking
+        // First, create a clone of the body to avoid modifying the actual page
+        const bodyClone = document.createElement('div');
+        bodyClone.innerHTML = bodyElement.innerHTML;
+        
+        // Remove excluded elements from the clone
+        EXCLUDE_SELECTORS.forEach(selector => {
+          bodyClone.querySelectorAll(selector).forEach(el => el.remove());
+        });
+        
+        // Create a section with the cleaned body content
+        chunkedSections = [{
+          originalSection: bodyElement,
+          content: bodyClone.innerHTML
+        }];
+        console.log('Created direct section from body element with excluded elements removed');
+      } else {
+        console.log('Body element has no valid text content');
+      }
+    }
     
     console.log(`Split into ${chunkedSections.length} chunks`);
     console.log(`Final section count after filtering: ${chunkedSections.length}`);
@@ -271,46 +341,59 @@ export class PageTranslator implements PageTranslatorInterface {
       const sectionData = this.sections[this.currentSection];
       const { originalSection, content } = sectionData;
       
+      // Verify section is still valid before starting
+      if (!originalSection.isConnected || !originalSection.parentNode) {
+        console.warn('Section no longer valid before processing, skipping section', this.currentSection + 1);
+        this.currentSection++;
+        this.translateNextSection();
+        return;
+      }
+      
       // Create a unique section ID
       const sectionId = `klartext-section-${this.currentSection + 1}`;
+      console.log(`Processing section ${sectionId}`);
       
-      // Store original content
-      originalSection.setAttribute('data-original', content);
-      originalSection.setAttribute('data-section-id', sectionId);
-      originalSection.classList.add('klartext-section', 'translating');
-
-      // Add loading indicator
-      const loadingDiv = document.createElement('div');
-      loadingDiv.className = 'klartext-loading';
-      loadingDiv.innerHTML = `
-        <div class="klartext-spinner"></div>
-        <p class="klartext-loading-text">Übersetze...</p>
-      `;
-      originalSection.appendChild(loadingDiv);
-
       try {
-        // Verify section is still valid
+        // Store original content
+        originalSection.setAttribute('data-original', content);
+        originalSection.setAttribute('data-section-id', sectionId);
+        originalSection.classList.add('klartext-section', 'translating');
+  
+        // Add loading indicator
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'klartext-loading';
+        loadingDiv.innerHTML = `
+          <div class="klartext-spinner"></div>
+          <p class="klartext-loading-text">Übersetze...</p>
+        `;
+        originalSection.appendChild(loadingDiv);
+  
+        // Verify section is still valid after modifications
         if (!originalSection.isConnected || !originalSection.parentNode) {
-          console.warn('Section no longer valid, skipping:', sectionId);
+          console.warn('Section no longer valid after DOM manipulation, skipping:', sectionId);
           this.currentSection++;
           this.translateNextSection();
           return;
         }
-
+  
         // Wait for DOM update
         await new Promise(resolve => setTimeout(resolve, 50));
-
+  
         // Update progress
         if (this.controls) {
           this.controls.updateProgress(this.currentSection + 1, this.sections.length);
         }
         
         // Send content for translation
+        console.log(`Sending section ${sectionId} for translation`);
         chrome.runtime.sendMessage({
           action: 'translateSection',
           html: content,
           id: sectionId
         });
+        
+        // Increment the current section for the next call
+        this.currentSection++;
         
         // Translation will continue in message handler
       } catch (domError) {
@@ -333,6 +416,8 @@ export class PageTranslator implements PageTranslatorInterface {
    * @param {string} id - The section ID
    */
   appendTranslation(translation: string, id: string): void {
+    console.log(`Appending translation for section ${id}`);
+    
     // Handle test environment differently
     if (typeof process !== 'undefined' && process.env.NODE_ENV === 'test') {
       // Check for invalid ID in test environment
@@ -381,7 +466,7 @@ export class PageTranslator implements PageTranslatorInterface {
     
     // Production code
     // Extract section number from ID
-    const sectionNum = parseInt(id.replace('section-', ''));
+    const sectionNum = parseInt(id.replace('klartext-section-', ''));
     
     if (isNaN(sectionNum) || sectionNum >= this.sections.length) {
       console.error('Invalid section ID:', id);
@@ -390,7 +475,25 @@ export class PageTranslator implements PageTranslatorInterface {
 
     const section = this.sections[sectionNum];
     const originalSection = section.originalSection;
-
+    
+    // Check if the original section is still valid
+    if (!originalSection.isConnected || !originalSection.parentNode) {
+      console.warn(`Original section for ${id} is no longer valid, skipping translation`);
+      return;
+    }
+    
+    // Remove loading indicator
+    const loadingIndicator = originalSection.querySelector('.klartext-loading');
+    if (loadingIndicator) {
+      loadingIndicator.remove();
+    }
+    
+    // Remove 'translating' class
+    originalSection.classList.remove('translating');
+    
+    // Add 'klartext-original' class
+    originalSection.classList.add('klartext-original');
+    
     // Create container for translation
     const container = document.createElement('div');
     container.className = 'klartext-translation-container';
@@ -403,17 +506,19 @@ export class PageTranslator implements PageTranslatorInterface {
     // Add to container
     container.appendChild(translationElement);
     
-    // Add classes to original section
-    originalSection.classList.add('klartext-original');
-    
     // Insert translation after original section
     originalSection.parentNode?.insertBefore(container, originalSection.nextSibling);
-
+    
     // Setup TTS for this section
     if (this.controls) {
       const plainText = translationElement.textContent || '';
       const words = plainText.split(/\s+/).filter(word => word.length > 0);
       this.controls.setupTTS(plainText, words);
+    }
+    
+    // Continue with the next section if there are more
+    if (this.currentSection < this.sections.length) {
+      setTimeout(() => this.translateNextSection(), 100);
     }
   }
 
