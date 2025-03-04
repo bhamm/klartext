@@ -123,7 +123,7 @@ export async function updateApiConfig(config: ProviderConfig & {
         if (!response) {
           const error = 'No response from background script';
           console.warn(error);
-          resolve({ success: false, error });
+          resolve({ success: false, error: error });
           return;
         }
         resolve(response);
