@@ -5,7 +5,9 @@ import { providerRegistry, ProviderId } from './registry';
 import './openai';
 import './google';
 import './anthropic';
+import './deepseek';
 import './local';
+
 
 /**
  * Get a provider by ID

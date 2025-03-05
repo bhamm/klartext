@@ -100,7 +100,11 @@ export function initProviderSelector({
       apiEndpointInput!.value = metadata.defaultEndpoint;
     }
     
-    updateProviderUI(providerId);
+    // Set default model for the new provider
+    const defaultModel = metadata.models.length > 0 ? metadata.models[0] : '';
+    
+    // Update UI with the default model
+    updateProviderUI(providerId, defaultModel);
     
     // Call external handler if provided
     if (typeof onProviderChange === 'function') {

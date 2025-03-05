@@ -21,7 +21,7 @@ export abstract class BaseProvider implements TranslationProvider {
     'Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 ' +
     'und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, ' +
     '<p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige ' +
-    'nicht relevante Inhalte. Beginne den Text nicht mit dem wort "html"';
+    'nicht relevante Inhalte. Beginne den Text nicht mit dem Wort "html"';
 
   abstract translate(text: string, config: ProviderConfig, isArticle?: boolean): Promise<string>;
 

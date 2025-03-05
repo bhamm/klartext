@@ -192,6 +192,22 @@ export async function saveAllSettings(settings: Settings): Promise<SettingsRespo
   console.log('Saving all settings:', settings);
   
   try {
+    // Ensure model is compatible with the selected provider
+    // This is important when switching providers
+    const providerMetadata = (await import('../../background/providers/index')).getProvidersMetadata();
+    const metadata = providerMetadata[settings.provider];
+    
+    if (metadata) {
+      // Check if the current model is valid for this provider
+      const isModelValid = metadata.models.includes(settings.model);
+      
+      if (!isModelValid) {
+        // Set to default model for this provider
+        settings.model = metadata.models.length > 0 ? metadata.models[0] : '';
+        console.log(`Model not valid for provider ${settings.provider}, set to default: ${settings.model}`);
+      }
+    }
+    
     // Save to storage
     console.log('Step 1: Saving to Chrome storage...');
     await saveSettings(settings);
