@@ -2,9 +2,11 @@
 
 Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um sie für Menschen mit eingeschränktem Sprachverständnis zugänglicher zu machen.
 
-## Version 1.5.23
+## Version 1.5.38
 
 Die aktuelle Version enthält folgende Verbesserungen:
+- Neues Provider-Registry-System für einfache Erweiterung mit neuen KI-Anbietern
+- Dynamische Benutzeroberfläche basierend auf verfügbaren Providern
 - Verbesserte Textverarbeitung mit optimierter Zeichensetzungsbehandlung
 - Neue HTML-Bereinigungsfunktionen für bessere Artikelerkennung
 - Optimierte Seitenübersetzung mit intelligenter Textaufteilung
@@ -141,6 +143,15 @@ klartext/
 │   ├── background/         # Service Worker & Backend
 │   │   ├── background.ts
 │   │   └── providers/      # KI-Provider Implementierungen
+│   │       ├── registry.ts     # Provider-Registry-System
+│   │       ├── base.ts         # Basis-Provider-Klasse
+│   │       ├── index.ts        # Provider-Exports
+│   │       ├── config.ts       # Provider-Konfiguration
+│   │       ├── openai.ts       # OpenAI-Provider
+│   │       ├── google.ts       # Google-Provider
+│   │       ├── anthropic.ts    # Anthropic-Provider
+│   │       ├── local.ts        # Lokaler Provider
+│   │       └── example-provider-template.ts # Template für neue Provider
 │   ├── config/             # Konfigurationsdateien
 │   │   └── api-keys.json   # API-Schlüssel (nicht im Git)
 │   ├── content/            # Content Scripts
@@ -219,7 +230,15 @@ klartext/
    npm run test:selenium:single test/selenium/specs/translate-selection.test.js
    ```
 
-6. Paket für Distribution erstellen:
+6. Neuen Provider hinzufügen:
+   - Erstellen Sie eine neue Datei in `src/background/providers/` (z.B. `my-provider.ts`)
+   - Verwenden Sie das Template aus `example-provider-template.ts` als Grundlage
+   - Implementieren Sie die `translate`-Methode für Ihren Provider
+   - Definieren Sie die Provider-Metadaten (ID, Name, Modelle, Endpoint, etc.)
+   - Fügen Sie den API-Endpoint zu `host_permissions` in `manifest.json` hinzu
+   - Der Provider wird automatisch registriert und in den Einstellungen verfügbar sein
+
+7. Paket für Distribution erstellen:
    ```bash
    npm run package
    ```
@@ -259,9 +278,12 @@ Die Erweiterung enthält End-to-End-Tests mit Selenium, die die Hauptfunktionen 
 ### Entwicklungshinweise
 
 - **Provider-Integration:**
-  - Modulares System für einfache Erweiterung
+  - Provider-Registry-System für einfache Erweiterung mit neuen KI-Anbietern
+  - Selbstregistrierung von Providern mit Metadaten
+  - Dynamische Benutzeroberfläche basierend auf verfügbaren Providern
   - Standardisierte Schnittstelle für neue Provider
   - Konfigurierbare Modelle und Endpoints
+  - Beispiel-Template für neue Provider-Implementierungen
 
 - **Sicherheit:**
   - Sichere Speicherung der API-Schlüssel

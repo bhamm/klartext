@@ -5,8 +5,13 @@ import {
   sanitizeInput, 
   validateForm 
 } from '../validation-service';
-import { PROVIDERS } from '../../constants/providers';
+import { getProvidersMetadata } from '../../../background/providers/index';
 import { SettingsFormData } from '../../../shared/types/settings';
+
+// Mock the provider registry
+jest.mock('../../../background/providers/index', () => ({
+  getProvidersMetadata: jest.fn()
+}));
 
 describe('Validation Service', () => {
   describe('validateApiKey', () => {
@@ -57,6 +62,44 @@ describe('Validation Service', () => {
   });
 
   describe('validateModel', () => {
+    beforeEach(() => {
+      // Setup mock for getProvidersMetadata
+      (getProvidersMetadata as jest.Mock).mockReturnValue({
+        openAI: {
+          id: 'openAI',
+          name: 'OpenAI',
+          models: ['gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+          defaultEndpoint: 'https://api.openai.com/v1/chat/completions',
+          keyPlaceholder: 'sk-...',
+          keyHint: 'OpenAI API-Schlüssel beginnt mit "sk-"'
+        },
+        google: {
+          id: 'google',
+          name: 'Google Gemini',
+          models: ['gemini-pro'],
+          defaultEndpoint: 'https://generativelanguage.googleapis.com/v1/models',
+          keyPlaceholder: 'Ihr Google API-Schlüssel',
+          keyHint: 'Google Cloud API-Schlüssel'
+        },
+        anthropic: {
+          id: 'anthropic',
+          name: 'Anthropic Claude',
+          models: ['claude-3-opus'],
+          defaultEndpoint: 'https://api.anthropic.com/v1/messages',
+          keyPlaceholder: 'sk-...',
+          keyHint: 'Anthropic API-Schlüssel beginnt mit "sk-"'
+        },
+        local: {
+          id: 'local',
+          name: 'Local Model',
+          models: ['llama-2-70b'],
+          defaultEndpoint: 'http://localhost:1234/completion',
+          keyPlaceholder: 'Optional für lokale Installation',
+          keyHint: 'API-Schlüssel optional bei lokaler Installation'
+        }
+      });
+    });
+
     test('returns false for empty or undefined model or provider', () => {
       expect(validateModel('', 'openAI')).toBe(false);
       expect(validateModel(undefined, 'openAI')).toBe(false);
@@ -70,8 +113,9 @@ describe('Validation Service', () => {
 
     test('returns true for model in provider models list', () => {
       // For each provider, test with their first model
-      Object.entries(PROVIDERS).forEach(([provider, config]) => {
-        const model = config.models[0];
+      const providers = getProvidersMetadata();
+      Object.entries(providers).forEach(([provider, metadata]) => {
+        const model = metadata.models[0];
         expect(validateModel(model, provider)).toBe(true);
       });
     });
@@ -101,6 +145,44 @@ describe('Validation Service', () => {
   });
 
   describe('validateForm', () => {
+    beforeEach(() => {
+      // Setup mock for getProvidersMetadata
+      (getProvidersMetadata as jest.Mock).mockReturnValue({
+        openAI: {
+          id: 'openAI',
+          name: 'OpenAI',
+          models: ['gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+          defaultEndpoint: 'https://api.openai.com/v1/chat/completions',
+          keyPlaceholder: 'sk-...',
+          keyHint: 'OpenAI API-Schlüssel beginnt mit "sk-"'
+        },
+        google: {
+          id: 'google',
+          name: 'Google Gemini',
+          models: ['gemini-pro'],
+          defaultEndpoint: 'https://generativelanguage.googleapis.com/v1/models',
+          keyPlaceholder: 'Ihr Google API-Schlüssel',
+          keyHint: 'Google Cloud API-Schlüssel'
+        },
+        anthropic: {
+          id: 'anthropic',
+          name: 'Anthropic Claude',
+          models: ['claude-3-opus'],
+          defaultEndpoint: 'https://api.anthropic.com/v1/messages',
+          keyPlaceholder: 'sk-...',
+          keyHint: 'Anthropic API-Schlüssel beginnt mit "sk-"'
+        },
+        local: {
+          id: 'local',
+          name: 'Local Model',
+          models: ['llama-2-70b'],
+          defaultEndpoint: 'http://localhost:1234/completion',
+          keyPlaceholder: 'Optional für lokale Installation',
+          keyHint: 'API-Schlüssel optional bei lokaler Installation'
+        }
+      });
+    });
+
     test('returns success for valid form data', () => {
       const formData: SettingsFormData = {
         provider: 'openAI',
@@ -117,6 +199,9 @@ describe('Validation Service', () => {
     });
 
     test('returns error for invalid provider', () => {
+      // Mock getProvidersMetadata to return empty object for this test
+      (getProvidersMetadata as jest.Mock).mockReturnValueOnce({});
+      
       const formData: Partial<SettingsFormData> = {
         provider: 'invalid',
         model: 'gpt-4-turbo',
@@ -140,7 +225,7 @@ describe('Validation Service', () => {
       
       expect(validateForm(formData)).toEqual({
         success: false,
-        error: `Ungültiger ${PROVIDERS.openAI.name} API-Schlüssel Format`
+        error: 'Ungültiger OpenAI API-Schlüssel Format'
       });
     });
 

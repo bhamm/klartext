@@ -2,9 +2,9 @@
  * Service for managing extension settings
  */
 import { DEFAULT_SETTINGS, mergeWithDefaults, validateSettings } from '../models/settings';
-import { getDefaultModel, getDefaultEndpoint } from '../constants/providers';
 import { Settings, ApiKeysConfig, SettingsResponse } from '../../shared/types/settings';
 import { ProviderConfig } from '../../shared/types/provider';
+import { getDefaultEndpoint, getDefaultModel } from '../../background/providers/config';
 
 /**
  * Load API keys from config file

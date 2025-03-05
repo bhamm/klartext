@@ -1,6 +1,21 @@
 import { TranslationProvider, ProviderConfig, TranslationError } from '../../shared/types/provider';
+import { ProviderMetadata, providerRegistry } from './registry';
 
 export abstract class BaseProvider implements TranslationProvider {
+  /**
+   * Provider metadata
+   */
+  protected static metadata: ProviderMetadata;
+  
+  /**
+   * Register the provider with the registry
+   * @param metadata - Provider metadata
+   * @param implementation - Provider implementation
+   */
+  protected static register(metadata: ProviderMetadata, implementation: TranslationProvider): void {
+    this.metadata = metadata;
+    providerRegistry.register(metadata, implementation);
+  }
   protected systemPrompt = 
     'Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. ' +
     'Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 ' +

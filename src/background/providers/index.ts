@@ -1,29 +1,52 @@
-import { ProviderConfig } from '../../shared/types/provider';
-import { openAIProvider } from './openai';
-import { googleProvider } from './google';
-import { anthropicProvider } from './anthropic';
-import { localProvider } from './local';
+import { ProviderConfig, TranslationProvider } from '../../shared/types/provider';
+import { providerRegistry, ProviderId } from './registry';
 
-export const providers = {
-  openAI: openAIProvider,
-  google: googleProvider,
-  anthropic: anthropicProvider,
-  local: localProvider
-} as const;
+// Import all providers to ensure they register themselves
+import './openai';
+import './google';
+import './anthropic';
+import './local';
 
-export type ProviderName = keyof typeof providers;
-
-export function getProvider(name: ProviderName) {
-  const provider = providers[name];
-  if (!provider) {
-    throw new Error(`Unsupported provider: ${name}`);
+/**
+ * Get a provider by ID
+ * @param id - Provider ID
+ * @returns Provider implementation
+ */
+export function getProvider(id: ProviderId): TranslationProvider {
+  try {
+    return providerRegistry.getProvider(id);
+  } catch (error) {
+    throw new Error(`Unsupported provider: ${id}`);
   }
-  return provider;
 }
 
+/**
+ * Translate text using the specified provider
+ * @param text - Text to translate
+ * @param config - Provider configuration
+ * @param isArticle - Whether the text is an article
+ * @returns Translated text
+ */
 export async function translate(text: string, config: ProviderConfig, isArticle?: boolean): Promise<string> {
-  const provider = getProvider(config.provider as ProviderName);
+  const provider = getProvider(config.provider);
   return provider.translate(text, config, isArticle);
 }
 
+/**
+ * Get all provider IDs
+ * @returns Array of provider IDs
+ */
+export function getProviderIds(): string[] {
+  return providerRegistry.getProviderIds();
+}
+
+/**
+ * Get all provider metadata
+ * @returns Object mapping provider IDs to metadata
+ */
+export function getProvidersMetadata() {
+  return providerRegistry.getAllMetadata();
+}
+
 export * from './config';
+export * from './registry';

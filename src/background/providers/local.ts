@@ -1,7 +1,23 @@
 import { BaseProvider } from './base';
 import { ProviderConfig } from '../../shared/types/provider';
+import { ProviderMetadata } from './registry';
 
 export class LocalProvider extends BaseProvider {
+  /**
+   * Provider metadata
+   */
+  static {
+    const metadata: ProviderMetadata = {
+      id: 'local',
+      name: 'Local Model',
+      models: ['llama-2-70b', 'llama-2-13b', 'llama-2-7b'],
+      defaultEndpoint: 'http://localhost:1234/completion',
+      keyPlaceholder: 'Optional für lokale Installation',
+      keyHint: 'API-Schlüssel optional bei lokaler Installation'
+    };
+    
+    this.register(metadata, new LocalProvider());
+  }
   async translate(text: string, config: ProviderConfig, isArticle?: boolean): Promise<string> {
     this.validateConfig(config);
     
