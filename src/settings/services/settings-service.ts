@@ -175,7 +175,8 @@ export async function updateContentSettings(settings: Settings): Promise<void> {
       settings: {
         textSize: settings.textSize,
         compareView: settings.compareView,
-        excludeComments: settings.excludeComments
+        excludeComments: settings.excludeComments,
+        speech: settings.speech
       }
     });
   } catch (err) {

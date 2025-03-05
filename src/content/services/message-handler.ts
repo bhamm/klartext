@@ -87,11 +87,29 @@ function handleMessage(
 
       case 'updateSettings':
         console.log('Updating settings:', message.settings);
-        if (message.settings?.textSize) {
-          // Remove any existing text size classes
-          document.body.classList.remove('klartext-text-normal', 'klartext-text-gross', 'klartext-text-sehr-gross');
-          // Add new text size class
-          document.body.classList.add(`klartext-text-${message.settings.textSize}`);
+        if (message.settings) {
+          if (message.settings.textSize) {
+            // Remove any existing text size classes
+            document.body.classList.remove('klartext-text-normal', 'klartext-text-gross', 'klartext-text-sehr-gross');
+            // Add new text size class
+            document.body.classList.add(`klartext-text-${message.settings.textSize}`);
+          }
+          
+          // Update speech settings if provided
+          if (message.settings.speech) {
+            // Import the speech controller
+            import('../controllers/speech-controller').then(async ({ speechController }) => {
+              try {
+                console.log('Applying speech settings:', message.settings!.speech);
+                await speechController.setSettings(message.settings!.speech!);
+                console.log('Speech settings updated successfully');
+              } catch (error) {
+                console.error('Error applying speech settings:', error);
+              }
+            }).catch(error => {
+              console.error('Error importing speech controller:', error);
+            });
+          }
         }
         break;
 

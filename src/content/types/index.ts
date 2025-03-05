@@ -87,6 +87,11 @@ export interface SpeechControllerInterface {
   isPlaying: boolean;
   button: HTMLElement | null;
   debugMode: boolean;
+  availableVoices: SpeechSynthesisVoice[];
+  selectedVoiceURI: string;
+  rate: number;
+  pitch: number;
+  useGoogleTTS: boolean;
   
   setup(text: string, words: string[], button: HTMLElement): void;
   start(): void;
@@ -95,6 +100,9 @@ export interface SpeechControllerInterface {
   stop(): void;
   toggle(): void;
   updateButtonState(isPlaying: boolean): void;
+  loadVoices(): void;
+  setSettings(settings: any): void;
+  getAvailableVoices(): SpeechSynthesisVoice[];
 }
 
 /**

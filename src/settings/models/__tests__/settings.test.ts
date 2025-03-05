@@ -14,7 +14,13 @@ describe('Settings Model', () => {
           fullPageTranslation: false
         },
         compareView: false,
-        excludeComments: true
+        excludeComments: true,
+        speech: {
+          voiceURI: '',
+          rate: 0.9,
+          pitch: 1.0,
+          useGoogleTTS: false
+        }
       });
     });
   });
@@ -31,7 +37,12 @@ describe('Settings Model', () => {
           fullPageTranslation: false
         },
         compareView: false,
-        excludeComments: true
+        excludeComments: true,
+        speech: {
+          voiceURI: '',
+          rate: 0.9,
+          pitch: 1.0
+        }
       };
       expect(validateSettings(settings)).toBe(true);
     });

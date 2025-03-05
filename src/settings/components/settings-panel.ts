@@ -3,6 +3,7 @@
  */
 import { getElement, toggleVisibility, addSafeEventListener } from '../utils/dom-utils';
 import { Settings, SettingsPanelComponent, ExperimentalFeatures } from '../../shared/types/settings';
+import { speechSettings } from './speech-settings';
 
 /**
  * Initialize settings panel component
@@ -65,6 +66,11 @@ export function initSettingsPanel(): SettingsPanelComponent | null {
       if (settings.excludeComments !== undefined) {
         excludeCommentsCheckbox!.checked = Boolean(settings.excludeComments);
       }
+      
+      // Set speech settings
+      if (settings.speech) {
+        speechSettings.setSettings(settings.speech);
+      }
     },
     
     /**
@@ -76,13 +82,17 @@ export function initSettingsPanel(): SettingsPanelComponent | null {
       const selectedTextSize = document.querySelector<HTMLInputElement>('input[name="text-size"]:checked');
       const textSize = selectedTextSize ? selectedTextSize.value as Settings['textSize'] : 'normal';
       
+      // Get speech settings
+      const speech = speechSettings.getSettings();
+      
       return {
         textSize,
         experimentalFeatures: {
           fullPageTranslation: enableFullpageCheckbox!.checked
         } as ExperimentalFeatures,
         compareView: compareViewCheckbox!.checked,
-        excludeComments: excludeCommentsCheckbox!.checked
+        excludeComments: excludeCommentsCheckbox!.checked,
+        speech
       };
     }
   };
