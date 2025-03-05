@@ -10,18 +10,24 @@ import { TranslationControlsInterface } from '../types';
  * Floating controls for full page translation
  */
 export class TranslationControls implements TranslationControlsInterface {
-  container: HTMLElement | null;
-  progressBar: HTMLElement | null;
-  progressText: HTMLElement | null;
-  viewToggle: HTMLElement | null;
-  ttsButton: HTMLElement | null;
-  minimizeButton: HTMLElement | null;
-  isMinimized: boolean;
+  private static instance: TranslationControls | null = null;
+  
+  container!: HTMLElement | null;
+  progressBar!: HTMLElement | null;
+  progressText!: HTMLElement | null;
+  viewToggle!: HTMLElement | null;
+  ttsButton!: HTMLElement | null;
+  minimizeButton!: HTMLElement | null;
+  isMinimized!: boolean;
 
   /**
    * Create a new TranslationControls
    */
   constructor() {
+    if (TranslationControls.instance) {
+      return TranslationControls.instance;
+    }
+    
     this.container = null;
     this.progressBar = null;
     this.progressText = null;
@@ -30,6 +36,15 @@ export class TranslationControls implements TranslationControlsInterface {
     this.minimizeButton = null;
     this.isMinimized = false;
     this.setupControls();
+    
+    TranslationControls.instance = this;
+  }
+
+  /**
+   * Reset the singleton instance (for testing purposes)
+   */
+  public static resetInstance(): void {
+    TranslationControls.instance = null;
   }
 
   /**
@@ -124,7 +139,8 @@ export class TranslationControls implements TranslationControlsInterface {
     if (this.progressBar) {
       const progress = this.progressBar.querySelector('.klartext-progress-fill') as HTMLElement;
       if (progress) {
-        progress.style.width = `${(current/total) * 100}%`;
+        const percentage = Math.min((current/total) * 100, 100);
+        progress.style.width = `${percentage}%`;
       }
     }
     

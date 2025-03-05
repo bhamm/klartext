@@ -79,15 +79,21 @@ export async function saveSettings(settings: Settings): Promise<Settings> {
   }
 
   return new Promise((resolve, reject) => {
-    chrome.storage.sync.set(settings, () => {
-      if (chrome.runtime.lastError) {
-        console.error('Error saving settings:', chrome.runtime.lastError);
-        reject(new Error(chrome.runtime.lastError.message));
-      } else {
-        console.log('Settings saved successfully');
-        resolve(settings);
-      }
-    });
+    try {
+      chrome.storage.sync.set(settings, () => {
+        const error = chrome.runtime.lastError;
+        if (error) {
+          console.error('Error saving settings:', error);
+          reject(new Error(error.message));
+        } else {
+          console.log('Settings saved successfully');
+          resolve(settings);
+        }
+      });
+    } catch (error) {
+      console.error('Unexpected error in saveSettings:', error);
+      reject(error);
+    }
   });
 }
 
@@ -108,16 +114,27 @@ export async function updateApiConfig(config: ProviderConfig & {
   console.log('Updating API configuration in background script:', config);
   
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({
-      action: 'updateApiConfig',
-      config
-    }, (response: ApiConfigResponse | undefined) => {
-      console.log('Response from background script:', response);
-      if (!response) {
-        console.warn('No response from background script');
-      }
-      resolve(response || { success: false, error: 'No response from background script' });
-    });
+    try {
+      chrome.runtime.sendMessage({
+        action: 'updateApiConfig',
+        config
+      }, (response: ApiConfigResponse | undefined) => {
+        console.log('Response from background script:', response);
+        if (!response) {
+          const error = 'No response from background script';
+          console.warn(error);
+          resolve({ success: false, error: error });
+          return;
+        }
+        resolve(response);
+      });
+    } catch (error) {
+      console.error('Error sending message to background script:', error);
+      resolve({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
   });
 }
 

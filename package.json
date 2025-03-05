@@ -1,6 +1,6 @@
 {
   "name": "klartext",
-  "version": "1.5.23",
+  "version": "1.5.37",
   "description": "Chrome extension for translating German texts into 'Leichte Sprache'",
   "private": true,
   "scripts": {
@@ -35,7 +35,7 @@
     "jest": "^29.0.0",
     "jest-environment-jsdom": "^29.7.0",
     "mocha": "^10.8.2",
-    "puppeteer": "^24.3.0",
+    "puppeteer": "^19.7.0",
     "selenium-webdriver": "^4.29.0",
     "ts-jest": "^29.0.0",
     "ts-loader": "^9.5.2",

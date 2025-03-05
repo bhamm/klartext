@@ -61,6 +61,13 @@ export const EXCLUDE_SELECTORS: string[] = [
   '.header', '.footer', '.sidebar',
   // Ads and promotional content
   '.ad', '.advertisement', '.promo', '.sponsored',
+  '[class*="ad-"], [class*="advert"], [class*="banner"], [class*="adsense"]',
+  '#ad-container', '#banner-ad', '#ad-wrapper', '#adContainer',
+  '[data-ad]', '[data-ad-unit]', '[data-ad-slot]', '[data-ad-client]',
+  '[id*="google_ads_"]', '[id*="div-gpt-ad"]', '[class*="gpt-ad"]',
+  '.adsbygoogle', '.ad-unit', '.ad-slot', '.ad-banner', '.ad-container',
+  '.dfp-ad', '.pub_300x250', '.pub_300x250m', '.pub_728x90',
+  '.text-ad', '.text-ad-links', '.ad-text', '.ad-block',
   // Interactive elements
   '.widget', '.tool', '.interactive',
   // Specific sharing elements
