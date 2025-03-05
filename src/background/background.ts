@@ -162,7 +162,9 @@ function normalizeProviderName(provider: string): string {
   const providerMap: { [key: string]: string } = {
     'openai': 'openAI',
     'openAI': 'openAI',
-    'OPENAI': 'openAI'
+    'OPENAI': 'openAI',
+    'deepseek': 'deepseek',
+    'DEEPSEEK': 'deepseek'
   };
   return providerMap[provider.toLowerCase()] || provider;
 }
@@ -170,12 +172,47 @@ function normalizeProviderName(provider: string): string {
 // Load API configuration from storage and config file
 async function loadApiConfig(): Promise<ApiConfig> {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], (items: StorageItems) => {
+    chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], async (items: StorageItems) => {
       console.log('Loading API configuration from storage');
       
-      // Update provider and model from storage
+      // Update provider from storage
       if (items.provider) API_CONFIG.provider = normalizeProviderName(items.provider);
-      if (items.model) API_CONFIG.model = items.model;
+      
+      // Import provider registry to check model compatibility
+      const { providerRegistry } = await import('./providers/registry');
+      
+      // Check if the model is compatible with the provider
+      let modelIsValid = false;
+      try {
+        if (items.model && API_CONFIG.provider) {
+          const metadata = providerRegistry.getMetadata(API_CONFIG.provider);
+          modelIsValid = metadata.models.includes(items.model);
+          
+          if (!modelIsValid) {
+            console.warn(`Model ${items.model} is not compatible with provider ${API_CONFIG.provider}`);
+            // Set to default model for this provider
+            API_CONFIG.model = metadata.models.length > 0 ? metadata.models[0] : '';
+            console.log(`Setting model to default for ${API_CONFIG.provider}: ${API_CONFIG.model}`);
+            
+            // Update the model in storage
+            chrome.storage.sync.set({ model: API_CONFIG.model });
+          } else {
+            API_CONFIG.model = items.model;
+          }
+        } else if (API_CONFIG.provider) {
+          // No model specified, use default for this provider
+          const metadata = providerRegistry.getMetadata(API_CONFIG.provider);
+          API_CONFIG.model = metadata.models.length > 0 ? metadata.models[0] : '';
+          console.log(`No model specified, using default for ${API_CONFIG.provider}: ${API_CONFIG.model}`);
+          
+          // Update the model in storage
+          chrome.storage.sync.set({ model: API_CONFIG.model });
+        }
+      } catch (error) {
+        console.error('Error validating model:', error);
+        // Keep the model from storage if validation fails
+        if (items.model) API_CONFIG.model = items.model;
+      }
       
       // Prioritize user-provided keys and endpoints from storage
       if (items.apiKey) {
@@ -288,24 +325,67 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
     try {
       if (!message.config) throw new Error('No configuration provided');
       
+      // Check if provider is changing
+      const providerChanged = message.config.provider && message.config.provider !== API_CONFIG.provider;
+      
+      // Update API config
       API_CONFIG = { ...API_CONFIG, ...message.config };
       
-      // Store updated config in chrome.storage
-      chrome.storage.sync.set({
-        provider: API_CONFIG.provider,
-        model: API_CONFIG.model,
-        apiKey: API_CONFIG.apiKey,
-        apiEndpoint: API_CONFIG.apiEndpoint
-      }, () => {
-        console.log('API Configuration updated:', {
-          provider: API_CONFIG.provider,
-          model: API_CONFIG.model
-        });
+      // If provider changed, validate model compatibility
+      if (providerChanged) {
+        (async () => {
+          try {
+            const { providerRegistry } = await import('./providers/registry');
+            const metadata = providerRegistry.getMetadata(API_CONFIG.provider);
+            
+            // Check if current model is valid for the new provider
+            const modelIsValid = metadata.models.includes(API_CONFIG.model);
+            
+            if (!modelIsValid) {
+              console.warn(`Model ${API_CONFIG.model} is not compatible with provider ${API_CONFIG.provider}`);
+              // Set to default model for this provider
+              API_CONFIG.model = metadata.models.length > 0 ? metadata.models[0] : '';
+              console.log(`Setting model to default for ${API_CONFIG.provider}: ${API_CONFIG.model}`);
+            }
+            
+            // Store updated config in chrome.storage
+            chrome.storage.sync.set({
+              provider: API_CONFIG.provider,
+              model: API_CONFIG.model,
+              apiKey: API_CONFIG.apiKey,
+              apiEndpoint: API_CONFIG.apiEndpoint
+            }, () => {
+              console.log('API Configuration updated with model validation:', {
+                provider: API_CONFIG.provider,
+                model: API_CONFIG.model
+              });
 
-        chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
-          MenuManager.setupContextMenu(items.experimentalFeatures || {});
+              chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
+                MenuManager.setupContextMenu(items.experimentalFeatures || {});
+              });
+            });
+          } catch (error) {
+            console.error('Error validating model after provider change:', error);
+          }
+        })();
+      } else {
+        // Store updated config in chrome.storage
+        chrome.storage.sync.set({
+          provider: API_CONFIG.provider,
+          model: API_CONFIG.model,
+          apiKey: API_CONFIG.apiKey,
+          apiEndpoint: API_CONFIG.apiEndpoint
+        }, () => {
+          console.log('API Configuration updated:', {
+            provider: API_CONFIG.provider,
+            model: API_CONFIG.model
+          });
+
+          chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
+            MenuManager.setupContextMenu(items.experimentalFeatures || {});
+          });
         });
-      });
+      }
       
       sendResponse({ success: true });
     } catch (error) {

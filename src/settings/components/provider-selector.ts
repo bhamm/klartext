@@ -1,11 +1,11 @@
 /**
  * Provider selector component
  */
-import { PROVIDERS } from '../constants/providers';
 import { getElement, populateSelect, addSafeEventListener } from '../utils/dom-utils';
 import { sanitizeInput } from '../services/validation-service';
 import { ApiKeysConfig, ProviderSelectorComponent } from '../../shared/types/settings';
 import { ProviderConfig } from '../../shared/types/provider';
+import { getProvidersMetadata, ProviderId } from '../../background/providers/index';
 
 interface ProviderSelectorOptions {
   onProviderChange?: (provider: string) => void;
@@ -35,29 +35,49 @@ export function initProviderSelector({
     return null;
   }
   
+  // Get all provider metadata
+  const providers = getProvidersMetadata();
+  
+  // Populate provider select
+  const providerOptions: Record<string, string> = {};
+  Object.entries(providers).forEach(([id, metadata]) => {
+    providerOptions[id] = metadata.name;
+  });
+  populateSelect(providerSelect, Object.keys(providerOptions), '', providerOptions);
+  
+  // Populate endpoint hints
+  const endpointHint = getElement<HTMLElement>('endpoint-hint');
+  if (endpointHint) {
+    let hintText = 'Standart-Endpunkte:<br>';
+    Object.entries(providers).forEach(([id, metadata]) => {
+      hintText += `• ${metadata.name}: ${metadata.defaultEndpoint}<br>`;
+    });
+    endpointHint.innerHTML = hintText;
+  }
+  
   /**
    * Update UI based on selected provider
-   * @param provider - Provider ID
+   * @param providerId - Provider ID
    * @param selectedModel - Selected model
    */
-  function updateProviderUI(provider: string, selectedModel: string = ''): void {
-    const config = PROVIDERS[provider];
-    if (!config) return;
+  function updateProviderUI(providerId: ProviderId, selectedModel: string = ''): void {
+    const metadata = providers[providerId];
+    if (!metadata) return;
     
     // Update API key field
-    apiKeyInput!.placeholder = config.keyPlaceholder;
-    apiHint!.textContent = config.keyHint;
+    apiKeyInput!.placeholder = metadata.keyPlaceholder;
+    apiHint!.textContent = metadata.keyHint;
 
     // Update endpoint field
-    apiEndpointInput!.placeholder = config.defaultEndpoint;
+    apiEndpointInput!.placeholder = metadata.defaultEndpoint;
     
     // Set default endpoint if field is empty
     if (!apiEndpointInput!.value) {
-      apiEndpointInput!.value = config.defaultEndpoint;
+      apiEndpointInput!.value = metadata.defaultEndpoint;
     }
     
     // Update model select options
-    populateSelect(modelSelect!, config.models, selectedModel);
+    populateSelect(modelSelect!, metadata.models, selectedModel);
   }
   
   /**
@@ -66,23 +86,29 @@ export function initProviderSelector({
    */
   function handleProviderChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
-    const provider = target.value;
-    const config = PROVIDERS[provider];
+    const providerId = target.value;
+    const metadata = providers[providerId];
+    
+    if (!metadata) return;
     
     // Use API key and endpoint from api-keys.json if available
-    if (apiKeys.providers?.[provider]) {
-      apiKeyInput!.value = apiKeys.providers[provider].apiKey || '';
-      apiEndpointInput!.value = apiKeys.providers[provider].apiEndpoint || config.defaultEndpoint;
+    if (apiKeys.providers?.[providerId]) {
+      apiKeyInput!.value = apiKeys.providers[providerId].apiKey || '';
+      apiEndpointInput!.value = apiKeys.providers[providerId].apiEndpoint || metadata.defaultEndpoint;
     } else {
       apiKeyInput!.value = '';
-      apiEndpointInput!.value = config.defaultEndpoint;
+      apiEndpointInput!.value = metadata.defaultEndpoint;
     }
     
-    updateProviderUI(provider);
+    // Set default model for the new provider
+    const defaultModel = metadata.models.length > 0 ? metadata.models[0] : '';
+    
+    // Update UI with the default model
+    updateProviderUI(providerId, defaultModel);
     
     // Call external handler if provided
     if (typeof onProviderChange === 'function') {
-      onProviderChange(provider);
+      onProviderChange(providerId);
     }
   }
   
@@ -104,26 +130,26 @@ export function initProviderSelector({
   return {
     /**
      * Set provider and update UI
-     * @param provider - Provider ID
+     * @param providerId - Provider ID
      * @param model - Model ID
      */
-    setProvider(provider: string, model: string = ''): void {
-      if (providerSelect && PROVIDERS[provider]) {
-        providerSelect.value = provider;
+    setProvider(providerId: ProviderId, model: string = ''): void {
+      if (providerSelect && providers[providerId]) {
+        providerSelect.value = providerId;
         
         // Set API key and endpoint from api-keys.json if available
-        const config = PROVIDERS[provider];
-        if (apiKeys.providers?.[provider]) {
-          apiKeyInput!.value = apiKeys.providers[provider].apiKey || '';
-          apiEndpointInput!.value = apiKeys.providers[provider].apiEndpoint || config.defaultEndpoint;
+        const metadata = providers[providerId];
+        if (apiKeys.providers?.[providerId]) {
+          apiKeyInput!.value = apiKeys.providers[providerId].apiKey || '';
+          apiEndpointInput!.value = apiKeys.providers[providerId].apiEndpoint || metadata.defaultEndpoint;
         } else {
           // Only set default endpoint if field is empty
           if (!apiEndpointInput!.value) {
-            apiEndpointInput!.value = config.defaultEndpoint;
+            apiEndpointInput!.value = metadata.defaultEndpoint;
           }
         }
         
-        updateProviderUI(provider, model);
+        updateProviderUI(providerId, model);
       }
     },
     

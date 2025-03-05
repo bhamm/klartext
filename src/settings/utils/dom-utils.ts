@@ -46,11 +46,13 @@ export function showStatus(message: string, type: 'success' | 'error' = 'success
  * @param selectElement - Select element to populate
  * @param options - Array of option values
  * @param selectedValue - Currently selected value
+ * @param optionLabels - Optional map of option values to display labels
  */
 export function populateSelect(
   selectElement: HTMLSelectElement, 
   options: string[], 
-  selectedValue: string = ''
+  selectedValue: string = '',
+  optionLabels?: Record<string, string>
 ): void {
   if (!selectElement || !Array.isArray(options)) return;
   
@@ -61,7 +63,7 @@ export function populateSelect(
   options.forEach(option => {
     const optionElement = document.createElement('option');
     optionElement.value = option;
-    optionElement.textContent = option;
+    optionElement.textContent = optionLabels?.[option] || option;
     selectElement.appendChild(optionElement);
   });
   

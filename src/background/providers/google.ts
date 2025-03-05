@@ -1,7 +1,23 @@
 import { BaseProvider } from './base';
 import { ProviderConfig } from '../../shared/types/provider';
+import { ProviderMetadata } from './registry';
 
 export class GoogleProvider extends BaseProvider {
+  /**
+   * Provider metadata
+   */
+  static {
+    const metadata: ProviderMetadata = {
+      id: 'google',
+      name: 'Google Gemini',
+      models: ['gemini-2.0-flash', 'gemini-2.0-flash-lite-preview-02-05', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'],
+      defaultEndpoint: 'https://generativelanguage.googleapis.com/v1/models',
+      keyPlaceholder: 'Ihr Google API-Schlüssel',
+      keyHint: 'Google Cloud API-Schlüssel'
+    };
+    
+    this.register(metadata, new GoogleProvider());
+  }
   async translate(text: string, config: ProviderConfig, isArticle?: boolean): Promise<string> {
     this.validateConfig(config);
     

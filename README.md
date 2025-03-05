@@ -2,9 +2,16 @@
 
 Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um sie für Menschen mit eingeschränktem Sprachverständnis zugänglicher zu machen.
 
-## Version 1.5.23
+## Version 1.5.41
 
 Die aktuelle Version enthält folgende Verbesserungen:
+- Fehlerbehebung: Verbesserte Modellkompatibilität zwischen Providern
+  - Automatische Auswahl des korrekten Modells beim Wechsel des Providers
+  - Validierung der Modellkompatibilität im Background-Script
+  - Behebt Fehler "Model Not Exist" bei Verwendung von DeepSeek
+- Hinzufügung von DeepSeek als neuer KI-Anbieter
+- Neues Provider-Registry-System für einfache Erweiterung mit neuen KI-Anbietern
+- Dynamische Benutzeroberfläche basierend auf verfügbaren Providern
 - Verbesserte Textverarbeitung mit optimierter Zeichensetzungsbehandlung
 - Neue HTML-Bereinigungsfunktionen für bessere Artikelerkennung
 - Optimierte Seitenübersetzung mit intelligenter Textaufteilung
@@ -29,6 +36,7 @@ Die aktuelle Version enthält folgende Verbesserungen:
   - OpenAI GPT-4/3.5
   - Google Gemini
   - Anthropic Claude
+  - DeepSeek
   - Meta Llama 2 (lokal oder gehostet)
 - Flexibel konfigurierbare API-Endpoints
 - Kontextmenü-Integration für einfache Textauswahl
@@ -66,6 +74,11 @@ Die aktuelle Version enthält folgende Verbesserungen:
    - API-Schlüssel von [Anthropic](https://console.anthropic.com/) benötigt
    - Beginnt mit "sk-"
    - Verfügbare Modelle: claude-2, claude-instant
+
+   ### DeepSeek
+   - API-Schlüssel von [DeepSeek Platform](https://platform.deepseek.com/api_keys) benötigt
+   - Verfügbare Modelle: deepseek-chat, deepseek-reasoner
+   - Standard-Endpoint: https://api.deepseek.com/chat/completions
 
    ### Meta Llama 2
    - Lokale Installation oder gehosteter Dienst
@@ -141,6 +154,16 @@ klartext/
 │   ├── background/         # Service Worker & Backend
 │   │   ├── background.ts
 │   │   └── providers/      # KI-Provider Implementierungen
+│   │       ├── registry.ts     # Provider-Registry-System
+│   │       ├── base.ts         # Basis-Provider-Klasse
+│   │       ├── index.ts        # Provider-Exports
+│   │       ├── config.ts       # Provider-Konfiguration
+│   │       ├── openai.ts       # OpenAI-Provider
+│   │       ├── google.ts       # Google-Provider
+│   │       ├── anthropic.ts    # Anthropic-Provider
+│   │       ├── deepseek.ts     # DeepSeek-Provider
+│   │       ├── local.ts        # Lokaler Provider
+│   │       └── example-provider-template.ts # Template für neue Provider
 │   ├── config/             # Konfigurationsdateien
 │   │   └── api-keys.json   # API-Schlüssel (nicht im Git)
 │   ├── content/            # Content Scripts
@@ -219,7 +242,15 @@ klartext/
    npm run test:selenium:single test/selenium/specs/translate-selection.test.js
    ```
 
-6. Paket für Distribution erstellen:
+6. Neuen Provider hinzufügen:
+   - Erstellen Sie eine neue Datei in `src/background/providers/` (z.B. `my-provider.ts`)
+   - Verwenden Sie das Template aus `example-provider-template.ts` als Grundlage
+   - Implementieren Sie die `translate`-Methode für Ihren Provider
+   - Definieren Sie die Provider-Metadaten (ID, Name, Modelle, Endpoint, etc.)
+   - Fügen Sie den API-Endpoint zu `host_permissions` in `manifest.json` hinzu
+   - Der Provider wird automatisch registriert und in den Einstellungen verfügbar sein
+
+7. Paket für Distribution erstellen:
    ```bash
    npm run package
    ```
@@ -259,9 +290,12 @@ Die Erweiterung enthält End-to-End-Tests mit Selenium, die die Hauptfunktionen 
 ### Entwicklungshinweise
 
 - **Provider-Integration:**
-  - Modulares System für einfache Erweiterung
+  - Provider-Registry-System für einfache Erweiterung mit neuen KI-Anbietern
+  - Selbstregistrierung von Providern mit Metadaten
+  - Dynamische Benutzeroberfläche basierend auf verfügbaren Providern
   - Standardisierte Schnittstelle für neue Provider
   - Konfigurierbare Modelle und Endpoints
+  - Beispiel-Template für neue Provider-Implementierungen
 
 - **Sicherheit:**
   - Sichere Speicherung der API-Schlüssel

@@ -1,34 +1,56 @@
 import { ProviderConfig } from '../../shared/types/provider';
+import { providerRegistry, ProviderId } from './registry';
 
-export const PROVIDER_ENDPOINTS = {
-  openAI: 'https://api.openai.com/v1/chat/completions',
-  google: 'https://generativelanguage.googleapis.com/v1/models',
-  anthropic: 'https://api.anthropic.com/v1/messages',
-  local: 'http://localhost:1234/v1/completions'
-} as const;
+/**
+ * Get default endpoint for a provider
+ * @param providerId - Provider ID
+ * @returns Default endpoint URL
+ */
+export function getDefaultEndpoint(providerId: ProviderId): string {
+  try {
+    return providerRegistry.getMetadata(providerId).defaultEndpoint;
+  } catch (error) {
+    console.warn(`Provider ${providerId} not found, using fallback endpoint`);
+    return 'https://api.openai.com/v1/chat/completions'; // Fallback
+  }
+}
 
-export type ProviderName = keyof typeof PROVIDER_ENDPOINTS;
+/**
+ * Get default model for a provider
+ * @param providerId - Provider ID
+ * @returns Default model name
+ */
+export function getDefaultModel(providerId: ProviderId): string {
+  try {
+    const models = providerRegistry.getMetadata(providerId).models;
+    return models.length > 0 ? models[0] : '';
+  } catch (error) {
+    console.warn(`Provider ${providerId} not found, using fallback model`);
+    return 'gpt-4-turbo'; // Fallback
+  }
+}
 
+/**
+ * Default configuration
+ */
 export const DEFAULT_CONFIG: ProviderConfig = {
   provider: 'openAI',
-  model: 'gpt-4-turbo',
+  model: getDefaultModel('openAI'),
   apiKey: '',
-  apiEndpoint: PROVIDER_ENDPOINTS.openAI
+  apiEndpoint: getDefaultEndpoint('openAI')
 };
 
-export const DEFAULT_MODELS = {
-  openAI: 'gpt-4-turbo',
-  google: 'gemini-pro',
-  anthropic: 'claude-3-opus',
-  local: 'llama-2-70b'
-} as const;
-
+/**
+ * Validate provider configuration
+ * @param config - Provider configuration
+ * @returns Error message or null if valid
+ */
 export function validateConfig(config: Partial<ProviderConfig>): string | null {
   if (!config.provider) {
     return 'Provider is required';
   }
 
-  if (!Object.keys(PROVIDER_ENDPOINTS).includes(config.provider)) {
+  if (!providerRegistry.hasProvider(config.provider)) {
     return `Unsupported provider: ${config.provider}`;
   }
 
@@ -43,8 +65,16 @@ export function validateConfig(config: Partial<ProviderConfig>): string | null {
   return null;
 }
 
+/**
+ * Create provider configuration
+ * @param provider - Provider ID
+ * @param apiKey - API key
+ * @param model - Model name (optional)
+ * @param apiEndpoint - API endpoint (optional)
+ * @returns Provider configuration
+ */
 export function createConfig(
-  provider: ProviderName,
+  provider: ProviderId,
   apiKey: string,
   model?: string,
   apiEndpoint?: string
@@ -52,7 +82,7 @@ export function createConfig(
   return {
     provider,
     apiKey,
-    model: model || DEFAULT_MODELS[provider],
-    apiEndpoint: apiEndpoint || PROVIDER_ENDPOINTS[provider]
+    model: model || getDefaultModel(provider),
+    apiEndpoint: apiEndpoint || getDefaultEndpoint(provider)
   };
 }

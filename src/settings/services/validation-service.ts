@@ -1,7 +1,7 @@
 /**
  * Service for validating user inputs
  */
-import { PROVIDERS } from '../constants/providers';
+import { getProvidersMetadata } from '../../background/providers/index';
 import { ValidationResult, SettingsFormData } from '../../shared/types/settings';
 
 /**
@@ -59,12 +59,13 @@ export function validateModel(model: string | undefined, provider: string): bool
     return false;
   }
   
-  const config = PROVIDERS[provider];
-  if (!config) {
+  const providers = getProvidersMetadata();
+  const metadata = providers[provider];
+  if (!metadata) {
     return false;
   }
   
-  return config.models.includes(model);
+  return metadata.models.includes(model);
 }
 
 /**
@@ -87,8 +88,10 @@ export function sanitizeInput(input: string | undefined): string {
 export function validateForm(formData: Partial<SettingsFormData>): ValidationResult {
   const { provider, apiKey, apiEndpoint, model } = formData;
   
+  const providers = getProvidersMetadata();
+  
   // Validate provider
-  if (!provider || !PROVIDERS[provider]) {
+  if (!provider || !providers[provider]) {
     return {
       success: false,
       error: 'Ungültiger KI-Anbieter'
@@ -99,7 +102,7 @@ export function validateForm(formData: Partial<SettingsFormData>): ValidationRes
   if (provider !== 'local' && !validateApiKey(apiKey, provider)) {
     return {
       success: false,
-      error: `Ungültiger ${PROVIDERS[provider].name} API-Schlüssel Format`
+      error: `Ungültiger ${providers[provider].name} API-Schlüssel Format`
     };
   }
   

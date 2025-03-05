@@ -1,7 +1,23 @@
 import { BaseProvider } from './base';
 import { ProviderConfig } from '../../shared/types/provider';
+import { ProviderMetadata } from './registry';
 
 export class AnthropicProvider extends BaseProvider {
+  /**
+   * Provider metadata
+   */
+  static {
+    const metadata: ProviderMetadata = {
+      id: 'anthropic',
+      name: 'Anthropic Claude',
+      models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
+      defaultEndpoint: 'https://api.anthropic.com/v1/messages',
+      keyPlaceholder: 'sk-...',
+      keyHint: 'Anthropic API-Schlüssel beginnt mit "sk-"'
+    };
+    
+    this.register(metadata, new AnthropicProvider());
+  }
   async translate(text: string, config: ProviderConfig, isArticle?: boolean): Promise<string> {
     this.validateConfig(config);
     

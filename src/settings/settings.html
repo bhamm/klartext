@@ -303,10 +303,7 @@
   <div class="form-group">
     <label for="provider-select">KI-Anbieter</label>
     <select id="provider-select" class="select-input">
-      <option value="openAI">OpenAI</option>
-      <option value="google">Google</option>
-      <option value="anthropic">Anthropic</option>
-      <option value="local">Lokale Installation</option>
+      <!-- Will be populated dynamically from provider registry -->
     </select>
   </div>
 
@@ -319,12 +316,8 @@
   <div class="form-group">
     <label for="api-endpoint">API-Endpunkt</label>
     <input type="text" id="api-endpoint" placeholder="https://..." autocomplete="off">
-    <small class="endpoint-hint">
-      Standart-Endpunkte:<br>
-      • OpenAI: https://api.openai.com/v1/chat/completions<br>
-      • Google: https://generativelanguage.googleapis.com/v1/models<br>
-      • Anthropic: https://api.anthropic.com/v1/messages<br>
-      • Lokal: http://localhost:1234/completion
+    <small class="endpoint-hint" id="endpoint-hint">
+      <!-- Will be populated dynamically from provider registry -->
     </small>
   </div>
 

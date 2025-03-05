@@ -2,22 +2,23 @@ import { BaseProvider } from './base';
 import { ProviderConfig } from '../../shared/types/provider';
 import { ProviderMetadata } from './registry';
 
-export class OpenAIProvider extends BaseProvider {
+export class DeepSeekProvider extends BaseProvider {
   /**
    * Provider metadata
    */
   static {
     const metadata: ProviderMetadata = {
-      id: 'openAI',
-      name: 'OpenAI',
-      models: ['gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1', 'gpt-4o-mini', 'gpt-4o', 'o3-mini'],
-      defaultEndpoint: 'https://api.openai.com/v1/chat/completions',
-      keyPlaceholder: 'sk-...',
-      keyHint: 'OpenAI API-Schlüssel beginnt mit "sk-"'
+      id: 'deepseek',
+      name: 'DeepSeek',
+      models: ['deepseek-chat', 'deepseek-reasoner'],
+      defaultEndpoint: 'https://api.deepseek.com/chat/completions',
+      keyPlaceholder: 'Your DeepSeek API key',
+      keyHint: 'API-Schlüssel von DeepSeek Platform'
     };
     
-    this.register(metadata, new OpenAIProvider());
+    this.register(metadata, new DeepSeekProvider());
   }
+  
   async translate(text: string, config: ProviderConfig, isArticle?: boolean): Promise<string> {
     this.validateConfig(config);
     
@@ -34,7 +35,8 @@ export class OpenAIProvider extends BaseProvider {
             { role: 'system', content: this.systemPrompt },
             { role: 'user', content: text }
           ],
-          temperature: 0.1
+          temperature: 0.1,
+          stream: false
         })
       });
 
@@ -55,4 +57,4 @@ export class OpenAIProvider extends BaseProvider {
   }
 }
 
-export const openAIProvider = new OpenAIProvider();
+export const deepseekProvider = new DeepSeekProvider();
