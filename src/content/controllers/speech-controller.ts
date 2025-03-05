@@ -21,6 +21,12 @@ export class SpeechController implements SpeechControllerInterface {
   rate: number = 0.9;
   pitch: number = 1.0;
   useGoogleTTS: boolean = false;
+  
+  // Flag to track if settings have been explicitly set
+  private settingsInitialized: boolean = false;
+  
+  // Store the current text for potential replay
+  private currentText: string = '';
 
   /**
    * Create a new SpeechController
@@ -37,7 +43,9 @@ export class SpeechController implements SpeechControllerInterface {
     
     // Handle voices changing (happens asynchronously in some browsers)
     if (speechSynthesis.onvoiceschanged !== undefined) {
-      speechSynthesis.onvoiceschanged = this.loadVoices.bind(this);
+      speechSynthesis.onvoiceschanged = () => {
+        this.loadVoices();
+      };
     }
     
     // Ensure speech is stopped when page unloads
@@ -52,6 +60,38 @@ export class SpeechController implements SpeechControllerInterface {
         speechSynthesis.cancel();
       }
     }, 5000);
+    
+    // Try to load settings from storage
+    this.loadSettingsFromStorage();
+  }
+  
+  /**
+   * Try to load speech settings from storage
+   */
+  private async loadSettingsFromStorage(): Promise<void> {
+    try {
+      // Check if we're in a context where chrome.storage is available
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+        console.log('Attempting to load speech settings from storage');
+        
+        // Load settings from storage
+        chrome.storage.sync.get(['speech'], (result) => {
+          if (chrome.runtime.lastError) {
+            console.error('Error loading speech settings from storage:', chrome.runtime.lastError);
+            return;
+          }
+          
+          if (result.speech) {
+            console.log('Found speech settings in storage:', result.speech);
+            this.setSettings(result.speech);
+          } else {
+            console.log('No speech settings found in storage');
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading settings from storage:', error);
+    }
   }
   
   /**
@@ -88,21 +128,31 @@ export class SpeechController implements SpeechControllerInterface {
           });
         }
         
-        // If we have a selected voice URI, check if it's still available
-        if (this.selectedVoiceURI) {
-          const voiceExists = this.availableVoices.some(
-            voice => voice.voiceURI === this.selectedVoiceURI
-          );
-          
-          if (!voiceExists && this.availableVoices.length > 0) {
-            // If the selected voice is no longer available, use the first available voice
+        // Only set default voice if no voice has been explicitly set
+        if (!this.settingsInitialized) {
+          // If we have a selected voice URI, check if it's still available
+          if (this.selectedVoiceURI) {
+            const voiceExists = this.availableVoices.some(
+              voice => voice.voiceURI === this.selectedVoiceURI
+            );
+            
+            if (!voiceExists && this.availableVoices.length > 0) {
+              // If the selected voice is no longer available, use the first available voice
+              this.selectedVoiceURI = this.availableVoices[0].voiceURI;
+              console.log('Selected voice not available, using:', this.selectedVoiceURI);
+            }
+          } else if (this.availableVoices.length > 0) {
+            // If no voice is selected but we have German voices, use the first one
             this.selectedVoiceURI = this.availableVoices[0].voiceURI;
-            console.log('Selected voice not available, using:', this.selectedVoiceURI);
+            console.log('No voice selected, using first available German voice:', this.selectedVoiceURI);
           }
-        } else if (this.availableVoices.length > 0) {
-          // If no voice is selected but we have German voices, use the first one
-          this.selectedVoiceURI = this.availableVoices[0].voiceURI;
-          console.log('No voice selected, using first available German voice:', this.selectedVoiceURI);
+        } else {
+          console.log('Settings already initialized, keeping selected voice:', this.selectedVoiceURI);
+        }
+        
+        // If we have an utterance, make sure it has the correct voice
+        if (this.utterance) {
+          this.applyVoiceSettings(this.utterance);
         }
         
         resolve();
@@ -131,6 +181,10 @@ export class SpeechController implements SpeechControllerInterface {
     // Store previous voice URI for comparison
     const previousVoiceURI = this.selectedVoiceURI;
     
+    // Set the flag to indicate settings have been explicitly set
+    this.settingsInitialized = true;
+    
+    // Update settings
     this.selectedVoiceURI = settings.voiceURI;
     this.rate = settings.rate || 0.9;
     this.pitch = settings.pitch || 1.0;
@@ -153,7 +207,45 @@ export class SpeechController implements SpeechControllerInterface {
       speechSynthesis.speak(this.utterance);
     }
     
-    console.log('Speech settings updated successfully');
+    // If we have a current text but we're not playing, update the utterance
+    if (this.currentText && !this.isPlaying) {
+      this.utterance = new SpeechSynthesisUtterance(this.currentText);
+      this.applyVoiceSettings(this.utterance);
+    }
+    
+    console.log('Speech settings updated successfully, selected voice URI:', this.selectedVoiceURI);
+    
+    // Save settings to storage for persistence
+    this.saveSettingsToStorage();
+  }
+  
+  /**
+   * Save current speech settings to storage
+   */
+  private saveSettingsToStorage(): void {
+    try {
+      // Check if we're in a context where chrome.storage is available
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
+        const settings: SpeechSettings = {
+          voiceURI: this.selectedVoiceURI,
+          rate: this.rate,
+          pitch: this.pitch,
+          useGoogleTTS: this.useGoogleTTS
+        };
+        
+        console.log('Saving speech settings to storage:', settings);
+        
+        chrome.storage.sync.set({ speech: settings }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('Error saving speech settings to storage:', chrome.runtime.lastError);
+          } else {
+            console.log('Speech settings saved to storage successfully');
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error saving settings to storage:', error);
+    }
   }
 
   /**
@@ -165,28 +257,85 @@ export class SpeechController implements SpeechControllerInterface {
     utterance.rate = this.rate;
     utterance.pitch = this.pitch;
     
+    // Force refresh available voices to ensure we have the latest
+    const allVoices = speechSynthesis.getVoices();
+    this.availableVoices = allVoices.filter(voice => 
+      voice.lang.startsWith('de') || voice.lang === 'de-DE'
+    );
+    
+    if (this.debugMode) {
+      console.log('Available voices when applying settings:', this.availableVoices);
+      console.log('Selected voice URI:', this.selectedVoiceURI);
+    }
+    
     // Set voice if specified
     if (this.selectedVoiceURI && this.selectedVoiceURI !== '') {
-      // Find the voice by URI
-      const selectedVoice = this.availableVoices.find(
+      // Try to find the voice by exact URI match first
+      let selectedVoice = this.availableVoices.find(
         voice => voice.voiceURI === this.selectedVoiceURI
       );
+      
+      // If not found, try to find by name
+      if (!selectedVoice) {
+        console.log('Voice not found by exact URI, trying to find by name');
+        
+        // Extract name from URI (often the URI contains the name)
+        const nameFromURI = this.selectedVoiceURI.split('/').pop() || '';
+        
+        // Try to find a voice with a similar name
+        selectedVoice = this.availableVoices.find(voice => 
+          voice.name.includes(nameFromURI) || 
+          nameFromURI.includes(voice.name) ||
+          voice.voiceURI.includes(nameFromURI) ||
+          nameFromURI.includes(voice.voiceURI)
+        );
+        
+        // If still not found, try case-insensitive exact match
+        if (!selectedVoice) {
+          selectedVoice = this.availableVoices.find(voice => 
+            voice.name.toLowerCase() === nameFromURI.toLowerCase() ||
+            voice.voiceURI.toLowerCase() === this.selectedVoiceURI.toLowerCase()
+          );
+        }
+        
+        // If still not found, try to find by name containing the selected voice name
+        if (!selectedVoice) {
+          // Try to find a voice by name containing the selected voice name
+          const rockoMatch = this.availableVoices.find(voice => 
+            voice.name.toLowerCase().includes('rocko') ||
+            voice.voiceURI.toLowerCase().includes('rocko')
+          );
+          
+          if (rockoMatch) {
+            selectedVoice = rockoMatch;
+            console.log('Found Rocko voice by name match:', rockoMatch.name);
+          }
+        }
+      }
       
       if (selectedVoice) {
         utterance.voice = selectedVoice;
         console.log('Using voice:', selectedVoice.name, 'with URI:', selectedVoice.voiceURI);
-      } else {
-        console.log('Selected voice not found, using default');
-        
-        // Try to find a voice by name if URI doesn't work
-        const germanVoices = this.availableVoices.filter(voice => 
-          voice.lang.startsWith('de') || voice.lang === 'de-DE'
-        );
-        
-        if (germanVoices.length > 0) {
-          utterance.voice = germanVoices[0];
-          console.log('Fallback to first German voice:', germanVoices[0].name);
+      } else if (this.availableVoices.length > 0) {
+        // Only fall back to first voice if we haven't explicitly set settings
+        if (!this.settingsInitialized) {
+          utterance.voice = this.availableVoices[0];
+          console.log('Fallback to first German voice:', this.availableVoices[0].name);
+        } else {
+          console.log('Not falling back to default voice because settings were explicitly set');
+          
+          // Try to find Rocko voice specifically
+          const rockoVoice = this.availableVoices.find(voice => 
+            voice.name.includes('Rocko') || voice.voiceURI.includes('Rocko')
+          );
+          
+          if (rockoVoice) {
+            utterance.voice = rockoVoice;
+            console.log('Found and using Rocko voice:', rockoVoice.name);
+          }
         }
+      } else {
+        console.log('No German voices available, using browser default');
       }
     } else if (this.availableVoices.length > 0) {
       // If no voice is selected but we have German voices, use the first one
@@ -214,6 +363,7 @@ export class SpeechController implements SpeechControllerInterface {
   async setup(text: string, words: string[], button: HTMLElement): Promise<void> {
     this.words = words;
     this.button = button;
+    this.currentText = text;
     
     // Force stop any ongoing speech
     this.stop();
@@ -227,7 +377,8 @@ export class SpeechController implements SpeechControllerInterface {
       console.log('Current speech settings:', {
         selectedVoiceURI: this.selectedVoiceURI,
         rate: this.rate,
-        pitch: this.pitch
+        pitch: this.pitch,
+        settingsInitialized: this.settingsInitialized
       });
     }
     
@@ -277,7 +428,15 @@ export class SpeechController implements SpeechControllerInterface {
    * Start speech synthesis
    */
   start(): void {
-    if (!this.utterance) return;
+    if (!this.utterance) {
+      // If we don't have an utterance but we have text, create a new one
+      if (this.currentText) {
+        this.utterance = new SpeechSynthesisUtterance(this.currentText);
+        this.applyVoiceSettings(this.utterance);
+      } else {
+        return;
+      }
+    }
     
     // Cancel any ongoing speech first
     this.stop();

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klartext - Leichte Sprache",
-  "version": "1.5.43",
+  "version": "1.5.45",
   "description": "Übersetzt deutsche Texte in 'Leichte Sprache' für bessere Zugänglichkeit",
   "permissions": [
     "contextMenus",
