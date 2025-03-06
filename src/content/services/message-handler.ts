@@ -14,9 +14,8 @@ let isArticleMode = false;
 let isFullPageMode = false;
 let currentHighlight: HTMLElement | null = null;
 
-// Track if speech controller is loaded
-let speechControllerLoaded = false;
-let pendingSpeechSettings: any = null;
+// Import speech controller directly
+import { speechController } from '../controllers/speech-controller';
 
 /**
  * Initialize message handler
@@ -47,7 +46,7 @@ function handleMessage(
         // Only ping messages need a response
         sendResponse({ status: 'ok' });
         return false; // No async response needed
-
+        
       case 'startArticleMode':
         console.log('Starting article mode');
         startArticleMode();
@@ -77,8 +76,6 @@ function handleMessage(
           translationOverlay.show(message.translation);
         }
         
-        // Preload speech controller
-        preloadSpeechController();
         break;
 
       case 'showError':
@@ -104,16 +101,8 @@ function handleMessage(
           
           // Update speech settings if provided
           if (message.settings.speech) {
-            // Log the speech settings we're about to apply
-            console.log('Received speech settings to apply:', JSON.stringify(message.settings.speech));
-            
-            // Store settings for later if speech controller isn't loaded yet
-            if (!speechControllerLoaded) {
-              pendingSpeechSettings = message.settings.speech;
-              preloadSpeechController();
-            } else {
-              applySpeechSettings(message.settings.speech);
-            }
+            console.log('Applying speech settings:', JSON.stringify(message.settings.speech));
+            speechController.setSettings(message.settings.speech);
           }
         }
         break;
@@ -129,69 +118,6 @@ function handleMessage(
   return false;
 }
 
-/**
- * Preload the speech controller
- */
-function preloadSpeechController(): void {
-  if (speechControllerLoaded) return;
-  
-  console.log('Preloading speech controller...');
-  
-  // Import the speech controller
-  import('../controllers/speech-controller').then(({ speechController }) => {
-    console.log('Speech controller loaded successfully');
-    speechControllerLoaded = true;
-    
-    // Apply any pending settings
-    if (pendingSpeechSettings) {
-      console.log('Applying pending speech settings:', pendingSpeechSettings);
-      applySpeechSettings(pendingSpeechSettings);
-      pendingSpeechSettings = null;
-    }
-  }).catch(error => {
-    console.error('Error importing speech controller:', error);
-  });
-}
-
-/**
- * Apply speech settings to the speech controller
- * @param settings - Speech settings to apply
- */
-async function applySpeechSettings(settings: any): Promise<void> {
-  try {
-    console.log('Applying speech settings:', settings);
-    
-    // Import the speech controller
-    const { speechController } = await import('../controllers/speech-controller');
-    
-    // Force a small delay to ensure the speech controller is fully initialized
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Apply the settings
-    await speechController.setSettings(settings);
-    
-    console.log('Speech settings updated successfully');
-    
-    // If we're currently playing speech, restart it with the new settings
-    if (speechController.isPlaying && speechController.utterance) {
-      console.log('Restarting speech with new settings');
-      const currentText = speechController.utterance.text;
-      speechController.stop();
-      
-      // Create a new utterance with the updated settings
-      setTimeout(() => {
-        // Create a new utterance with the text
-        const newUtterance = new SpeechSynthesisUtterance(currentText);
-        speechController.utterance = newUtterance;
-        
-        // Apply the voice settings
-        speechController.start();
-      }, 300);
-    }
-  } catch (error) {
-    console.error('Error applying speech settings:', error);
-  }
-}
 
 /**
  * Start article mode
@@ -207,8 +133,6 @@ export function startArticleMode(): void {
   // Change cursor to indicate clickable state
   document.body.style.cursor = 'pointer';
   
-  // Preload speech controller
-  preloadSpeechController();
 }
 
 /**
@@ -306,8 +230,6 @@ export async function startFullPageMode(): Promise<void> {
     stopFullPageMode();
   }
   
-  // Preload speech controller
-  preloadSpeechController();
 }
 
 /**
