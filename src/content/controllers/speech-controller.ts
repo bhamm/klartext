@@ -361,12 +361,19 @@ export class SpeechController implements SpeechControllerInterface {
    * @param {HTMLElement} button - The button element to control playback
    */
   async setup(text: string, words: string[], button: HTMLElement): Promise<void> {
+    console.log('Setting up speech controller with new text');
+    
+    // Reset state
     this.words = words;
     this.button = button;
     this.currentText = text;
+    this.isPlaying = false;
     
     // Force stop any ongoing speech
     this.stop();
+    
+    // Cancel any ongoing speech synthesis
+    speechSynthesis.cancel();
     
     // Make sure we have the latest voices
     await this.loadVoices();
@@ -402,18 +409,49 @@ export class SpeechController implements SpeechControllerInterface {
       const errorEvent = event as SpeechSynthesisErrorEvent;
       console.error('Error type:', errorEvent.error);
       
-      // Try to recover from interrupted errors by restarting
+      // Try to recover from errors
       if (errorEvent.error === 'interrupted') {
         console.log('Speech was interrupted, attempting to restart...');
+        
+        // Force reset the speech synthesis state
+        speechSynthesis.cancel();
+        
+        // Wait a bit to ensure the reset is complete
         setTimeout(() => {
-          if (this.utterance && this.isPlaying) {
-            speechSynthesis.speak(this.utterance);
+          console.log('Attempting to restart speech after interruption');
+          
+          // Check if we should still be playing
+          if (this.isPlaying) {
+            // Create a new utterance to avoid any state issues with the old one
+            const newUtterance = new SpeechSynthesisUtterance(this.currentText);
+            this.utterance = newUtterance;
+            
+            // Set up event handlers again
+            newUtterance.onend = () => {
+              console.log('Speech ended normally');
+              this.stop();
+            };
+            
+            // Set up error handler again
+            newUtterance.onerror = this.utterance.onerror;
+            
+            // Apply voice settings
+            this.applyVoiceSettings(newUtterance);
+            
+            // Start speech
+            speechSynthesis.speak(newUtterance);
+          } else {
+            console.log('No longer playing, not restarting speech after interruption');
           }
         }, 500);
       } else {
+        console.log('Non-recoverable speech error, stopping');
         this.stop();
       }
     };
+    
+    // Update button state to initial state
+    this.updateButtonState(false);
   }
   
   /**
@@ -482,15 +520,52 @@ export class SpeechController implements SpeechControllerInterface {
    * Start speech synthesis
    */
   async start(): Promise<void> {
+    console.log('Starting speech synthesis');
+    
     if (!this.currentText) {
+      console.log('No current text to speak, aborting');
       return;
     }
     
     // Cancel any ongoing speech first
     this.stop();
     
+    // Force reset the speech synthesis state
+    speechSynthesis.cancel();
+    
+    // Set playing state
     this.isPlaying = true;
     this.updateButtonState(true);
+    
+    // If the utterance is null, recreate it
+    if (!this.utterance) {
+      console.log('Utterance is null, creating new utterance with current text');
+      this.utterance = new SpeechSynthesisUtterance(this.currentText);
+      this.applyVoiceSettings(this.utterance);
+      
+      // Set up event handlers
+      this.utterance.onend = () => {
+        console.log('Speech ended normally');
+        this.stop();
+      };
+      
+      this.utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        const errorEvent = event as SpeechSynthesisErrorEvent;
+        console.error('Error type:', errorEvent.error);
+        
+        if (errorEvent.error === 'interrupted') {
+          console.log('Speech was interrupted, attempting to restart...');
+          setTimeout(() => {
+            if (this.utterance && this.isPlaying) {
+              speechSynthesis.speak(this.utterance);
+            }
+          }, 500);
+        } else {
+          this.stop();
+        }
+      };
+    }
     
     try {
       // Check if we should use an external TTS provider
@@ -776,7 +851,20 @@ export class SpeechController implements SpeechControllerInterface {
    * Pause speech synthesis
    */
   pause(): void {
-    speechSynthesis.pause();
+    console.log('Pausing speech synthesis');
+    
+    try {
+      // Check if speech synthesis is actually speaking
+      if (speechSynthesis.speaking) {
+        speechSynthesis.pause();
+        console.log('Speech synthesis paused successfully');
+      } else {
+        console.log('Speech synthesis not speaking, cannot pause');
+      }
+    } catch (error) {
+      console.error('Error pausing speech synthesis:', error);
+    }
+    
     this.isPlaying = false;
     this.updateButtonState(false);
   }
@@ -785,9 +873,19 @@ export class SpeechController implements SpeechControllerInterface {
    * Resume speech synthesis
    */
   resume(): void {
-    speechSynthesis.resume();
-    this.isPlaying = true;
-    this.updateButtonState(true);
+    console.log('Resuming speech synthesis');
+    
+    // Instead of trying to resume, which seems unreliable, always start fresh
+    console.log('Starting fresh instead of trying to resume');
+    
+    // If we have no utterance or text, we can't start
+    if (!this.utterance || !this.currentText) {
+      console.log('No utterance or current text, cannot start speech');
+      return;
+    }
+    
+    // Start fresh
+    this.start();
   }
 
   /**
@@ -832,13 +930,87 @@ export class SpeechController implements SpeechControllerInterface {
    * Toggle between play and pause
    */
   toggle(): void {
+    console.log('Toggle called, current state:', {
+      isPlaying: this.isPlaying,
+      utterance: this.utterance ? 'exists' : 'null',
+      speechSynthesisPaused: speechSynthesis.paused,
+      speechSynthesisSpeaking: speechSynthesis.speaking,
+      speechSynthesisPending: speechSynthesis.pending
+    });
+    
+    // Force reset the speech synthesis state if it's in an inconsistent state
+    // or if it's paused (which seems to be a persistent state that doesn't reset properly)
+    if (!this.isPlaying && (speechSynthesis.speaking || speechSynthesis.paused)) {
+      console.log('Inconsistent state detected: not playing but speech synthesis is speaking or paused, forcing reset');
+      
+      // Try multiple approaches to reset the speech synthesis state
+      speechSynthesis.cancel();
+      
+      // Create and immediately cancel a dummy utterance to try to reset the state
+      const dummyUtterance = new SpeechSynthesisUtterance('');
+      speechSynthesis.speak(dummyUtterance);
+      speechSynthesis.cancel();
+      
+      // Wait a bit to ensure the reset is complete
+      setTimeout(() => {
+        console.log('Speech synthesis state after forced reset:', {
+          paused: speechSynthesis.paused,
+          speaking: speechSynthesis.speaking,
+          pending: speechSynthesis.pending
+        });
+        
+        // If still paused after reset attempts, just start fresh
+        if (speechSynthesis.paused) {
+          console.log('Speech synthesis still paused after reset attempts, starting fresh');
+          
+          // If we have no utterance or text, we can't start
+          if (!this.utterance || !this.currentText) {
+            console.log('No utterance or current text, cannot start speech');
+            return;
+          }
+          
+          // Start fresh
+          this.start();
+        } else {
+          // Now proceed with the toggle operation
+          this.performToggle();
+        }
+      }, 100);
+    } else {
+      // If the state is consistent, proceed with the toggle operation
+      this.performToggle();
+    }
+  }
+  
+  /**
+   * Perform the actual toggle operation after ensuring the speech synthesis state is consistent
+   */
+  private performToggle(): void {
+    // If we're not playing, check if we need to resume or start fresh
     if (!this.isPlaying) {
+      // Check if speech synthesis is paused
       if (speechSynthesis.paused) {
-        this.resume();
+        console.log('Speech synthesis is paused, starting fresh instead of resuming');
+        // Always start fresh instead of trying to resume, which seems unreliable
+        if (!this.utterance || !this.currentText) {
+          console.log('No utterance or current text, cannot start speech');
+          return;
+        }
+        
+        this.start();
       } else {
+        // If we have no utterance or it's been a while since we stopped, recreate it
+        if (!this.utterance || !this.currentText) {
+          console.log('No utterance or current text, cannot start speech');
+          return;
+        }
+        
+        console.log('Starting speech with current text:', this.currentText.substring(0, 50) + '...');
         this.start();
       }
     } else {
+      // If we're playing, pause
+      console.log('Currently playing, pausing speech');
       this.pause();
     }
   }

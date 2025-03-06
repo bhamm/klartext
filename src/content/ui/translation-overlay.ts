@@ -695,7 +695,23 @@ export class TranslationOverlay implements TranslationOverlayInterface {
    * Hide the overlay
    */
   hide(): void {
+    console.log('Hiding overlay, resetting speech controller state');
+    
+    // Stop any ongoing speech
     speechController.stop();
+    
+    // Force cancel any ongoing speech synthesis
+    speechSynthesis.cancel();
+    
+    // Reset the utterance to ensure it's reinitialized on next setup
+    speechController.utterance = null;
+    
+    // Log the speech synthesis state after reset
+    console.log('Speech synthesis state after reset:', {
+      paused: speechSynthesis.paused,
+      speaking: speechSynthesis.speaking,
+      pending: speechSynthesis.pending
+    });
     
     if (this.overlay) {
       this.overlay.classList.remove('visible');
