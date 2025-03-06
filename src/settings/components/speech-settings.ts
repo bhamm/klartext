@@ -154,19 +154,38 @@ export class SpeechSettingsComponent {
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
         console.log('Attempting to load speech settings from storage');
         
-        // Load settings from storage
-        chrome.storage.sync.get(['speech'], (result) => {
+        // Load all settings to see what's actually in storage
+        chrome.storage.sync.get(null, (allSettings) => {
+          console.log('All settings in storage:', allSettings);
+          
           if (chrome.runtime.lastError) {
-            console.error('Error loading speech settings from storage:', chrome.runtime.lastError);
-            return;
+            console.error('Error loading all settings from storage:', chrome.runtime.lastError);
           }
           
-          if (result.speech) {
-            console.log('Found speech settings in storage:', result.speech);
-            this.setSettings(result.speech);
-          } else {
-            console.log('No speech settings found in storage');
-          }
+          // Now specifically get speech settings
+          chrome.storage.sync.get(['speech'], (result) => {
+            if (chrome.runtime.lastError) {
+              console.error('Error loading speech settings from storage:', chrome.runtime.lastError);
+              return;
+            }
+            
+            if (result.speech) {
+              console.log('Found speech settings in storage:', result.speech);
+              
+              // Log the TTS provider and voice URI before setting
+              console.log(`TTS Provider from storage: ${result.speech.ttsProvider}`);
+              console.log(`Voice URI from storage: ${result.speech.voiceURI}`);
+              
+              // Apply the settings
+              this.setSettings(result.speech);
+              
+              // Log the current state after setting
+              console.log('Current TTS provider select value:', this.ttsProviderSelect?.value);
+              console.log('Current voice select value:', this.voiceSelect?.value);
+            } else {
+              console.log('No speech settings found in storage');
+            }
+          });
         });
       }
     } catch (error) {
@@ -185,12 +204,23 @@ export class SpeechSettingsComponent {
         
         console.log('Saving speech settings to storage:', settings);
         
-        chrome.storage.sync.set({ speech: settings }, () => {
-          if (chrome.runtime.lastError) {
-            console.error('Error saving speech settings to storage:', chrome.runtime.lastError);
-          } else {
-            console.log('Speech settings saved to storage successfully');
-          }
+        // First, get all settings to see what's already there
+        chrome.storage.sync.get(null, (allSettings) => {
+          console.log('Current settings before saving:', allSettings);
+          
+          // Now save the speech settings
+          chrome.storage.sync.set({ speech: settings }, () => {
+            if (chrome.runtime.lastError) {
+              console.error('Error saving speech settings to storage:', chrome.runtime.lastError);
+            } else {
+              console.log('Speech settings saved to storage successfully');
+              
+              // Verify the settings were saved correctly
+              chrome.storage.sync.get(['speech'], (result) => {
+                console.log('Verified speech settings in storage after save:', result.speech);
+              });
+            }
+          });
         });
       }
     } catch (error) {
@@ -426,8 +456,23 @@ export class SpeechSettingsComponent {
   public setSettings(settings: SpeechSettings): void {
     console.log('Setting speech settings in UI:', settings);
     
+    // Store the voice URI for later use
+    const voiceURI = settings.voiceURI;
+    
     // Set TTS provider
     if (settings.ttsProvider && this.ttsProviderSelect) {
+      // Check if the provider options are loaded
+      if (this.ttsProviderSelect.options.length <= 1) {
+        console.log('TTS provider options not loaded yet, waiting for options to load');
+        
+        // Set a timeout to try again after a short delay
+        setTimeout(() => {
+          console.log('Retrying to set TTS provider after delay');
+          this.setSettings(settings);
+        }, 500);
+        return;
+      }
+      
       // Try to find the option with the matching value
       let providerFound = false;
       for (let i = 0; i < this.ttsProviderSelect.options.length; i++) {
@@ -447,29 +492,16 @@ export class SpeechSettingsComponent {
       
       // Update voices based on the selected provider
       this.updateVoicesForProvider(settings.ttsProvider);
-    }
-    
-    // Set voice (after voices are loaded for the provider)
-    if (settings.voiceURI) {
-      const voiceFound = this.setVoice(settings.voiceURI);
       
-      if (!voiceFound && this.voicesLoaded) {
-        // If the voice wasn't found but voices are loaded, try loading voices again
-        console.log('Voice not found, trying to reload voices');
-        if (settings.ttsProvider === 'browser') {
-          this.loadVoices();
-        } else {
-          this.fetchProviderVoices(settings.ttsProvider);
-        }
-        this.setVoice(settings.voiceURI);
-      }
+      // Store the voice URI to set after voices are loaded
+      this.pendingVoiceURI = voiceURI;
     }
     
     // Set rate
     this.rateInput.value = settings.rate.toString();
     this.rateValue.textContent = settings.rate.toString();
     
-    console.log('Speech settings applied to UI, selected voice:', this.voiceSelect.value);
+    console.log('Speech settings applied to UI, pending voice URI:', this.pendingVoiceURI);
   }
   
   /**
