@@ -11,8 +11,6 @@ export class SpeechSettingsComponent {
   private voiceSelect: HTMLSelectElement;
   private rateInput: HTMLInputElement;
   private rateValue: HTMLElement;
-  private pitchInput: HTMLInputElement;
-  private pitchValue: HTMLElement;
   private ttsProviderSelect: HTMLSelectElement;
   private voicesLoaded: boolean = false;
   private pendingVoiceURI: string | null = null;
@@ -25,8 +23,6 @@ export class SpeechSettingsComponent {
     this.voiceSelect = document.getElementById('voice-select') as HTMLSelectElement;
     this.rateInput = document.getElementById('speech-rate') as HTMLInputElement;
     this.rateValue = document.getElementById('rate-value') as HTMLElement;
-    this.pitchInput = document.getElementById('speech-pitch') as HTMLInputElement;
-    this.pitchValue = document.getElementById('pitch-value') as HTMLElement;
     this.ttsProviderSelect = document.getElementById('tts-provider-select') as HTMLSelectElement;
     this.saveButton = document.querySelector('.save-button');
     
@@ -61,10 +57,6 @@ export class SpeechSettingsComponent {
       this.rateValue.textContent = this.rateInput.value;
     });
     
-    this.pitchInput.addEventListener('input', () => {
-      this.pitchValue.textContent = this.pitchInput.value;
-    });
-    
     // Add change event listener to voice select
     this.voiceSelect.addEventListener('change', () => {
       console.log('Voice selection changed to:', this.voiceSelect.value);
@@ -85,6 +77,9 @@ export class SpeechSettingsComponent {
     if (this.ttsProviderSelect) {
       this.ttsProviderSelect.addEventListener('change', () => {
         console.log('TTS provider changed to:', this.ttsProviderSelect.value);
+        
+        // Update voices based on the selected provider
+        this.updateVoicesForProvider(this.ttsProviderSelect.value);
         
         // Save the settings directly to storage
         this.saveSettingsToStorage();
@@ -204,7 +199,70 @@ export class SpeechSettingsComponent {
   }
   
   /**
-   * Load available voices and populate select element
+   * Update voices based on the selected provider
+   * @param provider - The selected TTS provider
+   */
+  private updateVoicesForProvider(provider: string): void {
+    console.log(`Updating voices for provider: ${provider}`);
+    
+    if (provider === 'browser') {
+      // For browser TTS, load voices from speechSynthesis
+      this.loadVoices();
+    } else {
+      // For other providers, fetch voices from the background script
+      this.fetchProviderVoices(provider);
+    }
+  }
+  
+  /**
+   * Fetch voices from a specific TTS provider
+   * @param provider - The TTS provider ID
+   */
+  private fetchProviderVoices(provider: string): void {
+    console.log(`Fetching voices for provider: ${provider}`);
+    
+    // Clear existing options (except default)
+    while (this.voiceSelect.options.length > 1) {
+      this.voiceSelect.remove(1);
+    }
+    
+    // Send message to background script to get voices for this provider
+    chrome.runtime.sendMessage({
+      action: 'getProviderVoices',
+      provider: provider
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('Error fetching provider voices:', chrome.runtime.lastError);
+        return;
+      }
+      
+      if (!response || !response.success || !response.voices) {
+        console.error('Failed to fetch provider voices:', response?.error || 'Unknown error');
+        return;
+      }
+      
+      console.log(`Received ${response.voices.length} voices for provider ${provider}:`, response.voices);
+      
+      // Add options for each voice
+      response.voices.forEach((voice: any) => {
+        const option = document.createElement('option');
+        option.value = voice.id;
+        option.textContent = `${voice.name} (${voice.languageCode})`;
+        this.voiceSelect.appendChild(option);
+      });
+      
+      this.voicesLoaded = true;
+      
+      // If we had a pending voice URI to set, try to set it now
+      if (this.pendingVoiceURI) {
+        this.setVoice(this.pendingVoiceURI);
+        this.pendingVoiceURI = null;
+      }
+    });
+  }
+  
+  /**
+   * Load available voices from browser and populate select element
    */
   private loadVoices(): void {
     // Clear existing options (except default)
@@ -346,28 +404,30 @@ export class SpeechSettingsComponent {
         // Default to browser TTS if provider not found
         this.ttsProviderSelect.value = 'browser';
       }
+      
+      // Update voices based on the selected provider
+      this.updateVoicesForProvider(settings.ttsProvider);
     }
     
-    // Set voice
+    // Set voice (after voices are loaded for the provider)
     if (settings.voiceURI) {
       const voiceFound = this.setVoice(settings.voiceURI);
       
       if (!voiceFound && this.voicesLoaded) {
         // If the voice wasn't found but voices are loaded, try loading voices again
         console.log('Voice not found, trying to reload voices');
-        this.loadVoices();
+        if (settings.ttsProvider === 'browser') {
+          this.loadVoices();
+        } else {
+          this.fetchProviderVoices(settings.ttsProvider);
+        }
         this.setVoice(settings.voiceURI);
       }
     }
     
-    // Set rate and pitch
+    // Set rate
     this.rateInput.value = settings.rate.toString();
     this.rateValue.textContent = settings.rate.toString();
-    
-    if (settings.pitch) {
-      this.pitchInput.value = settings.pitch.toString();
-      this.pitchValue.textContent = settings.pitch.toString();
-    }
     
     console.log('Speech settings applied to UI, selected voice:', this.voiceSelect.value);
   }
@@ -380,7 +440,7 @@ export class SpeechSettingsComponent {
     const settings: SpeechSettings = {
       voiceURI: this.voiceSelect.value,
       rate: parseFloat(this.rateInput.value),
-      pitch: parseFloat(this.pitchInput.value),
+      pitch: 1.0, // Default pitch value, not configurable anymore
       ttsProvider: this.ttsProviderSelect ? this.ttsProviderSelect.value : 'browser'
     };
     

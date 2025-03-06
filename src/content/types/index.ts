@@ -90,7 +90,6 @@ export interface SpeechControllerInterface {
   availableVoices: SpeechSynthesisVoice[];
   selectedVoiceURI: string;
   rate: number;
-  pitch: number;
   ttsProvider: string;
   
   setup(text: string, words: string[], button: HTMLElement): void;

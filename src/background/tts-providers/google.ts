@@ -38,6 +38,7 @@ export class GoogleTTSProvider extends BaseTTSProvider {
       const voice = config.voice || 'de-DE-Standard-A';
       const languageCode = voice.split('-').slice(0, 2).join('-');
       
+      // Create request object
       const request = {
         input: { text },
         voice: {
@@ -46,8 +47,8 @@ export class GoogleTTSProvider extends BaseTTSProvider {
         },
         audioConfig: {
           audioEncoding: 'MP3',
-          speakingRate: config.rate || 1.0,
-          pitch: config.pitch || 0.0
+          speakingRate: config.rate || 1.0
+          // Pitch parameter removed completely as requested
         }
       };
       

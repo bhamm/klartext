@@ -15,6 +15,7 @@ import {
   ConfigMessage,
   FeedbackMessage,
   TTSProviderMessage,
+  GetProviderVoicesMessage,
   SynthesizeSpeechMessage,
   PingResponse,
   Tab,
@@ -300,7 +301,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // Message handling
-chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessage | FeedbackMessage | TTSProviderMessage | SynthesizeSpeechMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
+chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessage | FeedbackMessage | TTSProviderMessage | GetProviderVoicesMessage | SynthesizeSpeechMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
   console.log('Background script received message:', message);
   
   if (message.action === 'translateText' || message.action === 'translateArticle' || message.action === 'translateSection') {
@@ -431,6 +432,49 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
       console.error('Error getting TTS providers:', error);
       sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
+    return true;
+  }
+  else if (message.action === 'getProviderVoices') {
+    (async () => {
+      try {
+        if (!message.provider) {
+          throw new Error('No provider specified');
+        }
+        
+        console.log(`Getting voices for provider: ${message.provider}`);
+        
+        // Check if provider exists in registry
+        if (!ttsProviderRegistry.hasProvider(message.provider)) {
+          console.error(`TTS provider ${message.provider} not found in registry`);
+          throw new Error(`TTS provider ${message.provider} not found`);
+        }
+        
+        // Get the TTS provider
+        const provider = ttsProviderRegistry.getProvider(message.provider);
+        
+        // Check if provider config exists
+        if (!CONFIG_STORE.providers[message.provider]) {
+          console.error(`No configuration found for TTS provider: ${message.provider}`);
+          throw new Error(`No configuration found for TTS provider: ${message.provider}`);
+        }
+        
+        // Create provider config
+        const config = {
+          provider: message.provider,
+          apiKey: CONFIG_STORE.providers[message.provider]?.apiKey || '',
+          apiEndpoint: CONFIG_STORE.providers[message.provider]?.apiEndpoint || ''
+        };
+        
+        // Get available voices
+        const voices = await provider.getAvailableVoices(config);
+        
+        console.log(`Retrieved ${voices.length} voices for provider ${message.provider}`);
+        sendResponse({ success: true, voices });
+      } catch (error) {
+        console.error('Error getting provider voices:', error);
+        sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+      }
+    })();
     return true;
   }
   else if (message.action === 'synthesizeSpeech') {

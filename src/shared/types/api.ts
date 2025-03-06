@@ -49,6 +49,11 @@ export interface TTSProviderMessage {
   action: 'getTTSProviders';
 }
 
+export interface GetProviderVoicesMessage {
+  action: 'getProviderVoices';
+  provider: string;
+}
+
 export interface SynthesizeSpeechMessage {
   action: 'synthesizeSpeech';
   text: string;
@@ -73,4 +78,5 @@ export interface Message {
   translation?: string;
   error?: string;
   id?: string;
+  provider?: string;
 }
