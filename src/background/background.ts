@@ -1,4 +1,5 @@
 import { translate } from './providers';
+import { ttsProviderRegistry } from './tts-providers';
 import { 
   ErrorDetails, 
   ProviderConfig, 
@@ -13,6 +14,8 @@ import {
   TranslationMessage,
   ConfigMessage,
   FeedbackMessage,
+  TTSProviderMessage,
+  SynthesizeSpeechMessage,
   PingResponse,
   Tab,
   Message
@@ -283,7 +286,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // Message handling
-chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessage | FeedbackMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
+chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessage | FeedbackMessage | TTSProviderMessage | SynthesizeSpeechMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
   console.log('Background script received message:', message);
   
   if (message.action === 'translateText' || message.action === 'translateArticle' || message.action === 'translateSection') {
@@ -400,6 +403,86 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
         sendResponse({ success: true, result });
       } catch (error) {
         console.error('Error submitting feedback:', error);
+        sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+      }
+    })();
+    return true;
+  }
+  else if (message.action === 'getTTSProviders') {
+    try {
+      // Get all TTS provider metadata
+      const providers = ttsProviderRegistry.getAllMetadata();
+      sendResponse({ success: true, providers });
+    } catch (error) {
+      console.error('Error getting TTS providers:', error);
+      sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+    return true;
+  }
+  else if (message.action === 'synthesizeSpeech') {
+    (async () => {
+      try {
+        if (!message.text) {
+          throw new Error('No text provided for speech synthesis');
+        }
+        
+        if (!message.settings || !message.settings.provider) {
+          throw new Error('No TTS provider specified');
+        }
+        
+        console.log(`Synthesizing speech with provider: ${message.settings.provider}`);
+        
+        // Check if provider exists in registry
+        if (!ttsProviderRegistry.hasProvider(message.settings.provider)) {
+          console.error(`TTS provider ${message.settings.provider} not found in registry`);
+          throw new Error(`TTS provider ${message.settings.provider} not found`);
+        }
+        
+        // Get the TTS provider
+        const provider = ttsProviderRegistry.getProvider(message.settings.provider);
+        
+        // Check if provider config exists
+        if (!CONFIG_STORE.providers[message.settings.provider]) {
+          console.error(`No configuration found for TTS provider: ${message.settings.provider}`);
+          throw new Error(`No configuration found for TTS provider: ${message.settings.provider}`);
+        }
+        
+        // Create provider config
+        const config = {
+          provider: message.settings.provider,
+          apiKey: CONFIG_STORE.providers[message.settings.provider]?.apiKey || '',
+          apiEndpoint: CONFIG_STORE.providers[message.settings.provider]?.apiEndpoint || '',
+          voice: message.settings.voiceURI,
+          rate: message.settings.rate,
+          pitch: message.settings.pitch
+        };
+        
+        console.log(`TTS configuration:`, {
+          provider: config.provider,
+          hasApiKey: !!config.apiKey,
+          apiEndpoint: config.apiEndpoint,
+          voice: config.voice || '(default)',
+          rate: config.rate,
+          pitch: config.pitch
+        });
+        
+        // Synthesize speech
+        const audioContent = await provider.synthesizeSpeech(message.text, config);
+        
+        console.log(`Speech synthesis successful, audio content size: ${audioContent.byteLength} bytes`);
+        sendResponse({ success: true, audioContent });
+      } catch (error) {
+        console.error('Error synthesizing speech:', error);
+        // Log more detailed error information
+        if (error instanceof Error) {
+          console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          });
+        } else {
+          console.error('Unknown error type:', error);
+        }
         sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
       }
     })();

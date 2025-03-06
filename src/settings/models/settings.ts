@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
     voiceURI: '',  // Empty string means use default voice
     rate: 0.9,
     pitch: 1.0,
-    useGoogleTTS: false
+    ttsProvider: 'browser'
   }
 };
 
@@ -91,8 +91,8 @@ export function validateSettings(settings: unknown): settings is Settings {
       return false;
     }
     
-    // Validate useGoogleTTS (if present)
-    if ('useGoogleTTS' in speech && typeof speech.useGoogleTTS !== 'boolean') {
+    // Validate ttsProvider (if present)
+    if ('ttsProvider' in speech && typeof speech.ttsProvider !== 'string') {
       return false;
     }
   }

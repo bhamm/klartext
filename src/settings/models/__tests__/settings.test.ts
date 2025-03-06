@@ -19,7 +19,7 @@ describe('Settings Model', () => {
           voiceURI: '',
           rate: 0.9,
           pitch: 1.0,
-          useGoogleTTS: false
+          ttsProvider: 'browser'
         }
       });
     });
@@ -41,7 +41,8 @@ describe('Settings Model', () => {
         speech: {
           voiceURI: '',
           rate: 0.9,
-          pitch: 1.0
+          pitch: 1.0,
+          ttsProvider: 'browser'
         }
       };
       expect(validateSettings(settings)).toBe(true);

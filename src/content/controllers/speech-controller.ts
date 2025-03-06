@@ -20,7 +20,7 @@ export class SpeechController implements SpeechControllerInterface {
   selectedVoiceURI: string = '';
   rate: number = 0.9;
   pitch: number = 1.0;
-  useGoogleTTS: boolean = false;
+  ttsProvider: string = 'browser';
   
   // Flag to track if settings have been explicitly set
   private settingsInitialized: boolean = false;
@@ -188,7 +188,7 @@ export class SpeechController implements SpeechControllerInterface {
     this.selectedVoiceURI = settings.voiceURI;
     this.rate = settings.rate || 0.9;
     this.pitch = settings.pitch || 1.0;
-    this.useGoogleTTS = settings.useGoogleTTS || false;
+    this.ttsProvider = settings.ttsProvider || 'browser';
     
     // Make sure we have the latest voices
     await this.loadVoices();
@@ -230,7 +230,7 @@ export class SpeechController implements SpeechControllerInterface {
           voiceURI: this.selectedVoiceURI,
           rate: this.rate,
           pitch: this.pitch,
-          useGoogleTTS: this.useGoogleTTS
+          ttsProvider: this.ttsProvider
         };
         
         console.log('Saving speech settings to storage:', settings);
@@ -425,17 +425,65 @@ export class SpeechController implements SpeechControllerInterface {
   }
 
   /**
+   * Use external TTS provider
+   * @param text - Text to synthesize
+   * @returns Promise resolving to audio content as ArrayBuffer
+   */
+  private async useExternalTTS(text: string): Promise<ArrayBuffer> {
+    console.log(`Using external TTS provider: ${this.ttsProvider}`);
+    
+    // Send message to background script to use selected TTS provider
+    return new Promise((resolve, reject) => {
+      const settings = {
+        provider: this.ttsProvider,
+        voiceURI: this.selectedVoiceURI,
+        rate: this.rate,
+        pitch: this.pitch
+      };
+      
+      console.log('Sending synthesizeSpeech message with settings:', settings);
+      
+      chrome.runtime.sendMessage({
+        action: 'synthesizeSpeech',
+        text,
+        settings
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Chrome runtime error when using TTS provider:', chrome.runtime.lastError);
+          reject(chrome.runtime.lastError);
+          return;
+        }
+        
+        if (!response) {
+          console.error('No response received from background script');
+          reject(new Error('No response received from background script'));
+          return;
+        }
+        
+        if (response.error) {
+          console.error(`Error from TTS provider ${this.ttsProvider}:`, response.error);
+          reject(response.error);
+          return;
+        }
+        
+        if (!response.audioContent) {
+          console.error('No audio content received from TTS provider');
+          reject(new Error('No audio content received from TTS provider'));
+          return;
+        }
+        
+        console.log(`Received audio content from ${this.ttsProvider}, size: ${response.audioContent.byteLength} bytes`);
+        resolve(response.audioContent);
+      });
+    });
+  }
+
+  /**
    * Start speech synthesis
    */
-  start(): void {
-    if (!this.utterance) {
-      // If we don't have an utterance but we have text, create a new one
-      if (this.currentText) {
-        this.utterance = new SpeechSynthesisUtterance(this.currentText);
-        this.applyVoiceSettings(this.utterance);
-      } else {
-        return;
-      }
+  async start(): Promise<void> {
+    if (!this.currentText) {
+      return;
     }
     
     // Cancel any ongoing speech first
@@ -444,30 +492,284 @@ export class SpeechController implements SpeechControllerInterface {
     this.isPlaying = true;
     this.updateButtonState(true);
     
-    // Start speech with a small delay to ensure everything is ready
-    setTimeout(() => {
-      if (this.utterance) {
-        console.log('Starting speech synthesis...');
+    try {
+      // Check if we should use an external TTS provider
+      if (this.ttsProvider !== 'browser') {
+        console.log(`Using external TTS provider: ${this.ttsProvider}`);
         
-        // Ensure the voice settings are applied before speaking
-        this.applyVoiceSettings(this.utterance);
-        
-        speechSynthesis.speak(this.utterance);
-        
-        // Check if speech actually started
-        setTimeout(() => {
-          if (this.isPlaying && !speechSynthesis.speaking) {
-            console.log('Speech did not start properly, trying again...');
-            speechSynthesis.cancel();
-            
-            // Re-apply voice settings to ensure they're set correctly
-            this.applyVoiceSettings(this.utterance!);
-            
-            speechSynthesis.speak(this.utterance!);
+        try {
+          // Use external TTS provider
+          const audioContent = await this.useExternalTTS(this.currentText);
+          
+          // Check if audioContent is valid
+          if (!audioContent || audioContent.byteLength === 0) {
+            console.error('Invalid audio content received:', audioContent);
+            throw new Error('Invalid audio content received from TTS provider');
           }
-        }, 500);
+          
+          // Create audio element to play the audio
+          const audioBlob = new Blob([audioContent], { type: 'audio/mp3' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio();
+          
+          // Set audio properties
+          audio.src = audioUrl;
+          audio.preload = 'auto';
+          
+          console.log(`Created audio element with URL: ${audioUrl}, blob size: ${audioContent.byteLength} bytes`);
+          
+          // Set up event handlers
+          audio.onended = () => {
+            console.log('Audio playback ended');
+            this.stop();
+            URL.revokeObjectURL(audioUrl);
+          };
+          
+          audio.onerror = (event) => {
+            console.error('Audio playback error:', event);
+            console.error('Audio error details:', {
+              error: audio.error ? audio.error.code : 'unknown',
+              networkState: audio.networkState,
+              readyState: audio.readyState
+            });
+            this.stop();
+            URL.revokeObjectURL(audioUrl);
+          };
+          
+          // Add more event listeners for debugging
+          audio.oncanplay = () => console.log('Audio can play');
+          audio.oncanplaythrough = () => console.log('Audio can play through');
+          audio.onloadeddata = () => console.log('Audio data loaded');
+          audio.onloadedmetadata = () => console.log('Audio metadata loaded');
+          audio.onpause = () => console.log('Audio paused');
+          audio.onplay = () => console.log('Audio play started');
+          audio.onplaying = () => console.log('Audio playing');
+          audio.onstalled = () => console.log('Audio stalled');
+          audio.onsuspend = () => console.log('Audio suspended');
+          audio.onwaiting = () => console.log('Audio waiting');
+          
+          // Wait for the audio to be loaded before playing
+          audio.oncanplaythrough = async () => {
+            console.log('Audio can play through, attempting to play');
+            
+            try {
+              // Create a user gesture simulation
+              const playPromise = audio.play();
+              
+              if (playPromise !== undefined) {
+                playPromise
+                  .then(() => {
+                    console.log('Audio playback started successfully');
+                  })
+                  .catch(error => {
+                    console.error('Error during audio playback:', error);
+                    
+                    // Check if it's an autoplay policy error
+                    if (error.name === 'NotAllowedError') {
+                      console.log('Autoplay policy prevented playback, creating a play button');
+                      
+                      // Create a temporary play button to get user interaction
+                      const playButton = document.createElement('button');
+                      playButton.textContent = 'Play Audio';
+                      playButton.style.position = 'fixed';
+                      playButton.style.top = '10px';
+                      playButton.style.right = '10px';
+                      playButton.style.zIndex = '10000';
+                      playButton.style.padding = '10px';
+                      playButton.style.backgroundColor = '#007bff';
+                      playButton.style.color = 'white';
+                      playButton.style.border = 'none';
+                      playButton.style.borderRadius = '5px';
+                      playButton.style.cursor = 'pointer';
+                      
+                      playButton.onclick = () => {
+                        console.log('Play button clicked, attempting to play audio');
+                        audio.play()
+                          .then(() => {
+                            console.log('Audio playback started after user interaction');
+                            document.body.removeChild(playButton);
+                          })
+                          .catch(playError => {
+                            console.error('Error playing audio after user interaction:', playError);
+                            document.body.removeChild(playButton);
+                            this.fallbackToBrowserTTS();
+                          });
+                      };
+                      
+                      document.body.appendChild(playButton);
+                      
+                      // Auto-remove the button after 10 seconds if not clicked
+                      setTimeout(() => {
+                        if (document.body.contains(playButton)) {
+                          document.body.removeChild(playButton);
+                          this.fallbackToBrowserTTS();
+                        }
+                      }, 10000);
+                    } else {
+                      // For other errors, fall back to browser TTS
+                      this.fallbackToBrowserTTS();
+                    }
+                  });
+              }
+            } catch (error) {
+              console.error('Exception during audio.play():', error);
+              this.fallbackToBrowserTTS();
+            }
+          };
+          
+          // Store the audio element in a global variable to prevent garbage collection
+          (window as any).__ttsAudio = audio;
+          
+          // Load the audio
+          audio.load();
+          
+          // Create an audio element directly in the page
+          const audioElement = document.createElement('audio');
+          audioElement.controls = true;
+          audioElement.style.position = 'fixed';
+          audioElement.style.bottom = '10px';
+          audioElement.style.right = '10px';
+          audioElement.style.zIndex = '10000';
+          audioElement.style.backgroundColor = 'white';
+          audioElement.style.padding = '5px';
+          audioElement.style.borderRadius = '5px';
+          audioElement.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
+          
+          // Create a source element for the audio
+          const sourceElement = document.createElement('source');
+          sourceElement.type = 'audio/mp3';
+          
+          // Create a blob URL from the audio content
+          const newBlob = new Blob([audioContent], { type: 'audio/mp3' });
+          const newBlobUrl = URL.createObjectURL(newBlob);
+          sourceElement.src = newBlobUrl;
+          
+          // Add the source to the audio element
+          audioElement.appendChild(sourceElement);
+          
+          // Add a close button
+          const closeButton = document.createElement('button');
+          closeButton.textContent = 'X';
+          closeButton.style.position = 'absolute';
+          closeButton.style.top = '-10px';
+          closeButton.style.right = '-10px';
+          closeButton.style.backgroundColor = 'red';
+          closeButton.style.color = 'white';
+          closeButton.style.border = 'none';
+          closeButton.style.borderRadius = '50%';
+          closeButton.style.width = '20px';
+          closeButton.style.height = '20px';
+          closeButton.style.cursor = 'pointer';
+          closeButton.style.fontSize = '12px';
+          closeButton.style.lineHeight = '20px';
+          closeButton.style.textAlign = 'center';
+          closeButton.style.padding = '0';
+          
+          closeButton.onclick = () => {
+            document.body.removeChild(audioWrapper);
+            URL.revokeObjectURL(newBlobUrl);
+          };
+          
+          // Create a wrapper for the audio element and close button
+          const audioWrapper = document.createElement('div');
+          audioWrapper.style.position = 'fixed';
+          audioWrapper.style.bottom = '10px';
+          audioWrapper.style.right = '10px';
+          audioWrapper.style.zIndex = '10000';
+          
+          // Add the audio element and close button to the wrapper
+          audioWrapper.appendChild(audioElement);
+          audioWrapper.appendChild(closeButton);
+          
+          // Add the wrapper to the page
+          document.body.appendChild(audioWrapper);
+          
+          // Auto-remove after 30 seconds
+          setTimeout(() => {
+            if (document.body.contains(audioWrapper)) {
+              document.body.removeChild(audioWrapper);
+              URL.revokeObjectURL(newBlobUrl);
+            }
+          }, 30000);
+          
+          // Try to play the audio
+          audioElement.oncanplaythrough = () => {
+            console.log('Audio element can play through, attempting to play');
+            audioElement.play()
+              .then(() => console.log('Audio playback started successfully'))
+              .catch(err => {
+                console.error('Error playing audio:', err);
+                // Show a message to the user
+                const message = document.createElement('div');
+                message.textContent = 'Click to play audio';
+                message.style.position = 'absolute';
+                message.style.top = '-30px';
+                message.style.left = '0';
+                message.style.backgroundColor = '#007bff';
+                message.style.color = 'white';
+                message.style.padding = '5px';
+                message.style.borderRadius = '5px';
+                message.style.cursor = 'pointer';
+                
+                message.onclick = () => {
+                  audioElement.play()
+                    .then(() => {
+                      audioWrapper.removeChild(message);
+                    })
+                    .catch(playErr => {
+                      console.error('Error playing audio after click:', playErr);
+                    });
+                };
+                
+                audioWrapper.appendChild(message);
+              });
+          };
+          
+          // Load the audio
+          audioElement.load();
+          
+          return;
+        } catch (error) {
+          console.error(`Error using ${this.ttsProvider} TTS:`, error);
+          console.log('Falling back to browser TTS');
+          // Fall back to browser TTS
+        }
       }
-    }, 100);
+      
+      // Use browser TTS
+      if (!this.utterance) {
+        this.utterance = new SpeechSynthesisUtterance(this.currentText);
+        this.applyVoiceSettings(this.utterance);
+      }
+      
+      // Start speech with a small delay to ensure everything is ready
+      setTimeout(() => {
+        if (this.utterance) {
+          console.log('Starting browser speech synthesis...');
+          
+          // Ensure the voice settings are applied before speaking
+          this.applyVoiceSettings(this.utterance);
+          
+          speechSynthesis.speak(this.utterance);
+          
+          // Check if speech actually started
+          setTimeout(() => {
+            if (this.isPlaying && !speechSynthesis.speaking) {
+              console.log('Speech did not start properly, trying again...');
+              speechSynthesis.cancel();
+              
+              // Re-apply voice settings to ensure they're set correctly
+              this.applyVoiceSettings(this.utterance!);
+              
+              speechSynthesis.speak(this.utterance!);
+            }
+          }, 500);
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error starting speech synthesis:', error);
+      this.stop();
+    }
   }
 
   /**
@@ -509,6 +811,21 @@ export class SpeechController implements SpeechControllerInterface {
     if (this.button) {
       this.updateButtonState(false);
     }
+  }
+
+  /**
+   * Fall back to browser TTS when external TTS fails
+   */
+  private fallbackToBrowserTTS(): void {
+    console.log('Falling back to browser TTS');
+    this.stop();
+    
+    // Create a new utterance with the current text
+    this.utterance = new SpeechSynthesisUtterance(this.currentText);
+    this.applyVoiceSettings(this.utterance);
+    
+    // Start browser speech synthesis
+    speechSynthesis.speak(this.utterance);
   }
 
   /**

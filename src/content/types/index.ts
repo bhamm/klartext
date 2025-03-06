@@ -91,7 +91,7 @@ export interface SpeechControllerInterface {
   selectedVoiceURI: string;
   rate: number;
   pitch: number;
-  useGoogleTTS: boolean;
+  ttsProvider: string;
   
   setup(text: string, words: string[], button: HTMLElement): void;
   start(): void;

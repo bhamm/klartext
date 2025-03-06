@@ -2,6 +2,7 @@
  * Speech settings component for the Klartext extension
  */
 import { SpeechSettings } from '../../shared/types/settings';
+import { getTTSProvidersMetadata } from '../../background/tts-providers';
 
 /**
  * Component for managing speech synthesis settings
@@ -12,6 +13,7 @@ export class SpeechSettingsComponent {
   private rateValue: HTMLElement;
   private pitchInput: HTMLInputElement;
   private pitchValue: HTMLElement;
+  private ttsProviderSelect: HTMLSelectElement;
   private voicesLoaded: boolean = false;
   private pendingVoiceURI: string | null = null;
   private saveButton: HTMLElement | null = null;
@@ -25,6 +27,7 @@ export class SpeechSettingsComponent {
     this.rateValue = document.getElementById('rate-value') as HTMLElement;
     this.pitchInput = document.getElementById('speech-pitch') as HTMLInputElement;
     this.pitchValue = document.getElementById('pitch-value') as HTMLElement;
+    this.ttsProviderSelect = document.getElementById('tts-provider-select') as HTMLSelectElement;
     this.saveButton = document.querySelector('.save-button');
     
     this.initialize();
@@ -34,6 +37,9 @@ export class SpeechSettingsComponent {
    * Initialize the component
    */
   private initialize(): void {
+    // Populate TTS provider options
+    this.loadTTSProviders();
+    
     // Populate voice options
     this.loadVoices();
     
@@ -75,8 +81,73 @@ export class SpeechSettingsComponent {
       }
     });
     
+    // Add change event listener to TTS provider select
+    if (this.ttsProviderSelect) {
+      this.ttsProviderSelect.addEventListener('change', () => {
+        console.log('TTS provider changed to:', this.ttsProviderSelect.value);
+        
+        // Save the settings directly to storage
+        this.saveSettingsToStorage();
+        
+        // Force a save when provider is changed to ensure it takes effect immediately
+        if (this.saveButton) {
+          console.log('Triggering save button click to apply TTS provider change immediately');
+          this.saveButton.click();
+        } else {
+          console.warn('Save button not found, cannot auto-save TTS provider change');
+        }
+      });
+    }
+    
     // Try to load settings from storage
     this.loadSettingsFromStorage();
+  }
+  
+  /**
+   * Load available TTS providers and populate select element
+   */
+  private loadTTSProviders(): void {
+    if (!this.ttsProviderSelect) {
+      console.warn('TTS provider select element not found');
+      return;
+    }
+    
+    // Clear existing options
+    while (this.ttsProviderSelect.options.length > 0) {
+      this.ttsProviderSelect.remove(0);
+    }
+    
+    try {
+      // Add browser TTS option
+      const browserOption = document.createElement('option');
+      browserOption.value = 'browser';
+      browserOption.textContent = 'Browser Text-to-Speech';
+      this.ttsProviderSelect.appendChild(browserOption);
+      
+      // Try to get TTS providers from background script
+      if (typeof chrome !== 'undefined' && chrome.runtime) {
+        chrome.runtime.sendMessage({ action: 'getTTSProviders' }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('Error getting TTS providers:', chrome.runtime.lastError);
+            return;
+          }
+          
+          if (response && response.providers) {
+            // Add options for each provider
+            Object.entries(response.providers).forEach(([id, metadata]: [string, any]) => {
+              if (id !== 'browser') { // Skip browser provider as it's already added
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = metadata.name;
+                this.ttsProviderSelect.appendChild(option);
+              }
+            });
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading TTS providers:', error);
+    }
   }
   
   /**
@@ -257,6 +328,27 @@ export class SpeechSettingsComponent {
   public setSettings(settings: SpeechSettings): void {
     console.log('Setting speech settings in UI:', settings);
     
+    // Set TTS provider
+    if (settings.ttsProvider && this.ttsProviderSelect) {
+      // Try to find the option with the matching value
+      let providerFound = false;
+      for (let i = 0; i < this.ttsProviderSelect.options.length; i++) {
+        if (this.ttsProviderSelect.options[i].value === settings.ttsProvider) {
+          this.ttsProviderSelect.selectedIndex = i;
+          console.log('TTS provider found and selected:', settings.ttsProvider);
+          providerFound = true;
+          break;
+        }
+      }
+      
+      if (!providerFound) {
+        console.log('TTS provider not found in options:', settings.ttsProvider);
+        // Default to browser TTS if provider not found
+        this.ttsProviderSelect.value = 'browser';
+      }
+    }
+    
+    // Set voice
     if (settings.voiceURI) {
       const voiceFound = this.setVoice(settings.voiceURI);
       
@@ -268,6 +360,7 @@ export class SpeechSettingsComponent {
       }
     }
     
+    // Set rate and pitch
     this.rateInput.value = settings.rate.toString();
     this.rateValue.textContent = settings.rate.toString();
     
@@ -284,11 +377,11 @@ export class SpeechSettingsComponent {
    * @returns Speech settings
    */
   public getSettings(): SpeechSettings {
-    const settings = {
+    const settings: SpeechSettings = {
       voiceURI: this.voiceSelect.value,
       rate: parseFloat(this.rateInput.value),
       pitch: parseFloat(this.pitchInput.value),
-      useGoogleTTS: false // For now, always false until Google TTS is implemented
+      ttsProvider: this.ttsProviderSelect ? this.ttsProviderSelect.value : 'browser'
     };
     
     console.log('Getting speech settings from UI:', settings);

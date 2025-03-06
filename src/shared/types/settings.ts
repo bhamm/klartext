@@ -11,7 +11,7 @@ export interface SpeechSettings {
   voiceURI: string;  // Identifier for the selected voice
   rate: number;      // Speech rate (0.1 to 2.0)
   pitch?: number;    // Speech pitch (0.1 to 2.0)
-  useGoogleTTS?: boolean; // Whether to use Google TTS API instead of browser TTS
+  ttsProvider: string; // TTS provider ID (browser, googleTTS, etc.)
 }
 
 /**
@@ -55,7 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
     voiceURI: '',  // Empty string means use default voice
     rate: 0.9,
     pitch: 1.0,
-    useGoogleTTS: false
+    ttsProvider: 'browser'
   }
 };
 

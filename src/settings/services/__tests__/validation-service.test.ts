@@ -196,7 +196,8 @@ describe('Validation Service', () => {
         speech: {
           voiceURI: '',
           rate: 0.9,
-          pitch: 1.0
+          pitch: 1.0,
+          ttsProvider: 'browser'
         }
       };
       
@@ -214,7 +215,8 @@ describe('Validation Service', () => {
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         speech: {
           voiceURI: '',
-          rate: 0.9
+          rate: 0.9,
+          ttsProvider: 'browser'
         }
       };
       
@@ -232,7 +234,8 @@ describe('Validation Service', () => {
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         speech: {
           voiceURI: '',
-          rate: 0.9
+          rate: 0.9,
+          ttsProvider: 'browser'
         }
       };
       
@@ -250,7 +253,8 @@ describe('Validation Service', () => {
         apiEndpoint: 'invalid-url',
         speech: {
           voiceURI: '',
-          rate: 0.9
+          rate: 0.9,
+          ttsProvider: 'browser'
         }
       };
       
@@ -268,7 +272,8 @@ describe('Validation Service', () => {
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         speech: {
           voiceURI: '',
-          rate: 0.9
+          rate: 0.9,
+          ttsProvider: 'browser'
         }
       };
       
@@ -286,7 +291,8 @@ describe('Validation Service', () => {
         apiEndpoint: 'http://localhost:1234/completion',
         speech: {
           voiceURI: '',
-          rate: 0.9
+          rate: 0.9,
+          ttsProvider: 'browser'
         }
       };
       
