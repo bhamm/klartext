@@ -303,6 +303,21 @@ export class TranslationOverlay implements TranslationOverlayInterface {
           'aria-label': 'Übersetzung in Leichte Sprache'
         });
 
+        // Get current text size from settings and apply it
+        chrome.storage.sync.get(['textSize'], (items) => {
+          const textSize = items.textSize || 'normal';
+          console.log('Applying text size from settings:', textSize);
+          
+          // Apply text size class to translation container
+          translationContainer.classList.add(`klartext-text-${textSize}`);
+          
+          // Set the corresponding text size button as active
+          const textSizeButton = this.overlay?.querySelector(`.klartext-text-size-button[data-size="${textSize}"]`);
+          if (textSizeButton) {
+            textSizeButton.classList.add('active');
+          }
+        });
+
         // Process translation content
         let allWords: string[] = [];
         let plainText = '';
