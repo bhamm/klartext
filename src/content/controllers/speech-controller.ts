@@ -318,11 +318,25 @@ export class SpeechController implements SpeechControllerInterface {
   }
 
   /**
+   * Convert base64 string to ArrayBuffer
+   * @param base64 - Base64 encoded string
+   * @returns ArrayBuffer
+   */
+  private base64ToArrayBuffer(base64: string): ArrayBuffer {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  /**
    * Use external TTS provider
    * @param text - Text to synthesize
-   * @returns Promise resolving to audio content as ArrayBuffer
+   * @returns Promise resolving to audio content response
    */
-  private async useExternalTTS(text: string): Promise<ArrayBuffer> {
+  private async useExternalTTS(text: string): Promise<{ audioContent: ArrayBuffer | string, format?: string }> {
     console.log(`Using external TTS provider: ${this.ttsProvider}`);
     
     // Send message to background script to use selected TTS provider
@@ -344,12 +358,20 @@ export class SpeechController implements SpeechControllerInterface {
           return;
         }
         
-        if (!response || response.error || !response.audioContent) {
-          reject(new Error(response?.error || 'No audio content received'));
+        if (!response || response.error) {
+          reject(new Error(response?.error || 'No response received'));
           return;
         }
         
-        resolve(response.audioContent);
+        if (!response.audioContent) {
+          reject(new Error('No audio content received'));
+          return;
+        }
+        
+        resolve({
+          audioContent: response.audioContent,
+          format: response.format
+        });
       });
     });
   }
@@ -393,48 +415,79 @@ export class SpeechController implements SpeechControllerInterface {
     try {
       // Check if we should use an external TTS provider
       if (this.ttsProvider !== 'browser') {
+        console.log(`Using external TTS provider: ${this.ttsProvider}`);
         try {
           // Use external TTS provider
-          const audioContent = await this.useExternalTTS(this.currentText);
+          const result = await this.useExternalTTS(this.currentText);
           
-          if (audioContent instanceof ArrayBuffer && audioContent.byteLength > 0) {
-            // Create audio element to play the audio
-            const audioBlob = new Blob([audioContent], { type: 'audio/mpeg' });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const audio = new Audio(audioUrl);
+          if (result && result.audioContent) {
+            let audioContent: ArrayBuffer;
             
-            // Set up event handlers
-            audio.onended = () => {
-              this.stop();
-              URL.revokeObjectURL(audioUrl);
-            };
+            // Check if the audio content is a base64 string
+            if (result.format === 'base64' && typeof result.audioContent === 'string') {
+              // Convert base64 to ArrayBuffer
+              audioContent = this.base64ToArrayBuffer(result.audioContent);
+              console.log(`Received base64 audio content from ${this.ttsProvider}, converted to ArrayBuffer, size: ${audioContent.byteLength} bytes`);
+            } else {
+              audioContent = result.audioContent as ArrayBuffer;
+              console.log(`Received audio content from ${this.ttsProvider}, size: ${audioContent.byteLength} bytes`);
+            }
             
-            audio.onerror = () => {
-              this.stop();
-              URL.revokeObjectURL(audioUrl);
-              this.fallbackToBrowserTTS();
-            };
-            
-            // Play the audio
-            audio.play().catch(() => {
-              this.fallbackToBrowserTTS();
-            });
-            
-            return;
+            if (audioContent.byteLength > 0) {
+              // Create audio element to play the audio
+              const audioBlob = new Blob([audioContent], { type: 'audio/mpeg' });
+              const audioUrl = URL.createObjectURL(audioBlob);
+              const audio = new Audio(audioUrl);
+              
+              // Store the audio element to prevent garbage collection
+              (window as any).__klartextAudio = audio;
+              
+              // Set up event handlers
+              audio.onended = () => {
+                console.log('External TTS audio playback ended');
+                this.stop();
+                URL.revokeObjectURL(audioUrl);
+                delete (window as any).__klartextAudio;
+              };
+              
+              audio.onerror = (e) => {
+                console.error('Error playing external TTS audio:', e);
+                this.stop();
+                URL.revokeObjectURL(audioUrl);
+                delete (window as any).__klartextAudio;
+              };
+              
+              // Play the audio
+              console.log('Playing external TTS audio...');
+              try {
+                await audio.play();
+                console.log('External TTS audio playback started successfully');
+                return;
+              } catch (playError) {
+                console.error('Failed to play external TTS audio:', playError);
+                URL.revokeObjectURL(audioUrl);
+                delete (window as any).__klartextAudio;
+              }
+            } else {
+              console.error('Invalid audio content received from external TTS provider');
+            }
+          } else {
+            console.error('No audio content received from external TTS provider');
           }
         } catch (error) {
           console.error(`Error using ${this.ttsProvider} TTS:`, error);
-          // Fall back to browser TTS
+          return;
         }
+      } else {
+        console.log('Using browser TTS');
+        // Use browser TTS
+        if (!this.utterance) {
+          this.utterance = new SpeechSynthesisUtterance(this.currentText);
+          this.applyVoiceSettings(this.utterance);
+        }
+        
+        speechSynthesis.speak(this.utterance);
       }
-      
-      // Use browser TTS
-      if (!this.utterance) {
-        this.utterance = new SpeechSynthesisUtterance(this.currentText);
-        this.applyVoiceSettings(this.utterance);
-      }
-      
-      speechSynthesis.speak(this.utterance);
     } catch (error) {
       console.error('Error starting speech synthesis:', error);
       this.stop();
@@ -478,21 +531,6 @@ export class SpeechController implements SpeechControllerInterface {
     if (this.button) {
       this.updateButtonState(false);
     }
-  }
-
-  /**
-   * Fall back to browser TTS when external TTS fails
-   */
-  private fallbackToBrowserTTS(): void {
-    console.log('Falling back to browser TTS');
-    this.stop();
-    
-    // Create a new utterance with the current text
-    this.utterance = new SpeechSynthesisUtterance(this.currentText);
-    this.applyVoiceSettings(this.utterance);
-    
-    // Start browser speech synthesis
-    speechSynthesis.speak(this.utterance);
   }
 
   /**

@@ -30,6 +30,16 @@ const MENU_ITEMS: { [key: string]: string } = {
 };
 const REPO_URL = 'https://github.com/bhamm/klartext';
 
+// Helper function to convert ArrayBuffer to base64 string for messaging
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 // Load provider API keys from config file
 let CONFIG_STORE: ConfigStore = { providers: {} };
 fetch(chrome.runtime.getURL('dist/config/api-keys.json'))
@@ -527,8 +537,11 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
         // Synthesize speech
         const audioContent = await provider.synthesizeSpeech(message.text, config);
         
-        console.log(`Speech synthesis successful, audio content size: ${audioContent.byteLength} bytes`);
-        sendResponse({ success: true, audioContent });
+        // Convert ArrayBuffer to base64 string for messaging
+        const base64Audio = arrayBufferToBase64(audioContent);
+        
+        console.log(`Speech synthesis successful, audio content size: ${audioContent.byteLength} bytes, base64 length: ${base64Audio.length}`);
+        sendResponse({ success: true, audioContent: base64Audio, format: 'base64' });
       } catch (error) {
         console.error('Error synthesizing speech:', error);
         // Log more detailed error information

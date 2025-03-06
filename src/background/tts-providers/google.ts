@@ -91,8 +91,9 @@ export class GoogleTTSProvider extends BaseTTSProvider {
           bytes[i] = binaryString.charCodeAt(i);
         }
         
-        console.log(`Converted base64 to ArrayBuffer, size: ${bytes.buffer.byteLength} bytes`);
-        return bytes.buffer;
+        const buffer = bytes.buffer;
+        console.log(`Converted base64 to ArrayBuffer, size: ${buffer.byteLength} bytes`);
+        return buffer;
       } catch (error) {
         console.error('Error converting base64 to ArrayBuffer:', error);
         throw error;
