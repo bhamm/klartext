@@ -207,6 +207,42 @@ describe('TranslationOverlay', () => {
       expect(consoleSpy).toHaveBeenCalled();
       expect(showErrorSpy).toHaveBeenCalled();
     });
+
+    test('should apply text size from settings', (done) => {
+      overlay = new TranslationOverlay();
+      
+      // Mock chrome storage to return a specific text size
+      mockGet.mockImplementation((keys, callback) => {
+        if (keys.includes('textSize') || keys === 'textSize') {
+          callback({ textSize: 'gross' });
+          
+          // After the callback is executed, check the DOM in the next tick
+          setTimeout(() => {
+            try {
+              // Check if translation container has the correct text size class
+              const translationContainer = overlay.content?.querySelector('.klartext-translation');
+              expect(translationContainer?.classList.contains('klartext-text-gross')).toBe(true);
+              
+              // Check if the corresponding button is set as active
+              const textSizeButton = overlay.overlay?.querySelector('.klartext-text-size-button[data-size="gross"]');
+              expect(textSizeButton?.classList.contains('active')).toBe(true);
+              
+              done(); // Signal that the test is complete
+            } catch (error) {
+              done(error instanceof Error ? error : new Error(String(error))); // Signal that the test failed
+            }
+          }, 0);
+        } else {
+          callback({
+            provider: 'openAI',
+            model: 'gpt-4-turbo'
+          });
+        }
+      });
+      
+      // Show translation
+      overlay.show('<p>Test content</p>');
+    });
   });
   
   describe('showError', () => {

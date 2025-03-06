@@ -1,7 +1,7 @@
 /**
  * Translation overlay UI component for the Klartext extension
  */
-import { REPO_URL, PLAY_ICON } from '../constants';
+import { REPO_URL, PLAY_ICON, STOP_ICON } from '../constants';
 import { createElement } from '../utils/dom-utils';
 import { processTextToWords } from '../utils/dom-utils';
 import { speechController } from '../controllers/speech-controller';
@@ -99,6 +99,30 @@ export class TranslationOverlay implements TranslationOverlayInterface {
         textSizeGroup.appendChild(button);
       });
 
+      // Create TTS controls container
+      const ttsControlsGroup = createElement('div', {
+        className: 'klartext-tts-controls-group'
+      });
+
+      // Create play/pause button
+      const ttsPlayButton = createElement('button', {
+        className: 'klartext-header-tts-button',
+        innerHTML: PLAY_ICON,
+        'aria-label': 'Text vorlesen',
+        onclick: () => speechController.toggle()
+      });
+
+      // Create stop button
+      const ttsStopButton = createElement('button', {
+        className: 'klartext-header-tts-stop-button',
+        innerHTML: STOP_ICON,
+        'aria-label': 'Vorlesen stoppen',
+        onclick: () => speechController.stop()
+      });
+
+      ttsControlsGroup.appendChild(ttsPlayButton);
+      ttsControlsGroup.appendChild(ttsStopButton);
+
       // Create print button
       const printButton = createElement('button', {
         className: 'klartext-print',
@@ -120,6 +144,7 @@ export class TranslationOverlay implements TranslationOverlayInterface {
 
       // Add components to header controls
       headerControls.appendChild(textSizeGroup);
+      headerControls.appendChild(ttsControlsGroup);
       headerControls.appendChild(printButton);
       headerControls.appendChild(this.closeButton);
 
@@ -364,19 +389,11 @@ export class TranslationOverlay implements TranslationOverlayInterface {
           allWords = words;
         }
 
-        // Create text-to-speech button
-        const ttsButton = createElement('button', {
-          className: 'klartext-tts-button',
-          innerHTML: PLAY_ICON + 'Vorlesen',
-          'aria-label': 'Text vorlesen',
-          onclick: () => speechController.toggle()
-        });
-        
         // Setup speech controller with plain text
-        speechController.setup(plainText, allWords, ttsButton);
-
-        // Add button before translation
-        translationContainer.insertBefore(ttsButton, translationContainer.firstChild);
+        const headerTtsButton = this.overlay?.querySelector('.klartext-header-tts-button');
+        if (headerTtsButton) {
+          speechController.setup(plainText, allWords, headerTtsButton as HTMLElement);
+        }
 
         this.content.appendChild(translationContainer);
 

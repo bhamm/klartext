@@ -616,11 +616,22 @@ export class SpeechController implements SpeechControllerInterface {
   updateButtonState(isPlaying: boolean): void {
     if (!this.button) return;
     
+    // Check if this is a header button (smaller, icon-only) or a regular button
+    const isHeaderButton = this.button.classList.contains('klartext-header-tts-button');
+    
     if (isPlaying) {
-      this.button.innerHTML = PAUSE_ICON + 'Pause';
+      if (isHeaderButton) {
+        this.button.innerHTML = PAUSE_ICON;
+      } else {
+        this.button.innerHTML = PAUSE_ICON + 'Pause';
+      }
       this.button.classList.add('playing');
     } else {
-      this.button.innerHTML = PLAY_ICON + 'Vorlesen';
+      if (isHeaderButton) {
+        this.button.innerHTML = PLAY_ICON;
+      } else {
+        this.button.innerHTML = PLAY_ICON + 'Vorlesen';
+      }
       this.button.classList.remove('playing');
     }
   }

@@ -1,7 +1,7 @@
 /**
  * Translation controls UI component for the Klartext extension
  */
-import { PLAY_ICON, PAUSE_ICON } from '../constants';
+import { PLAY_ICON, PAUSE_ICON, STOP_ICON } from '../constants';
 import { createElement } from '../utils/dom-utils';
 import { speechController } from '../controllers/speech-controller';
 import { TranslationControlsInterface } from '../types';
@@ -17,6 +17,7 @@ export class TranslationControls implements TranslationControlsInterface {
   progressText!: HTMLElement | null;
   viewToggle!: HTMLElement | null;
   ttsButton!: HTMLElement | null;
+  ttsStopButton!: HTMLElement | null;
   minimizeButton!: HTMLElement | null;
   isMinimized!: boolean;
 
@@ -33,6 +34,7 @@ export class TranslationControls implements TranslationControlsInterface {
     this.progressText = null;
     this.viewToggle = null;
     this.ttsButton = null;
+    this.ttsStopButton = null;
     this.minimizeButton = null;
     this.isMinimized = false;
     this.setupControls();
@@ -107,14 +109,29 @@ export class TranslationControls implements TranslationControlsInterface {
       onclick: () => this.toggleView()
     });
 
+    // Create TTS controls container
+    const ttsControlsContainer = createElement('div', {
+      className: 'klartext-tts-controls'
+    });
+
     // Create TTS button
     this.ttsButton = createElement('button', {
       className: 'klartext-tts-button',
       innerHTML: PLAY_ICON + 'Vorlesen'
     });
 
+    // Create TTS stop button
+    this.ttsStopButton = createElement('button', {
+      className: 'klartext-tts-stop-button',
+      innerHTML: STOP_ICON,
+      onclick: () => speechController.stop()
+    });
+
+    ttsControlsContainer.appendChild(this.ttsButton);
+    ttsControlsContainer.appendChild(this.ttsStopButton);
+
     buttonsContainer.appendChild(this.viewToggle);
-    buttonsContainer.appendChild(this.ttsButton);
+    buttonsContainer.appendChild(ttsControlsContainer);
 
     // Add all elements to container
     this.container.appendChild(header);

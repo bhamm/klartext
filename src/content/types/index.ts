@@ -113,6 +113,7 @@ export interface TranslationControlsInterface {
   progressText: HTMLElement | null;
   viewToggle: HTMLElement | null;
   ttsButton: HTMLElement | null;
+  ttsStopButton: HTMLElement | null;
   minimizeButton: HTMLElement | null;
   isMinimized: boolean;
   

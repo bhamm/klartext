@@ -8,6 +8,7 @@ export const REPO_URL: string = 'https://github.com/bhamm/klartext';
 // SVG Icons
 export const PLAY_ICON: string = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
 export const PAUSE_ICON: string = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+export const STOP_ICON: string = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>`;
 
 // Article selectors for finding content
 export const ARTICLE_SELECTORS: string[] = [
