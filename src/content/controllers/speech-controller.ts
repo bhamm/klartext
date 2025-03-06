@@ -26,6 +26,10 @@ export class SpeechController implements SpeechControllerInterface {
   
   // Store the current text for potential replay
   private currentText: string = '';
+  
+  // Store the audio element for external TTS providers
+  private externalAudio: HTMLAudioElement | null = null;
+  private audioUrl: string | null = null;
 
   /**
    * Create a new SpeechController
@@ -436,36 +440,46 @@ export class SpeechController implements SpeechControllerInterface {
             if (audioContent.byteLength > 0) {
               // Create audio element to play the audio
               const audioBlob = new Blob([audioContent], { type: 'audio/mpeg' });
-              const audioUrl = URL.createObjectURL(audioBlob);
-              const audio = new Audio(audioUrl);
+              this.audioUrl = URL.createObjectURL(audioBlob);
+              this.externalAudio = new Audio(this.audioUrl);
               
               // Store the audio element to prevent garbage collection
-              (window as any).__klartextAudio = audio;
+              (window as any).__klartextAudio = this.externalAudio;
               
               // Set up event handlers
-              audio.onended = () => {
+              this.externalAudio.onended = () => {
                 console.log('External TTS audio playback ended');
                 this.stop();
-                URL.revokeObjectURL(audioUrl);
+                if (this.audioUrl) {
+                  URL.revokeObjectURL(this.audioUrl);
+                  this.audioUrl = null;
+                }
                 delete (window as any).__klartextAudio;
               };
               
-              audio.onerror = (e) => {
+              this.externalAudio.onerror = (e: Event | string) => {
                 console.error('Error playing external TTS audio:', e);
                 this.stop();
-                URL.revokeObjectURL(audioUrl);
+                if (this.audioUrl) {
+                  URL.revokeObjectURL(this.audioUrl);
+                  this.audioUrl = null;
+                }
                 delete (window as any).__klartextAudio;
               };
               
               // Play the audio
               console.log('Playing external TTS audio...');
               try {
-                await audio.play();
+                await this.externalAudio.play();
                 console.log('External TTS audio playback started successfully');
                 return;
               } catch (playError) {
                 console.error('Failed to play external TTS audio:', playError);
-                URL.revokeObjectURL(audioUrl);
+                if (this.audioUrl) {
+                  URL.revokeObjectURL(this.audioUrl);
+                  this.audioUrl = null;
+                }
+                this.externalAudio = null;
                 delete (window as any).__klartextAudio;
               }
             } else {
@@ -500,8 +514,15 @@ export class SpeechController implements SpeechControllerInterface {
   pause(): void {
     console.log('Pausing speech synthesis');
     
+    // Handle browser speech synthesis
     if (speechSynthesis.speaking) {
       speechSynthesis.pause();
+    }
+    
+    // Handle external TTS provider
+    if (this.externalAudio) {
+      console.log('Pausing external TTS audio');
+      this.externalAudio.pause();
     }
     
     this.isPlaying = false;
@@ -514,16 +535,58 @@ export class SpeechController implements SpeechControllerInterface {
   resume(): void {
     console.log('Resuming speech synthesis');
     
-    // Start fresh instead of trying to resume
-    this.start();
+    // Handle browser speech synthesis
+    if (this.ttsProvider === 'browser') {
+      // Browser speech synthesis doesn't have good resume support, so we start fresh
+      if (this.utterance) {
+        speechSynthesis.speak(this.utterance);
+      } else {
+        this.start();
+      }
+    } 
+    // Handle external TTS provider
+    else if (this.externalAudio) {
+      console.log('Resuming external TTS audio');
+      this.externalAudio.play()
+        .then(() => {
+          console.log('External TTS audio playback resumed successfully');
+        })
+        .catch((error) => {
+          console.error('Failed to resume external TTS audio:', error);
+          // If resume fails, try to start fresh
+          this.start();
+        });
+    } else {
+      // If no audio element exists, start fresh
+      this.start();
+    }
+    
+    this.isPlaying = true;
+    this.updateButtonState(true);
   }
 
   /**
    * Stop speech synthesis
    */
   stop(): void {
-    // Cancel speech synthesis
+    // Cancel browser speech synthesis
     speechSynthesis.cancel();
+    
+    // Stop external TTS audio if it exists
+    if (this.externalAudio) {
+      console.log('Stopping external TTS audio');
+      this.externalAudio.pause();
+      this.externalAudio.currentTime = 0;
+      
+      // Clean up resources
+      if (this.audioUrl) {
+        URL.revokeObjectURL(this.audioUrl);
+        this.audioUrl = null;
+      }
+      
+      this.externalAudio = null;
+      delete (window as any).__klartextAudio;
+    }
     
     this.isPlaying = false;
     
@@ -542,7 +605,7 @@ export class SpeechController implements SpeechControllerInterface {
     if (this.isPlaying) {
       this.pause();
     } else {
-      this.start();
+      this.resume();
     }
   }
 

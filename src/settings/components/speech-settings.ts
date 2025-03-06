@@ -248,6 +248,11 @@ export class SpeechSettingsComponent {
         const option = document.createElement('option');
         option.value = voice.id;
         option.textContent = `${voice.name} (${voice.languageCode})`;
+        
+        // Add data attributes to help with voice matching
+        option.dataset.name = voice.name;
+        option.dataset.languageCode = voice.languageCode;
+        
         this.voiceSelect.appendChild(option);
       });
       
@@ -255,6 +260,7 @@ export class SpeechSettingsComponent {
       
       // If we had a pending voice URI to set, try to set it now
       if (this.pendingVoiceURI) {
+        console.log(`Attempting to set pending voice URI after fetching voices: ${this.pendingVoiceURI}`);
         this.setVoice(this.pendingVoiceURI);
         this.pendingVoiceURI = null;
       }
@@ -337,8 +343,35 @@ export class SpeechSettingsComponent {
     for (let i = 0; i < this.voiceSelect.options.length; i++) {
       if (this.voiceSelect.options[i].value === voiceURI) {
         this.voiceSelect.selectedIndex = i;
-        console.log('Voice found and selected:', voiceURI);
+        console.log('Voice found and selected by exact match:', voiceURI);
         return true;
+      }
+    }
+    
+    // For Google TTS voices, try to match by the voice name part
+    if (voiceURI && this.ttsProviderSelect && this.ttsProviderSelect.value === 'googleTTS') {
+      // Google TTS voice IDs are in the format "de-DE-Standard-A", "de-DE-Wavenet-B", etc.
+      // Extract the voice name from the URI
+      const voiceParts = voiceURI.split('-');
+      
+      if (voiceParts.length >= 3) {
+        // Try to match by language code and voice type
+        const languageCode = `${voiceParts[0]}-${voiceParts[1]}`;
+        const voiceType = voiceParts.slice(2).join('-');
+        
+        console.log(`Trying to match Google TTS voice by parts: languageCode=${languageCode}, voiceType=${voiceType}`);
+        
+        for (let i = 0; i < this.voiceSelect.options.length; i++) {
+          const option = this.voiceSelect.options[i];
+          const optionValue = option.value;
+          
+          // Check if the option value contains both the language code and voice type
+          if (optionValue.includes(languageCode) && optionValue.includes(voiceType)) {
+            this.voiceSelect.selectedIndex = i;
+            console.log('Google TTS voice found by language and type match:', optionValue);
+            return true;
+          }
+        }
       }
     }
     
@@ -372,6 +405,13 @@ export class SpeechSettingsComponent {
           console.log('Voice found by exact name match:', optionValue);
           return true;
         }
+      }
+      
+      // If still not found and we have options, select the first one
+      if (this.voiceSelect.options.length > 1) {
+        this.voiceSelect.selectedIndex = 1; // Skip the default empty option
+        console.log('No matching voice found, selecting first available voice:', this.voiceSelect.value);
+        return true;
       }
     }
     
