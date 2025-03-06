@@ -508,7 +508,7 @@ export class SpeechController implements SpeechControllerInterface {
           }
           
           // Create audio element to play the audio
-          const audioBlob = new Blob([audioContent], { type: 'audio/mp3' });
+          const audioBlob = new Blob([audioContent], { type: 'audio/mpeg' });
           const audioUrl = URL.createObjectURL(audioBlob);
           const audio = new Audio();
           
@@ -640,7 +640,7 @@ export class SpeechController implements SpeechControllerInterface {
           sourceElement.type = 'audio/mp3';
           
           // Create a blob URL from the audio content
-          const newBlob = new Blob([audioContent], { type: 'audio/mp3' });
+          const newBlob = new Blob([audioContent], { type: 'audio/mpeg' });
           const newBlobUrl = URL.createObjectURL(newBlob);
           sourceElement.src = newBlobUrl;
           
