@@ -230,6 +230,20 @@ async function loadApiConfig(): Promise<ApiConfig> {
         API_CONFIG.apiEndpoint = CONFIG_STORE.providers[API_CONFIG.provider].apiEndpoint;
       }
       
+      // Ensure API endpoint is set by using the default if it's still empty
+      if (!API_CONFIG.apiEndpoint && API_CONFIG.provider) {
+        try {
+          const { getDefaultEndpoint } = await import('./providers/config');
+          API_CONFIG.apiEndpoint = getDefaultEndpoint(API_CONFIG.provider);
+          console.log(`API endpoint was empty, set to default: ${API_CONFIG.apiEndpoint}`);
+          
+          // Update the endpoint in storage
+          chrome.storage.sync.set({ apiEndpoint: API_CONFIG.apiEndpoint });
+        } catch (error) {
+          console.error('Error setting default API endpoint:', error);
+        }
+      }
+      
       console.log('API configuration loaded:', { 
         provider: API_CONFIG.provider, 
         model: API_CONFIG.model,
@@ -509,6 +523,10 @@ async function handleTranslation(text: string, isArticle = false): Promise<strin
       throw new Error('No translation provider selected. Please configure a provider in the extension settings.');
     }
 
+    if (!API_CONFIG.apiEndpoint) {
+      throw new Error('API endpoint is not configured. Please open the extension settings to configure it.');
+    }
+
     console.log('Translation configuration:', {
       provider: API_CONFIG.provider,
       model: API_CONFIG.model,
@@ -531,9 +549,18 @@ class ContentScriptManager {
   static async checkIfLoaded(tab: chrome.tabs.Tab): Promise<boolean> {
     if (!tab.id) return false;
     try {
-      const tabId = tab.id; // Ensure tabId is defined for TypeScript
-      const response = await new Promise<PingResponse | undefined>(resolve => {
-        chrome.tabs.sendMessage(tabId, { action: 'ping' }, resolve);
+      const response = await new Promise<PingResponse | null>(resolve => {
+        if (!tab.id) {
+          resolve(null);
+          return;
+        }
+        chrome.tabs.sendMessage(tab.id, { action: 'ping' }, response => {
+          if (chrome.runtime.lastError) {
+            resolve(null);
+          } else {
+            resolve(response as PingResponse);
+          }
+        });
       });
       return response?.status === 'ok';
     } catch (error) {
@@ -571,6 +598,22 @@ class ContentScriptManager {
   static async sendMessage(tab: chrome.tabs.Tab, message: Message): Promise<void> {
     if (!tab.id) return;
     try {
+      if (message.action === 'ping') {
+        return new Promise((resolve, reject) => {
+          if (!tab.id) {
+            reject(new Error('Tab ID is undefined'));
+            return;
+          }
+          chrome.tabs.sendMessage(tab.id, message, response => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+            } else {
+              resolve(response);
+            }
+          });
+        });
+      }
+      if (!tab.id) return;
       chrome.tabs.sendMessage(tab.id, message);
     } catch (error) {
       console.error('Error sending message:', error);
