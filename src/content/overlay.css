@@ -96,13 +96,26 @@
 .klartext-header-controls {
   position: absolute;
   top: 1.2rem;
-  right: 1.2rem;
+  right: 2.5rem; /* Match the overlay padding */
   display: flex;
   align-items: center;
   gap: 0.25rem;
   background: #f8f9fa;
   padding: 0.25rem;
   border-radius: 6px;
+  z-index: 1; /* Ensure controls stay above content */
+}
+
+/* For smaller screens, maintain consistent spacing */
+@media (max-width: 850px) {
+  .klartext-header-controls {
+    right: 1.2rem;
+  }
+  
+  .klartext-content {
+    margin-left: 1.2rem;
+    margin-right: 1.2rem;
+  }
 }
 
 .klartext-text-size-group,
@@ -408,23 +421,15 @@
 
 .klartext-content {
   margin-top: 1rem;
+  position: relative; /* Ensure this is a positioning context */
+  max-width: 750px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .klartext-translation {
-  /* Typography */
-  font-family: 'Open Sans', Verdana, sans-serif;
-  line-height: 1.8;
-  letter-spacing: 0.01em;
-  word-spacing: 0.05em;
-  
-  /* Colors */
-  color: #1a1a1a;
   background-color: #f8f9fa;
-  
-  /* Layout */
-  max-width: 750px;
   padding: 2rem;
-  margin: 0 auto;
   border-radius: 8px;
 }
 
