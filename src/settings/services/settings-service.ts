@@ -93,6 +93,7 @@ export async function saveSettings(settings: Settings): Promise<Settings> {
         apiKey: settings.apiKey,
         apiEndpoint: settings.apiEndpoint,
         textSize: settings.textSize,
+        translationLevel: settings.translationLevel,
         experimentalFeatures: settings.experimentalFeatures,
         compareView: settings.compareView,
         excludeComments: settings.excludeComments,
@@ -248,6 +249,7 @@ export async function saveAllSettings(settings: Settings): Promise<SettingsRespo
       model: settings.model,
       apiKey: settings.apiKey,
       apiEndpoint: settings.apiEndpoint || getDefaultEndpoint(settings.provider),
+      translationLevel: settings.translationLevel,
       compareView: settings.compareView,
       excludeComments: settings.excludeComments
     };
