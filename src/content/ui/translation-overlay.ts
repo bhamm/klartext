@@ -282,11 +282,12 @@ export class TranslationOverlay implements TranslationOverlayInterface {
           className: 'klartext-loading'
         });
 
-        // Add spinner
+        // Add spinner with more specific attributes to avoid conflicts with page styles
         const spinner = createElement('div', {
           className: 'klartext-spinner',
           role: 'progressbar',
-          'aria-label': 'Übersetze...'
+          'aria-label': 'Übersetze...',
+          style: 'display: block !important; width: 36px !important; height: 36px !important;'
         });
         loadingContainer.appendChild(spinner);
 
