@@ -87,6 +87,10 @@ export interface SpeechControllerInterface {
   isPlaying: boolean;
   button: HTMLElement | null;
   debugMode: boolean;
+  availableVoices: SpeechSynthesisVoice[];
+  selectedVoiceURI: string;
+  rate: number;
+  ttsProvider: string;
   
   setup(text: string, words: string[], button: HTMLElement): void;
   start(): void;
@@ -95,6 +99,9 @@ export interface SpeechControllerInterface {
   stop(): void;
   toggle(): void;
   updateButtonState(isPlaying: boolean): void;
+  loadVoices(): void;
+  setSettings(settings: any): void;
+  getAvailableVoices(): SpeechSynthesisVoice[];
 }
 
 /**
@@ -106,6 +113,7 @@ export interface TranslationControlsInterface {
   progressText: HTMLElement | null;
   viewToggle: HTMLElement | null;
   ttsButton: HTMLElement | null;
+  ttsStopButton: HTMLElement | null;
   minimizeButton: HTMLElement | null;
   isMinimized: boolean;
   

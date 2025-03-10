@@ -5,6 +5,17 @@
 import { ProviderConfig } from './provider';
 
 /**
+ * Speech synthesis settings
+ */
+export interface SpeechSettings {
+  voiceURI: string;  // Identifier for the selected voice
+  rate: number;      // Speech rate (0.1 to 2.0)
+  pitch?: number;    // Speech pitch (0.1 to 2.0)
+  ttsProvider: string; // TTS provider ID (browser, googleTTS, etc.)
+  apiKey?: string;   // API key for external TTS providers
+}
+
+/**
  * Settings object structure
  */
 export interface Settings {
@@ -16,6 +27,7 @@ export interface Settings {
   experimentalFeatures: ExperimentalFeatures;
   compareView: boolean;
   excludeComments: boolean;
+  speech: SpeechSettings;
 }
 
 /**
@@ -39,7 +51,14 @@ export const DEFAULT_SETTINGS: Settings = {
     fullPageTranslation: false
   },
   compareView: false,
-  excludeComments: true
+  excludeComments: true,
+  speech: {
+    voiceURI: '',  // Empty string means use default voice
+    rate: 0.9,
+    pitch: 1.0,
+    ttsProvider: 'browser',
+    apiKey: ''
+  }
 };
 
 /**
@@ -50,6 +69,7 @@ export interface SettingsFormData extends ProviderConfig {
   experimentalFeatures: ExperimentalFeatures;
   compareView: boolean;
   excludeComments: boolean;
+  speech: SpeechSettings;
 }
 
 /**

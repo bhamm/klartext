@@ -1,4 +1,5 @@
 import { translate } from './providers';
+import { ttsProviderRegistry } from './tts-providers';
 import { 
   ErrorDetails, 
   ProviderConfig, 
@@ -13,6 +14,9 @@ import {
   TranslationMessage,
   ConfigMessage,
   FeedbackMessage,
+  TTSProviderMessage,
+  GetProviderVoicesMessage,
+  SynthesizeSpeechMessage,
   PingResponse,
   Tab,
   Message
@@ -25,6 +29,16 @@ const MENU_ITEMS: { [key: string]: string } = {
   FULLPAGE: 'translate-fullpage-to-leichte-sprache'
 };
 const REPO_URL = 'https://github.com/bhamm/klartext';
+
+// Helper function to convert ArrayBuffer to base64 string for messaging
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
 
 // Load provider API keys from config file
 let CONFIG_STORE: ConfigStore = { providers: {} };
@@ -227,6 +241,20 @@ async function loadApiConfig(): Promise<ApiConfig> {
         API_CONFIG.apiEndpoint = CONFIG_STORE.providers[API_CONFIG.provider].apiEndpoint;
       }
       
+      // Ensure API endpoint is set by using the default if it's still empty
+      if (!API_CONFIG.apiEndpoint && API_CONFIG.provider) {
+        try {
+          const { getDefaultEndpoint } = await import('./providers/config');
+          API_CONFIG.apiEndpoint = getDefaultEndpoint(API_CONFIG.provider);
+          console.log(`API endpoint was empty, set to default: ${API_CONFIG.apiEndpoint}`);
+          
+          // Update the endpoint in storage
+          chrome.storage.sync.set({ apiEndpoint: API_CONFIG.apiEndpoint });
+        } catch (error) {
+          console.error('Error setting default API endpoint:', error);
+        }
+      }
+      
       console.log('API configuration loaded:', { 
         provider: API_CONFIG.provider, 
         model: API_CONFIG.model,
@@ -283,7 +311,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // Message handling
-chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessage | FeedbackMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
+chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessage | FeedbackMessage | TTSProviderMessage | GetProviderVoicesMessage | SynthesizeSpeechMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
   console.log('Background script received message:', message);
   
   if (message.action === 'translateText' || message.action === 'translateArticle' || message.action === 'translateSection') {
@@ -405,6 +433,135 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
     })();
     return true;
   }
+  else if (message.action === 'getTTSProviders') {
+    try {
+      // Get all TTS provider metadata
+      const providers = ttsProviderRegistry.getAllMetadata();
+      sendResponse({ success: true, providers });
+    } catch (error) {
+      console.error('Error getting TTS providers:', error);
+      sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+    return true;
+  }
+  else if (message.action === 'getProviderVoices') {
+    (async () => {
+      try {
+        if (!message.provider) {
+          throw new Error('No provider specified');
+        }
+        
+        console.log(`Getting voices for provider: ${message.provider}`);
+        
+        // Check if provider exists in registry
+        if (!ttsProviderRegistry.hasProvider(message.provider)) {
+          console.error(`TTS provider ${message.provider} not found in registry`);
+          throw new Error(`TTS provider ${message.provider} not found`);
+        }
+        
+        // Get the TTS provider
+        const provider = ttsProviderRegistry.getProvider(message.provider);
+        
+        // Check if provider config exists
+        if (!CONFIG_STORE.providers[message.provider]) {
+          console.error(`No configuration found for TTS provider: ${message.provider}`);
+          throw new Error(`No configuration found for TTS provider: ${message.provider}`);
+        }
+        
+        // Get API key from message or CONFIG_STORE
+        const apiKey = message.apiKey || CONFIG_STORE.providers[message.provider]?.apiKey || '';
+        
+        // Create provider config
+        const config = {
+          provider: message.provider,
+          apiKey: apiKey,
+          apiEndpoint: CONFIG_STORE.providers[message.provider]?.apiEndpoint || ''
+        };
+        
+        // Get available voices
+        const voices = await provider.getAvailableVoices(config);
+        
+        console.log(`Retrieved ${voices.length} voices for provider ${message.provider}`);
+        sendResponse({ success: true, voices });
+      } catch (error) {
+        console.error('Error getting provider voices:', error);
+        sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+      }
+    })();
+    return true;
+  }
+  else if (message.action === 'synthesizeSpeech') {
+    (async () => {
+      try {
+        if (!message.text) {
+          throw new Error('No text provided for speech synthesis');
+        }
+        
+        if (!message.settings || !message.settings.provider) {
+          throw new Error('No TTS provider specified');
+        }
+        
+        console.log(`Synthesizing speech with provider: ${message.settings.provider}`);
+        
+        // Check if provider exists in registry
+        if (!ttsProviderRegistry.hasProvider(message.settings.provider)) {
+          console.error(`TTS provider ${message.settings.provider} not found in registry`);
+          throw new Error(`TTS provider ${message.settings.provider} not found`);
+        }
+        
+        // Get the TTS provider
+        const provider = ttsProviderRegistry.getProvider(message.settings.provider);
+        
+        // Check if provider config exists
+        if (!CONFIG_STORE.providers[message.settings.provider]) {
+          console.error(`No configuration found for TTS provider: ${message.settings.provider}`);
+          throw new Error(`No configuration found for TTS provider: ${message.settings.provider}`);
+        }
+        
+        // Create provider config
+        const config = {
+          provider: message.settings.provider,
+          apiKey: message.settings.apiKey || CONFIG_STORE.providers[message.settings.provider]?.apiKey || '',
+          apiEndpoint: CONFIG_STORE.providers[message.settings.provider]?.apiEndpoint || '',
+          voice: message.settings.voiceURI,
+          rate: message.settings.rate,
+          pitch: message.settings.pitch
+        };
+        
+        console.log(`TTS configuration:`, {
+          provider: config.provider,
+          hasApiKey: !!config.apiKey,
+          apiEndpoint: config.apiEndpoint,
+          voice: config.voice || '(default)',
+          rate: config.rate,
+          pitch: config.pitch
+        });
+        
+        // Synthesize speech
+        const audioContent = await provider.synthesizeSpeech(message.text, config);
+        
+        // Convert ArrayBuffer to base64 string for messaging
+        const base64Audio = arrayBufferToBase64(audioContent);
+        
+        console.log(`Speech synthesis successful, audio content size: ${audioContent.byteLength} bytes, base64 length: ${base64Audio.length}`);
+        sendResponse({ success: true, audioContent: base64Audio, format: 'base64' });
+      } catch (error) {
+        console.error('Error synthesizing speech:', error);
+        // Log more detailed error information
+        if (error instanceof Error) {
+          console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          });
+        } else {
+          console.error('Unknown error type:', error);
+        }
+        sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+      }
+    })();
+    return true;
+  }
   
   return true;
 });
@@ -424,6 +581,10 @@ async function handleTranslation(text: string, isArticle = false): Promise<strin
 
     if (!API_CONFIG.provider) {
       throw new Error('No translation provider selected. Please configure a provider in the extension settings.');
+    }
+
+    if (!API_CONFIG.apiEndpoint) {
+      throw new Error('API endpoint is not configured. Please open the extension settings to configure it.');
     }
 
     console.log('Translation configuration:', {
@@ -512,7 +673,6 @@ class ContentScriptManager {
           });
         });
       }
-      
       if (!tab.id) return;
       chrome.tabs.sendMessage(tab.id, message);
     } catch (error) {

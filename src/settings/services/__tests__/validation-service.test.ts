@@ -192,7 +192,13 @@ describe('Validation Service', () => {
         textSize: 'normal',
         experimentalFeatures: { fullPageTranslation: false },
         compareView: false,
-        excludeComments: true
+        excludeComments: true,
+        speech: {
+          voiceURI: '',
+          rate: 0.9,
+          pitch: 1.0,
+          ttsProvider: 'browser'
+        }
       };
       
       expect(validateForm(formData)).toEqual({ success: true });
@@ -206,7 +212,12 @@ describe('Validation Service', () => {
         provider: 'invalid',
         model: 'gpt-4-turbo',
         apiKey: 'sk-test',
-        apiEndpoint: 'https://api.openai.com/v1/chat/completions'
+        apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+        speech: {
+          voiceURI: '',
+          rate: 0.9,
+          ttsProvider: 'browser'
+        }
       };
       
       expect(validateForm(formData)).toEqual({
@@ -220,7 +231,12 @@ describe('Validation Service', () => {
         provider: 'openAI',
         model: 'gpt-4-turbo',
         apiKey: 'invalid-key', // Missing sk- prefix
-        apiEndpoint: 'https://api.openai.com/v1/chat/completions'
+        apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+        speech: {
+          voiceURI: '',
+          rate: 0.9,
+          ttsProvider: 'browser'
+        }
       };
       
       expect(validateForm(formData)).toEqual({
@@ -234,7 +250,12 @@ describe('Validation Service', () => {
         provider: 'openAI',
         model: 'gpt-4-turbo',
         apiKey: 'sk-test',
-        apiEndpoint: 'invalid-url'
+        apiEndpoint: 'invalid-url',
+        speech: {
+          voiceURI: '',
+          rate: 0.9,
+          ttsProvider: 'browser'
+        }
       };
       
       expect(validateForm(formData)).toEqual({
@@ -248,7 +269,12 @@ describe('Validation Service', () => {
         provider: 'openAI',
         model: 'invalid-model',
         apiKey: 'sk-test',
-        apiEndpoint: 'https://api.openai.com/v1/chat/completions'
+        apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+        speech: {
+          voiceURI: '',
+          rate: 0.9,
+          ttsProvider: 'browser'
+        }
       };
       
       expect(validateForm(formData)).toEqual({
@@ -262,7 +288,12 @@ describe('Validation Service', () => {
         provider: 'local',
         model: 'llama-2-70b',
         apiKey: '', // Empty API key should be valid for local
-        apiEndpoint: 'http://localhost:1234/completion'
+        apiEndpoint: 'http://localhost:1234/completion',
+        speech: {
+          voiceURI: '',
+          rate: 0.9,
+          ttsProvider: 'browser'
+        }
       };
       
       expect(validateForm(formData)).toEqual({ success: true });

@@ -14,7 +14,13 @@ describe('Settings Model', () => {
           fullPageTranslation: false
         },
         compareView: false,
-        excludeComments: true
+        excludeComments: true,
+        speech: {
+          voiceURI: '',
+          rate: 0.9,
+          pitch: 1.0,
+          ttsProvider: 'browser'
+        }
       });
     });
   });
@@ -31,7 +37,13 @@ describe('Settings Model', () => {
           fullPageTranslation: false
         },
         compareView: false,
-        excludeComments: true
+        excludeComments: true,
+        speech: {
+          voiceURI: '',
+          rate: 0.9,
+          pitch: 1.0,
+          ttsProvider: 'browser'
+        }
       };
       expect(validateSettings(settings)).toBe(true);
     });

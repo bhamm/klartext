@@ -1,6 +1,6 @@
 {
   "name": "klartext",
-  "version": "1.5.41",
+  "version": "1.5.71",
   "description": "Chrome extension for translating German texts into 'Leichte Sprache'",
   "private": true,
   "scripts": {
@@ -22,6 +22,9 @@
   ],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "@google-cloud/text-to-speech": "^5.0.0"
+  },
   "devDependencies": {
     "@babel/core": "^7.26.9",
     "@babel/preset-env": "^7.26.9",

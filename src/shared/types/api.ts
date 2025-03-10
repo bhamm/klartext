@@ -45,6 +45,28 @@ export interface FeedbackMessage {
   };
 }
 
+export interface TTSProviderMessage {
+  action: 'getTTSProviders';
+}
+
+export interface GetProviderVoicesMessage {
+  action: 'getProviderVoices';
+  provider: string;
+  apiKey?: string;
+}
+
+export interface SynthesizeSpeechMessage {
+  action: 'synthesizeSpeech';
+  text: string;
+  settings: {
+    provider: string;
+    voiceURI: string;
+    rate: number;
+    pitch?: number;
+    apiKey?: string;
+  };
+}
+
 export interface PingResponse {
   status: 'ok';
 }
@@ -58,4 +80,5 @@ export interface Message {
   translation?: string;
   error?: string;
   id?: string;
+  provider?: string;
 }

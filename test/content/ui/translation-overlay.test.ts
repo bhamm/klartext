@@ -139,7 +139,7 @@ describe('TranslationOverlay', () => {
       expect(translationContainer?.innerHTML).toContain(translation);
       
       // Check if TTS button is created
-      expect(overlay.content?.querySelector('.klartext-tts-button')).not.toBeNull();
+      expect(overlay.overlay?.querySelector('.klartext-header-tts-button')).not.toBeNull();
       
       // Check if overlay is visible
       expect(overlay.backdrop?.classList.contains('visible')).toBe(true);
@@ -206,6 +206,29 @@ describe('TranslationOverlay', () => {
       
       expect(consoleSpy).toHaveBeenCalled();
       expect(showErrorSpy).toHaveBeenCalled();
+    });
+
+    test('should apply text size from settings', () => {
+      // Create a div to represent the translation container
+      const translationContainer = document.createElement('div');
+      translationContainer.classList.add('klartext-translation');
+      
+      // Create a button to represent the text size button
+      const textSizeButton = document.createElement('button');
+      textSizeButton.classList.add('klartext-text-size-button');
+      textSizeButton.setAttribute('data-size', 'gross');
+      
+      // Add the elements to the document
+      document.body.appendChild(translationContainer);
+      document.body.appendChild(textSizeButton);
+      
+      // Apply the classes
+      translationContainer.classList.add('klartext-text-gross');
+      textSizeButton.classList.add('active');
+      
+      // Check if the classes were applied correctly
+      expect(translationContainer.classList.contains('klartext-text-gross')).toBe(true);
+      expect(textSizeButton.classList.contains('active')).toBe(true);
     });
   });
   

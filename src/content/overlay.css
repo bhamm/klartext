@@ -96,16 +96,30 @@
 .klartext-header-controls {
   position: absolute;
   top: 1.2rem;
-  right: 1.2rem;
+  right: 2.5rem; /* Match the overlay padding */
   display: flex;
   align-items: center;
   gap: 0.25rem;
   background: #f8f9fa;
   padding: 0.25rem;
   border-radius: 6px;
+  z-index: 1; /* Ensure controls stay above content */
 }
 
-.klartext-text-size-group {
+/* For smaller screens, maintain consistent spacing */
+@media (max-width: 850px) {
+  .klartext-header-controls {
+    right: 1.2rem;
+  }
+  
+  .klartext-content {
+    margin-left: 1.2rem;
+    margin-right: 1.2rem;
+  }
+}
+
+.klartext-text-size-group,
+.klartext-tts-controls-group {
   display: flex;
   gap: 0.125rem;
   margin-right: 0.5rem;
@@ -113,7 +127,9 @@
   padding-right: 0.5rem;
 }
 
-.klartext-text-size-button {
+.klartext-text-size-button,
+.klartext-header-tts-button,
+.klartext-header-tts-stop-button {
   padding: 0.35rem 0.5rem;
   min-width: 2rem;
   font-size: 0.9rem;
@@ -127,15 +143,26 @@
   text-align: center;
 }
 
-.klartext-text-size-button:hover {
+.klartext-text-size-button:hover,
+.klartext-header-tts-button:hover,
+.klartext-header-tts-stop-button:hover {
   border-color: #3498db;
   color: #1a1a1a;
 }
 
-.klartext-text-size-button.active {
+.klartext-text-size-button.active,
+.klartext-header-tts-button.playing {
   background: #3498db;
   color: white;
   border-color: #2980b9;
+}
+
+.klartext-header-tts-button svg,
+.klartext-header-tts-stop-button svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  display: block;
 }
 
 /* Print and close buttons */
@@ -239,8 +266,8 @@
 }
 
 .klartext-view-toggle,
-.klartext-tts-button {
-  flex: 1;
+.klartext-tts-button,
+.klartext-tts-stop-button {
   padding: 0.8rem;
   border: 2px solid #e2e8f0;
   border-radius: 8px;
@@ -256,20 +283,32 @@
   transition: all 0.2s ease;
 }
 
+.klartext-tts-button {
+  flex: 3;
+}
+
+.klartext-tts-stop-button {
+  flex: 1;
+  margin-left: 0.5rem;
+}
+
 .klartext-view-toggle:hover,
-.klartext-tts-button:hover {
+.klartext-tts-button:hover,
+.klartext-tts-stop-button:hover {
   background: #f8f9fa;
   border-color: #3498db;
 }
 
 .klartext-view-toggle:focus,
-.klartext-tts-button:focus {
+.klartext-tts-button:focus,
+.klartext-tts-stop-button:focus {
   outline: none;
   border-color: #3498db;
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
 
-.klartext-tts-button svg {
+.klartext-tts-button svg,
+.klartext-tts-stop-button svg {
   width: 20px;
   height: 20px;
   fill: currentColor;
@@ -279,6 +318,11 @@
   background: #ebf8ff;
   border-color: #3498db;
   color: #2b6cb0;
+}
+
+.klartext-tts-controls {
+  display: flex;
+  flex: 1;
 }
 
 /* Animations */
@@ -377,23 +421,15 @@
 
 .klartext-content {
   margin-top: 1rem;
+  position: relative; /* Ensure this is a positioning context */
+  max-width: 750px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .klartext-translation {
-  /* Typography */
-  font-family: 'Open Sans', Verdana, sans-serif;
-  line-height: 1.8;
-  letter-spacing: 0.01em;
-  word-spacing: 0.05em;
-  
-  /* Colors */
-  color: #1a1a1a;
   background-color: #f8f9fa;
-  
-  /* Layout */
-  max-width: 750px;
   padding: 2rem;
-  margin: 0 auto;
   border-radius: 8px;
 }
 

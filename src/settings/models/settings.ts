@@ -16,7 +16,13 @@ export const DEFAULT_SETTINGS: Settings = {
     fullPageTranslation: false
   },
   compareView: false,
-  excludeComments: true
+  excludeComments: true,
+  speech: {
+    voiceURI: '',  // Empty string means use default voice
+    rate: 0.9,
+    pitch: 1.0,
+    ttsProvider: 'browser'
+  }
 };
 
 /**
@@ -61,6 +67,35 @@ export function validateSettings(settings: unknown): settings is Settings {
       typeof settingsObj.experimentalFeatures !== 'object') {
     return false;
   }
+  
+  // Validate speech settings if present
+  if (settingsObj.speech) {
+    if (typeof settingsObj.speech !== 'object') {
+      return false;
+    }
+    
+    const speech = settingsObj.speech;
+    
+    // Validate rate (if present)
+    if ('rate' in speech && (typeof speech.rate !== 'number' || speech.rate < 0.1 || speech.rate > 2.0)) {
+      return false;
+    }
+    
+    // Validate pitch (if present)
+    if ('pitch' in speech && (typeof speech.pitch !== 'number' || speech.pitch < 0.1 || speech.pitch > 2.0)) {
+      return false;
+    }
+    
+    // Validate voiceURI (if present)
+    if ('voiceURI' in speech && typeof speech.voiceURI !== 'string') {
+      return false;
+    }
+    
+    // Validate ttsProvider (if present)
+    if ('ttsProvider' in speech && typeof speech.ttsProvider !== 'string') {
+      return false;
+    }
+  }
 
   return true;
 }
@@ -77,6 +112,10 @@ export function mergeWithDefaults(userSettings: Partial<Settings> = {}): Setting
     experimentalFeatures: {
       ...DEFAULT_SETTINGS.experimentalFeatures,
       ...(userSettings.experimentalFeatures || {})
+    },
+    speech: {
+      ...DEFAULT_SETTINGS.speech,
+      ...(userSettings.speech || {})
     }
   };
 }

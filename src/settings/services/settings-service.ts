@@ -37,13 +37,15 @@ export async function loadApiKeys(): Promise<ApiKeysConfig> {
 export async function loadSettings(): Promise<Settings> {
   console.log('Loading settings from Chrome storage...');
   return new Promise((resolve) => {
-    chrome.storage.sync.get(DEFAULT_SETTINGS, (items) => {
+    // Get all settings from storage
+    chrome.storage.sync.get(null, (items) => {
       console.log('Raw settings from storage:', items);
       
       if (chrome.runtime.lastError) {
         console.error('Error loading settings:', chrome.runtime.lastError);
       }
       
+      // Merge with defaults
       const settings = mergeWithDefaults(items as Partial<Settings>);
       console.log('Settings after merging with defaults:', settings);
       
@@ -58,6 +60,9 @@ export async function loadSettings(): Promise<Settings> {
         settings.apiEndpoint = getDefaultEndpoint(settings.provider);
         console.log(`API endpoint was empty, set to default: ${settings.apiEndpoint}`);
       }
+      
+      // Log speech settings specifically
+      console.log('Speech settings loaded:', settings.speech);
       
       console.log('Final settings:', settings);
       resolve(settings);
@@ -80,13 +85,35 @@ export async function saveSettings(settings: Settings): Promise<Settings> {
 
   return new Promise((resolve, reject) => {
     try {
-      chrome.storage.sync.set(settings, () => {
+      // Create a storage object with each setting as a separate key
+      // This ensures that each setting is saved individually
+      const storageObject = {
+        provider: settings.provider,
+        model: settings.model,
+        apiKey: settings.apiKey,
+        apiEndpoint: settings.apiEndpoint,
+        textSize: settings.textSize,
+        experimentalFeatures: settings.experimentalFeatures,
+        compareView: settings.compareView,
+        excludeComments: settings.excludeComments,
+        speech: settings.speech
+      };
+      
+      console.log('Saving settings as individual keys:', storageObject);
+      
+      chrome.storage.sync.set(storageObject, () => {
         const error = chrome.runtime.lastError;
         if (error) {
           console.error('Error saving settings:', error);
           reject(new Error(error.message));
         } else {
           console.log('Settings saved successfully');
+          
+          // Verify the settings were saved correctly
+          chrome.storage.sync.get(['speech'], (result) => {
+            console.log('Verified speech settings in storage after save:', result.speech);
+          });
+          
           resolve(settings);
         }
       });
@@ -175,7 +202,8 @@ export async function updateContentSettings(settings: Settings): Promise<void> {
       settings: {
         textSize: settings.textSize,
         compareView: settings.compareView,
-        excludeComments: settings.excludeComments
+        excludeComments: settings.excludeComments,
+        speech: settings.speech
       }
     });
   } catch (err) {
