@@ -2,7 +2,7 @@
  * Page translation controller for the Klartext extension
  */
 import { MAX_CHUNK_CHARS, CONTENT_SELECTORS, EXCLUDE_SELECTORS, CONTENT_CLASS_PATTERNS } from '../constants';
-import { splitIntoChunks } from '../utils/html-cleaner';
+import { splitIntoChunks, cleanArticleHTML } from '../utils/html-cleaner';
 import { processTextToWords } from '../utils/dom-utils';
 import { speechController } from './speech-controller';
 import { PageTranslatorInterface, SectionData, TranslationControlsInterface } from '../types';
@@ -306,7 +306,7 @@ export class PageTranslator implements PageTranslatorInterface {
 
     // Now split filtered sections into chunks and store original references
     let chunkedSections = filteredSections.map(section => {
-      const chunks = splitIntoChunks(section, MAX_CHUNK_CHARS);
+      const chunks = splitIntoChunks(section, MAX_CHUNK_CHARS, 'aggressive');
       return chunks;
     }).flat();
     
@@ -329,10 +329,11 @@ export class PageTranslator implements PageTranslatorInterface {
           bodyClone.querySelectorAll(selector).forEach(el => el.remove());
         });
         
-        // Create a section with the cleaned body content
+        // Create a section with the cleaned body content (using aggressive mode)
+        const cleanedBodyHtml = cleanArticleHTML(bodyClone.innerHTML, 'aggressive');
         chunkedSections = [{
           originalSection: bodyElement,
-          content: bodyClone.innerHTML
+          content: cleanedBodyHtml
         }];
         console.log('Created direct section from body element with excluded elements removed');
       } else {

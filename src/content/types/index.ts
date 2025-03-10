@@ -71,6 +71,11 @@ export interface ElementAttributes {
 }
 
 /**
+ * HTML cleaning mode options
+ */
+export type CleaningMode = 'standard' | 'aggressive';
+
+/**
  * Section data interface
  */
 export interface SectionData {

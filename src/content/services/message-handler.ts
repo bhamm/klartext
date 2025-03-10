@@ -276,8 +276,8 @@ function handleArticleClick(event: MouseEvent): void {
   // Show loading state
   translationOverlay.showLoading();
   
-  // Clean HTML before sending
-  const cleanedHtml = cleanArticleHTML(html);
+  // Clean HTML before sending (using aggressive mode to reduce token count)
+  const cleanedHtml = cleanArticleHTML(html, 'aggressive');
   
   // Send cleaned HTML to background script
   chrome.runtime.sendMessage({
