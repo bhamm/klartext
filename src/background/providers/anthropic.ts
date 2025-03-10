@@ -22,13 +22,7 @@ export class AnthropicProvider extends BaseProvider {
     this.validateConfig(config);
     
     try {
-      const prompt = 
-        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. ` +
-        `Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 ` +
-        `und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, ` +
-        `<p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige ` +
-        `nicht relevante Inhalte. Erstelle immer gültigen HTML-Code. Antworte direkt mit dem Inhalt, ` +
-        `ohne eine Einführung. Input HTML:\n\n${text}`;
+      const prompt = `${this.getSystemPrompt(config)} Erstelle immer gültigen HTML-Code. Antworte direkt mit dem Inhalt, ohne eine Einführung. Input HTML:\n\n${text}`;
 
       const response = await fetch(config.apiEndpoint, {
         method: 'POST',

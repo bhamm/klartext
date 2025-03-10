@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: Settings = {
   apiKey: '',
   apiEndpoint: '',
   textSize: 'normal',
+  translationLevel: 'leichte_sprache',
   experimentalFeatures: {
     fullPageTranslation: false
   },
@@ -59,6 +60,14 @@ export function validateSettings(settings: unknown): settings is Settings {
   if (settingsObj.textSize !== 'normal' && 
       settingsObj.textSize !== 'gross' && 
       settingsObj.textSize !== 'sehr-gross') {
+    return false;
+  }
+  
+  // Validate translationLevel if present
+  if (settingsObj.translationLevel && 
+      settingsObj.translationLevel !== 'einfachere_sprache' && 
+      settingsObj.translationLevel !== 'einfache_sprache' && 
+      settingsObj.translationLevel !== 'leichte_sprache') {
     return false;
   }
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klartext - Leichte Sprache",
-  "version": "1.5.74",
+  "version": "1.5.76",
   "description": "Übersetzt deutsche Texte in 'Leichte Sprache' für bessere Zugänglichkeit",
   "permissions": [
     "contextMenus",
@@ -29,6 +29,7 @@
       "dist/content/content.js",
       "dist/content/overlay.css",
       "dist/config/api-keys.json",
+      "dist/config/prompts.json",
       "dist/settings/bmc-button.png"
     ],
     "matches": ["<all_urls>"]

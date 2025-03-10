@@ -22,12 +22,7 @@ export class GoogleProvider extends BaseProvider {
     this.validateConfig(config);
     
     try {
-      const prompt = 
-        `Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. ` +
-        `Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 ` +
-        `und formatiere den übersetzten Artikel in HTML. Verwende <h1> oder <h2> für Überschriften, ` +
-        `<p> für Absätze und <ul>/<li> für Listen. Ignoriere Navigationsleisten, Werbung und sonstige ` +
-        `nicht relevante Inhalte. Beginne den Text nicht mit dem wort "html". Input HTML:\n\n${text}`;
+      const prompt = `${this.getSystemPrompt(config)} Input HTML:\n\n${text}`;
 
       const response = await fetch(`${config.apiEndpoint}/${config.model}:generateContent?key=${config.apiKey}`, {
         method: 'POST',

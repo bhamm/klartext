@@ -23,6 +23,9 @@ export class DeepSeekProvider extends BaseProvider {
     this.validateConfig(config);
     
     try {
+      const prompt = this.getSystemPrompt(config);
+      console.log('Prompt:', prompt);
+
       const response = await fetch(config.apiEndpoint, {
         method: 'POST',
         headers: {
@@ -32,7 +35,7 @@ export class DeepSeekProvider extends BaseProvider {
         body: JSON.stringify({
           model: config.model,
           messages: [
-            { role: 'system', content: this.systemPrompt },
+            { role: 'system', content: prompt},
             { role: 'user', content: text }
           ],
           temperature: 0.1,

@@ -190,6 +190,7 @@ describe('Validation Service', () => {
         apiKey: 'sk-test',
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         textSize: 'normal',
+        translationLevel: 'leichte_sprache',
         experimentalFeatures: { fullPageTranslation: false },
         compareView: false,
         excludeComments: true,
@@ -213,6 +214,7 @@ describe('Validation Service', () => {
         model: 'gpt-4-turbo',
         apiKey: 'sk-test',
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+        translationLevel: 'leichte_sprache',
         speech: {
           voiceURI: '',
           rate: 0.9,
@@ -232,6 +234,7 @@ describe('Validation Service', () => {
         model: 'gpt-4-turbo',
         apiKey: 'invalid-key', // Missing sk- prefix
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+        translationLevel: 'leichte_sprache',
         speech: {
           voiceURI: '',
           rate: 0.9,
@@ -251,6 +254,7 @@ describe('Validation Service', () => {
         model: 'gpt-4-turbo',
         apiKey: 'sk-test',
         apiEndpoint: 'invalid-url',
+        translationLevel: 'leichte_sprache',
         speech: {
           voiceURI: '',
           rate: 0.9,
@@ -270,6 +274,7 @@ describe('Validation Service', () => {
         model: 'invalid-model',
         apiKey: 'sk-test',
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+        translationLevel: 'leichte_sprache',
         speech: {
           voiceURI: '',
           rate: 0.9,
@@ -289,6 +294,7 @@ describe('Validation Service', () => {
         model: 'llama-2-70b',
         apiKey: '', // Empty API key should be valid for local
         apiEndpoint: 'http://localhost:1234/completion',
+        translationLevel: 'leichte_sprache',
         speech: {
           voiceURI: '',
           rate: 0.9,

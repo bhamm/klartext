@@ -16,9 +16,10 @@ export function initSettingsPanel(): SettingsPanelComponent | null {
   const fullpageSettings = getElement<HTMLElement>('fullpage-settings');
   const compareViewCheckbox = getElement<HTMLInputElement>('compare-view');
   const excludeCommentsCheckbox = getElement<HTMLInputElement>('exclude-comments');
+  const translationLevelSlider = getElement<HTMLInputElement>('translation-level');
   
   if (!textSizeRadios.length || !enableFullpageCheckbox || !fullpageSettings || 
-      !compareViewCheckbox || !excludeCommentsCheckbox) {
+      !compareViewCheckbox || !excludeCommentsCheckbox || !translationLevelSlider) {
     console.error('Settings panel: Required DOM elements not found');
     return null;
   }
@@ -52,6 +53,14 @@ export function initSettingsPanel(): SettingsPanelComponent | null {
         }
       }
       
+      // Set translation level
+      if (settings.translationLevel) {
+        const levelIndex = ['einfachere_sprache', 'einfache_sprache', 'leichte_sprache'].indexOf(settings.translationLevel);
+        if (levelIndex !== -1) {
+          translationLevelSlider!.value = levelIndex.toString();
+        }
+      }
+      
       // Set experimental features
       if (settings.experimentalFeatures) {
         enableFullpageCheckbox!.checked = Boolean(settings.experimentalFeatures.fullPageTranslation);
@@ -82,11 +91,16 @@ export function initSettingsPanel(): SettingsPanelComponent | null {
       const selectedTextSize = document.querySelector<HTMLInputElement>('input[name="text-size"]:checked');
       const textSize = selectedTextSize ? selectedTextSize.value as Settings['textSize'] : 'normal';
       
+      // Get translation level
+      const translationLevelValue = translationLevelSlider!.value;
+      const translationLevel = ['einfachere_sprache', 'einfache_sprache', 'leichte_sprache'][parseInt(translationLevelValue)] as Settings['translationLevel'];
+      
       // Get speech settings
       const speech = speechSettings.getSettings();
       
       return {
         textSize,
+        translationLevel,
         experimentalFeatures: {
           fullPageTranslation: enableFullpageCheckbox!.checked
         } as ExperimentalFeatures,

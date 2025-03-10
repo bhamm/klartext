@@ -31,7 +31,7 @@ export class OpenAIProvider extends BaseProvider {
         body: JSON.stringify({
           model: config.model,
           messages: [
-            { role: 'system', content: this.systemPrompt },
+            { role: 'system', content: this.getSystemPrompt(config) },
             { role: 'user', content: text }
           ],
           temperature: 0.1

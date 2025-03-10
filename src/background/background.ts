@@ -168,7 +168,8 @@ let API_CONFIG: ApiConfig = {
   provider: 'openAI', // Must match the key in providers object
   model: 'gpt-4-turbo',
   apiKey: '',
-  apiEndpoint: ''
+  apiEndpoint: '',
+  translationLevel: 'leichte_sprache'
 };
 
 // Helper function to normalize provider names
@@ -186,7 +187,7 @@ function normalizeProviderName(provider: string): string {
 // Load API configuration from storage and config file
 async function loadApiConfig(): Promise<ApiConfig> {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint'], async (items: StorageItems) => {
+    chrome.storage.sync.get(['provider', 'model', 'apiKey', 'apiEndpoint', 'translationLevel'], async (items: StorageItems) => {
       console.log('Loading API configuration from storage');
       
       // Update provider from storage
@@ -241,6 +242,11 @@ async function loadApiConfig(): Promise<ApiConfig> {
         API_CONFIG.apiEndpoint = CONFIG_STORE.providers[API_CONFIG.provider].apiEndpoint;
       }
       
+      // Set translation level from storage or use default
+      if (items.translationLevel) {
+        API_CONFIG.translationLevel = items.translationLevel;
+      }
+      
       // Ensure API endpoint is set by using the default if it's still empty
       if (!API_CONFIG.apiEndpoint && API_CONFIG.provider) {
         try {
@@ -267,9 +273,20 @@ async function loadApiConfig(): Promise<ApiConfig> {
   });
 }
 
-// Initialize configuration on extension load
-chrome.runtime.onInstalled.addListener(loadApiConfig);
-chrome.runtime.onStartup.addListener(loadApiConfig);
+// Initialize BaseProvider prompts
+import { BaseProvider } from './providers/base';
+
+// Initialize configuration and prompts on extension load
+async function initialize() {
+  await Promise.all([
+    loadApiConfig(),
+    BaseProvider.initializePrompts()
+  ]);
+  console.log('Extension initialization complete');
+}
+
+chrome.runtime.onInstalled.addListener(() => initialize());
+chrome.runtime.onStartup.addListener(() => initialize());
 
 // Translation cache
 class TranslationCache {
@@ -381,7 +398,8 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
               provider: API_CONFIG.provider,
               model: API_CONFIG.model,
               apiKey: API_CONFIG.apiKey,
-              apiEndpoint: API_CONFIG.apiEndpoint
+              apiEndpoint: API_CONFIG.apiEndpoint,
+              translationLevel: API_CONFIG.translationLevel
             }, () => {
               console.log('API Configuration updated with model validation:', {
                 provider: API_CONFIG.provider,
@@ -402,7 +420,8 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
           provider: API_CONFIG.provider,
           model: API_CONFIG.model,
           apiKey: API_CONFIG.apiKey,
-          apiEndpoint: API_CONFIG.apiEndpoint
+          apiEndpoint: API_CONFIG.apiEndpoint,
+          translationLevel: API_CONFIG.translationLevel
         }, () => {
           console.log('API Configuration updated:', {
             provider: API_CONFIG.provider,
