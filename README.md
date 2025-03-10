@@ -2,9 +2,12 @@
 
 Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um sie für Menschen mit eingeschränktem Sprachverständnis zugänglicher zu machen.
 
-## Version 1.5.41
+## Version 1.5.74
 
 Die aktuelle Version enthält folgende Verbesserungen:
+- Unterstützung für externe Text-to-Speech (TTS) Provider:
+  - Google TTS Integration mit API-Schlüssel-Konfiguration
+  - Verbesserte Sprachqualität für Vorlesefunktion
 - Fehlerbehebung: Verbesserte Modellkompatibilität zwischen Providern
   - Automatische Auswahl des korrekten Modells beim Wechsel des Providers
   - Validierung der Modellkompatibilität im Background-Script
@@ -91,7 +94,21 @@ Die aktuelle Version enthält folgende Verbesserungen:
    - Große Schrift aktivieren
    - Modell auswählen
 
-4. Einstellungen speichern
+4. Text-zu-Sprache (TTS) konfigurieren:
+   ### Browser TTS
+   - Standardmäßig wird die integrierte Browser-Sprachausgabe verwendet
+   - Keine API-Schlüssel erforderlich
+   - Begrenzte Sprachqualität und Stimmenauswahl
+
+   ### Google TTS
+   - Hochwertige Sprachausgabe mit natürlicheren Stimmen
+   - API-Schlüssel von [Google Cloud](https://console.cloud.google.com/) benötigt
+   - Aktivieren Sie die "Text-to-Speech API" in Ihrem Google Cloud-Projekt
+   - Wählen Sie aus verschiedenen deutschen Stimmen
+   - Der API-Schlüssel kann in den Einstellungen überschrieben werden
+   - Standard-API-Schlüssel aus api-keys.json wird verwendet, wenn kein benutzerdefinierter Schlüssel angegeben ist
+
+5. Einstellungen speichern
 
 ## Verwendung
 
@@ -153,23 +170,32 @@ klartext/
 ├── src/
 │   ├── background/         # Service Worker & Backend
 │   │   ├── background.ts
-│   │   └── providers/      # KI-Provider Implementierungen
-│   │       ├── registry.ts     # Provider-Registry-System
-│   │       ├── base.ts         # Basis-Provider-Klasse
-│   │       ├── index.ts        # Provider-Exports
-│   │       ├── config.ts       # Provider-Konfiguration
-│   │       ├── openai.ts       # OpenAI-Provider
-│   │       ├── google.ts       # Google-Provider
-│   │       ├── anthropic.ts    # Anthropic-Provider
-│   │       ├── deepseek.ts     # DeepSeek-Provider
-│   │       ├── local.ts        # Lokaler Provider
-│   │       └── example-provider-template.ts # Template für neue Provider
+│   │   ├── providers/      # KI-Provider Implementierungen
+│   │   │   ├── registry.ts     # Provider-Registry-System
+│   │   │   ├── base.ts         # Basis-Provider-Klasse
+│   │   │   ├── index.ts        # Provider-Exports
+│   │   │   ├── config.ts       # Provider-Konfiguration
+│   │   │   ├── openai.ts       # OpenAI-Provider
+│   │   │   ├── google.ts       # Google-Provider
+│   │   │   ├── anthropic.ts    # Anthropic-Provider
+│   │   │   ├── deepseek.ts     # DeepSeek-Provider
+│   │   │   ├── local.ts        # Lokaler Provider
+│   │   │   └── example-provider-template.ts # Template für neue Provider
+│   │   └── tts-providers/  # Text-to-Speech Provider
+│   │       ├── registry.ts     # TTS-Provider-Registry
+│   │       ├── base.ts         # Basis-TTS-Provider-Klasse
+│   │       ├── index.ts        # TTS-Provider-Exports
+│   │       ├── browser.ts      # Browser-TTS-Provider
+│   │       ├── google.ts       # Google-TTS-Provider
+│   │       └── __tests__/      # Tests für TTS-Provider
 │   ├── config/             # Konfigurationsdateien
 │   │   └── api-keys.json   # API-Schlüssel (nicht im Git)
 │   ├── content/            # Content Scripts
 │   │   ├── index.ts        # Haupteinstiegspunkt
 │   │   ├── overlay.css     # Styling für Overlay
 │   │   ├── controllers/    # Controller-Komponenten
+│   │   │   ├── page-controller.ts    # Seitensteuerung
+│   │   │   └── speech-controller.ts  # Sprachausgabesteuerung
 │   │   ├── services/       # Service-Komponenten
 │   │   ├── ui/             # UI-Komponenten
 │   │   ├── utils/          # Hilfsfunktionen
@@ -178,9 +204,17 @@ klartext/
 │   │   └── types/          # TypeScript-Typdefinitionen
 │   ├── settings/           # Einstellungs-UI
 │   │   ├── settings.html
-│   │   └── components/     # UI-Komponenten
+│   │   ├── components/     # UI-Komponenten
+│   │   │   ├── provider-selector.ts  # KI-Provider-Auswahl
+│   │   │   ├── settings-panel.ts     # Einstellungspanel
+│   │   │   └── speech-settings.ts    # TTS-Einstellungen
+│   │   └── services/       # Einstellungsdienste
 │   └── shared/             # Gemeinsam genutzte Module
 │       └── types/          # Gemeinsame Typdefinitionen
+│           ├── settings.ts     # Einstellungstypen
+│           ├── api.ts          # API-Typen
+│           └── tts/            # TTS-spezifische Typen
+│               └── provider.ts # TTS-Provider-Typen
 ├── test/                   # Testdateien
 │   ├── content/            # Tests für Content Scripts
 │   └── extension/          # Integrationstests
@@ -209,10 +243,29 @@ klartext/
          "boardID": "Ihr-Board-ID",
          "categoryID": "Ihre-Kategorie-ID",
          "userID": "Ihre-User-ID"
+       },
+       "providers": {
+         "openAI": {
+           "apiKey": "Ihr-OpenAI-API-Schlüssel"
+         },
+         "anthropic": {
+           "apiKey": "Ihr-Anthropic-API-Schlüssel"
+         },
+         "google": {
+           "apiKey": "Ihr-Google-API-Schlüssel"
+         },
+         "deepseek": {
+           "apiKey": "Ihr-DeepSeek-API-Schlüssel"
+         },
+         "googleTTS": {
+           "apiKey": "Ihr-Google-TTS-API-Schlüssel",
+           "apiEndpoint": "https://texttospeech.googleapis.com/v1"
+         }
        }
      }
      ```
    - Diese Datei wird nicht in Git versioniert
+   - Die API-Schlüssel werden als Standard-Schlüssel verwendet, können aber in den Einstellungen überschrieben werden
 
 2. Icons generieren:
    ```bash
@@ -242,13 +295,23 @@ klartext/
    npm run test:selenium:single test/selenium/specs/translate-selection.test.js
    ```
 
-6. Neuen Provider hinzufügen:
+6. Neuen KI-Provider hinzufügen:
    - Erstellen Sie eine neue Datei in `src/background/providers/` (z.B. `my-provider.ts`)
    - Verwenden Sie das Template aus `example-provider-template.ts` als Grundlage
    - Implementieren Sie die `translate`-Methode für Ihren Provider
    - Definieren Sie die Provider-Metadaten (ID, Name, Modelle, Endpoint, etc.)
    - Fügen Sie den API-Endpoint zu `host_permissions` in `manifest.json` hinzu
    - Der Provider wird automatisch registriert und in den Einstellungen verfügbar sein
+
+7. Neuen TTS-Provider hinzufügen:
+   - Erstellen Sie eine neue Datei in `src/background/tts-providers/` (z.B. `my-tts-provider.ts`)
+   - Erweitern Sie die `BaseTTSProvider`-Klasse
+   - Implementieren Sie die `synthesize`-Methode für Ihren TTS-Provider
+   - Implementieren Sie die `getVoices`-Methode, um verfügbare Stimmen zurückzugeben
+   - Definieren Sie die Provider-Metadaten (ID, Name, Beschreibung, etc.)
+   - Registrieren Sie den Provider in der `registry.ts`
+   - Fügen Sie den API-Endpoint zu `host_permissions` in `manifest.json` hinzu
+   - Aktualisieren Sie `api-keys.json`, um einen Standard-API-Schlüssel für Ihren Provider hinzuzufügen
 
 7. Paket für Distribution erstellen:
    ```bash
@@ -289,7 +352,7 @@ Die Erweiterung enthält End-to-End-Tests mit Selenium, die die Hauptfunktionen 
 
 ### Entwicklungshinweise
 
-- **Provider-Integration:**
+- **KI-Provider-Integration:**
   - Provider-Registry-System für einfache Erweiterung mit neuen KI-Anbietern
   - Selbstregistrierung von Providern mit Metadaten
   - Dynamische Benutzeroberfläche basierend auf verfügbaren Providern
@@ -297,17 +360,27 @@ Die Erweiterung enthält End-to-End-Tests mit Selenium, die die Hauptfunktionen 
   - Konfigurierbare Modelle und Endpoints
   - Beispiel-Template für neue Provider-Implementierungen
 
+- **TTS-Provider-System:**
+  - Modulare Architektur für verschiedene Text-to-Speech-Anbieter
+  - Basis-Klasse mit standardisierter Schnittstelle
+  - Unterstützung für Browser-TTS und externe Dienste wie Google TTS
+  - Konfigurierbare API-Schlüssel mit Überschreibungsmöglichkeit
+  - Stimmenauswahl für verschiedene Sprachen und Dialekte
+  - Einheitliche Fehlerbehandlung und Logging
+  - Einfache Erweiterbarkeit für neue TTS-Provider
+
 - **Sicherheit:**
   - Sichere Speicherung der API-Schlüssel
   - HTTPS-Verschlüsselung für API-Kommunikation
   - Lokale Ausführung für Llama 2 möglich
+  - Möglichkeit, API-Schlüssel in den Einstellungen zu überschreiben
 
 - **Barrierefreiheit:**
   - ARIA-Attribute für Screenreader
   - Tastatur-Navigation
   - Hoher Kontrast und flexible Textgrößen
   - Reduzierte Bewegung unterstützt
-  - Text-zu-Sprache Integration
+  - Text-zu-Sprache Integration mit hochwertigen Stimmen
   - Wort-für-Wort Hervorhebung
 
 ## Lizenz
