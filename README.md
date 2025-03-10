@@ -5,6 +5,13 @@ Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um 
 ## Version 1.5.77
 
 Die aktuelle Version enthält folgende Verbesserungen:
+- Fehlerbehebung: Verbesserte Prompt-Verarbeitung
+  - Zuverlässiges Laden und Caching von Prompts für alle Provider
+  - Frühe Initialisierung von Prompts im Extension-Lebenszyklus
+  - Behebt Fehler, bei dem immer der Standard-Prompt verwendet wurde
+- Fehlerbehebung: Korrekte Speicherung der Übersetzungsstufe
+  - Übersetzungsstufe (einfachere/einfache/leichte Sprache) wird nun korrekt gespeichert
+  - Einstellungen werden zuverlässig zwischen Sitzungen beibehalten
 - Unterstützung für externe Text-to-Speech (TTS) Provider:
   - Google TTS Integration mit API-Schlüssel-Konfiguration
   - Verbesserte Sprachqualität für Vorlesefunktion
@@ -35,6 +42,10 @@ Die aktuelle Version enthält folgende Verbesserungen:
   - Normal
   - Groß
   - Sehr groß
+- Übersetzungsstufen:
+  - Einfachere Sprache (leicht vereinfacht)
+  - Einfache Sprache (stärker vereinfacht)
+  - Leichte Sprache (nach DIN SPEC 33429)
 - Unterstützung für verschiedene KI-Anbieter:
   - OpenAI GPT-4/3.5
   - Google Gemini
@@ -233,7 +244,7 @@ klartext/
    npm install
    ```
 
-2. API-Schlüssel konfigurieren:
+2. Konfigurationsdateien einrichten:
    - Erstellen Sie die Datei `src/config/api-keys.json`
    - Fügen Sie die API-Konfiguration hinzu:
      ```json
@@ -266,6 +277,41 @@ klartext/
      ```
    - Diese Datei wird nicht in Git versioniert
    - Die API-Schlüssel werden als Standard-Schlüssel verwendet, können aber in den Einstellungen überschrieben werden
+
+   - Erstellen Sie die Datei `src/config/prompts.json` für benutzerdefinierte Übersetzungsprompts:
+     ```json
+     {
+       "openAI": {
+         "einfachere_sprache": "Du erhältst im folgenden HTML-Code einen deutschen Text. Bitte extrahiere den Text und übersetze ihn in einfachere Sprache. Verwende einfache Wörter und kurze Sätze, aber behalte einen natürlichen Sprachfluss bei. Formatiere den übersetzten Text in HTML.",
+         "einfache_sprache": "Du erhältst im folgenden HTML-Code einen deutschen Text. Bitte extrahiere den Text und übersetze ihn in Einfache Sprache. Verwende einfache Wörter, kurze Sätze und eine klare Struktur. Vermeide Fremdwörter, Fachbegriffe und komplexe grammatikalische Konstruktionen.",
+         "leichte_sprache": "Du erhältst im folgenden HTML-Code einen deutschen Nachrichtenartikel. Bitte extrahiere den Artikeltext, übersetze ihn in deutsche Leichte Sprache gemäß DIN SPEC 33429 und formatiere den übersetzten Artikel in HTML."
+       },
+       "anthropic": {
+         "einfachere_sprache": "...",
+         "einfache_sprache": "...",
+         "leichte_sprache": "..."
+       },
+       "google": {
+         "einfachere_sprache": "...",
+         "einfache_sprache": "...",
+         "leichte_sprache": "..."
+       },
+       "deepseek": {
+         "einfachere_sprache": "...",
+         "einfache_sprache": "...",
+         "leichte_sprache": "..."
+       },
+       "local": {
+         "einfachere_sprache": "...",
+         "einfache_sprache": "...",
+         "leichte_sprache": "..."
+       }
+     }
+     ```
+   - Diese Datei ermöglicht die Anpassung der Übersetzungsprompts für jeden Provider und jede Übersetzungsstufe
+   - Jeder Provider hat eigene Prompts für die drei Übersetzungsstufen: einfachere_sprache, einfache_sprache und leichte_sprache
+   - Die Prompts werden beim Start der Erweiterung geladen und im Speicher gecacht
+   - Änderungen an den Prompts erfordern einen Neustart der Erweiterung
 
 2. Icons generieren:
    ```bash
