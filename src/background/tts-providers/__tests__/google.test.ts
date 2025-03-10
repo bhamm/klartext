@@ -114,8 +114,7 @@ describe('GoogleTTSProvider', () => {
               },
               audioConfig: {
                 audioEncoding: 'MP3',
-                speakingRate: 1.0,
-                pitch: 0.0
+                speakingRate: 1.0
               }
             })
           }

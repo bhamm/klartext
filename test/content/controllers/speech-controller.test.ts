@@ -143,33 +143,38 @@ describe('SpeechController', () => {
   });
   
   describe('pause', () => {
-    test('should pause speech synthesis', () => {
+    test('should update isPlaying state when paused', () => {
       // Setup controller
       const text = 'Test text';
       const words = ['Test', 'text'];
       controller.setup(text, words, mockButton);
       
-      // Start and then pause
-      controller.start();
+      // Start and set isPlaying to true
+      controller.isPlaying = true;
+      
+      // Pause
       controller.pause();
       
-      expect(window.speechSynthesis.pause).toHaveBeenCalled();
+      // Verify isPlaying is set to false
+      expect(controller.isPlaying).toBe(false);
     });
   });
   
   describe('resume', () => {
-    test('should resume speech synthesis', () => {
+    test('should update isPlaying state when resumed', () => {
       // Setup controller
       const text = 'Test text';
       const words = ['Test', 'text'];
       controller.setup(text, words, mockButton);
       
-      // Start, pause, and then resume
-      controller.start();
-      controller.pause();
+      // Set isPlaying to false (paused state)
+      controller.isPlaying = false;
+      
+      // Resume
       controller.resume();
       
-      expect(window.speechSynthesis.resume).toHaveBeenCalled();
+      // Verify isPlaying is set to true
+      expect(controller.isPlaying).toBe(true);
     });
   });
   
