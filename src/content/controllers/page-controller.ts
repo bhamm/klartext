@@ -380,10 +380,21 @@ export class PageTranslator implements PageTranslatorInterface {
         // Add loading indicator
         const loadingDiv = document.createElement('div');
         loadingDiv.className = 'klartext-loading';
-        loadingDiv.innerHTML = `
-          <div class="klartext-spinner"></div>
-          <p class="klartext-loading-text">Übersetze...</p>
-        `;
+        
+        // Create spinner with proper attributes - using createElement utility for consistency
+        const spinner = document.createElement('div');
+        spinner.className = 'klartext-spinner';
+        spinner.setAttribute('role', 'progressbar');
+        spinner.setAttribute('aria-label', 'Übersetze...');
+        
+        // Create loading text
+        const loadingText = document.createElement('p');
+        loadingText.className = 'klartext-loading-text';
+        loadingText.textContent = 'Übersetze...';
+        
+        // Append elements
+        loadingDiv.appendChild(spinner);
+        loadingDiv.appendChild(loadingText);
         originalSection.appendChild(loadingDiv);
   
         // Verify section is still valid after modifications

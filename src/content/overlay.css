@@ -75,21 +75,32 @@
   font-family: 'Open Sans', Verdana, sans-serif;
 }
 
-.klartext-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid #e2e8f0;
-  border-top: 3px solid #3498db;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 0.8rem;
+/* Spinner with more specific selector and !important rules to avoid conflicts with page styles */
+.klartext-loading .klartext-spinner {
+  width: 36px !important;
+  height: 36px !important;
+  border: 3px solid #e2e8f0 !important;
+  border-top: 3px solid #3498db !important;
+  border-radius: 50% !important;
+  animation: klartext-spin 1s linear infinite !important;
+  margin: 0 auto 0.8rem !important;
+  display: block !important; /* Ensure display is block */
+  box-sizing: border-box !important; /* Ensure box-sizing is consistent */
+  background: none !important; /* Ensure no background image or color */
+  padding: 0 !important; /* Reset padding */
+  min-width: 0 !important; /* Reset min-width */
+  min-height: 0 !important; /* Reset min-height */
+  max-width: none !important; /* Reset max-width */
+  max-height: none !important; /* Reset max-height */
+  /* Remove transform: none as it conflicts with the animation */
 }
 
 .klartext-loading-text {
-  margin: 0;
-  color: #1a1a1a;
-  font-size: 1rem;
-  font-weight: 500;
+  margin: 0 !important;
+  color: #1a1a1a !important;
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
 }
 
 /* Header controls */
@@ -331,6 +342,12 @@
   100% { transform: rotate(360deg); }
 }
 
+/* Dedicated animation for klartext spinner to avoid conflicts */
+@keyframes klartext-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Word highlighting for TTS */
 .klartext-word {
   display: inline;
@@ -397,7 +414,7 @@
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.95);
+  transform: translate(-50%, -50%);
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -416,7 +433,7 @@
 .klartext-overlay.visible {
   opacity: 1;
   visibility: visible;
-  transform: translate(-50%, -50%) scale(1);
+  transform: translate(-50%, -50%);
 }
 
 .klartext-content {
@@ -433,31 +450,57 @@
   border-radius: 8px;
 }
 
-/* Global text size classes (from settings) */
+/* Global text size classes (from settings) with !important to override website styles */
 body.klartext-text-normal .klartext-translation:not(.klartext-overlay .klartext-translation) {
-  font-size: 16px;
+  font-size: 16px !important;
 }
 
 body.klartext-text-gross .klartext-translation:not(.klartext-overlay .klartext-translation) {
-  font-size: 18px;
+  font-size: 18px !important;
 }
 
 body.klartext-text-sehr-gross .klartext-translation:not(.klartext-overlay .klartext-translation) {
-  font-size: 20px;
+  font-size: 20px !important;
 }
 
-/* Overlay-specific text size classes */
+/* Overlay-specific text size classes with !important */
 .klartext-overlay .klartext-translation.klartext-text-normal {
-  font-size: 16px;
+  font-size: 16px !important;
 }
 
 .klartext-overlay .klartext-translation.klartext-text-gross {
-  font-size: 18px;
+  font-size: 18px !important;
 }
 
 .klartext-overlay .klartext-translation.klartext-text-sehr-gross {
-  font-size: 20px;
+  font-size: 20px !important;
 }
+
+/* Additional selectors for text size classes to ensure they apply to all elements */
+.klartext-translation.klartext-text-normal * {
+  font-size: 16px !important;
+}
+
+.klartext-translation.klartext-text-gross * {
+  font-size: 18px !important;
+}
+
+.klartext-translation.klartext-text-sehr-gross * {
+  font-size: 20px !important;
+}
+
+/* Exception for headings to maintain hierarchy */
+.klartext-translation.klartext-text-normal h1 { font-size: 2em !important; }
+.klartext-translation.klartext-text-normal h2 { font-size: 1.75em !important; }
+.klartext-translation.klartext-text-normal h3 { font-size: 1.5em !important; }
+
+.klartext-translation.klartext-text-gross h1 { font-size: 2em !important; }
+.klartext-translation.klartext-text-gross h2 { font-size: 1.75em !important; }
+.klartext-translation.klartext-text-gross h3 { font-size: 1.5em !important; }
+
+.klartext-translation.klartext-text-sehr-gross h1 { font-size: 2em !important; }
+.klartext-translation.klartext-text-sehr-gross h2 { font-size: 1.75em !important; }
+.klartext-translation.klartext-text-sehr-gross h3 { font-size: 1.5em !important; }
 
 /* Print styles */
 @media print {
@@ -492,48 +535,52 @@ body.klartext-text-sehr-gross .klartext-translation:not(.klartext-overlay .klart
   }
 }
 
+/* More specific selectors with !important to override website styles */
 .klartext-translation h1,
 .klartext-translation h2,
 .klartext-translation h3 {
-  font-family: 'Open Sans', Verdana, sans-serif;
-  margin-top: 2em;
-  margin-bottom: 0.8em;
-  color: #1a1a1a;
-  line-height: 1.4;
-  font-weight: 600;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
+  margin-top: 2em !important;
+  margin-bottom: 0.8em !important;
+  color: #1a1a1a !important;
+  line-height: 1.4 !important;
+  font-weight: 600 !important;
 }
 
-.klartext-translation h1 { font-size: 2em; }
-.klartext-translation h2 { font-size: 1.75em; }
-.klartext-translation h3 { font-size: 1.5em; }
+.klartext-translation h1 { font-size: 2em !important; }
+.klartext-translation h2 { font-size: 1.75em !important; }
+.klartext-translation h3 { font-size: 1.5em !important; }
 
 .klartext-translation p {
-  font-family: 'Open Sans', Verdana, sans-serif;
-  margin: 1.5em 0;
-  max-width: 70ch;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
+  font-size: inherit !important;
+  margin: 1.5em 0 !important;
+  max-width: 70ch !important;
+  line-height: 1.6 !important;
 }
 
 .klartext-translation ul,
 .klartext-translation ol {
-  font-family: 'Open Sans', Verdana, sans-serif;
-  margin: 1.5em 0;
-  padding-left: 2.5em;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
+  margin: 1.5em 0 !important;
+  padding-left: 2.5em !important;
 }
 
 .klartext-translation li {
-  font-family: 'Open Sans', Verdana, sans-serif;
-  margin: 0.8em 0;
-  line-height: 1.8;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
+  margin: 0.8em 0 !important;
+  line-height: 1.8 !important;
+  font-size: inherit !important;
 }
 
 .klartext-translation ul li {
-  font-family: 'Open Sans', Verdana, sans-serif;
-  list-style-type: disc;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
+  list-style-type: disc !important;
 }
 
 .klartext-translation ol li {
-  font-family: 'Open Sans', Verdana, sans-serif;
-  list-style-type: decimal;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
+  list-style-type: decimal !important;
 }
 
 /* Focus styles for better accessibility */
@@ -583,6 +630,7 @@ body.klartext-text-sehr-gross .klartext-translation:not(.klartext-overlay .klart
   font-size: 1.1rem;
   font-weight: 500;
   text-align: center;
+  font-family: 'Open Sans', Verdana, sans-serif;
 }
 
 .klartext-stars {
@@ -647,33 +695,45 @@ body.klartext-text-sehr-gross .klartext-translation:not(.klartext-overlay .klart
 }
 
 .klartext-comment-container {
-  margin: 15px 0;
+  margin: 15px 0 !important;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
+}
+
+.klartext-comment-container label {
+  font-family: 'Open Sans', Verdana, sans-serif !important;
+  color: #1a1a1a !important;
+  font-size: 14px !important;
+  font-weight: normal !important;
 }
 
 .klartext-comment {
-  width: 100%;
-  min-height: 80px;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  margin-top: 5px;
-  font-family: inherit;
-  resize: vertical;
+  width: 100% !important;
+  min-height: 80px !important;
+  padding: 8px !important;
+  border: 1px solid #ccc !important;
+  border-radius: 4px !important;
+  margin-top: 5px !important;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
+  resize: vertical !important;
+  font-size: 14px !important;
 }
 
 .klartext-include-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 10px 0;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 10px 0 !important;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
 }
 
 .klartext-include-container input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+  width: 16px !important;
+  height: 16px !important;
 }
 
 .klartext-include-container label {
-  color: #1a1a1a;
-  font-size: 14px;
+  color: #1a1a1a !important;
+  font-size: 14px !important;
+  font-family: 'Open Sans', Verdana, sans-serif !important;
+  font-weight: normal !important;
 }

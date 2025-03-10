@@ -270,16 +270,24 @@ export class TranslationOverlay implements TranslationOverlayInterface {
       if (this.content) {
         this.content.innerHTML = '';
 
+        // Create a placeholder container with full height to simulate the space a translation would take
+        const placeholderContainer = createElement('div', {
+          className: 'klartext-translation',
+          style: 'min-height: 400px; background-color: transparent;'
+        });
+        this.content.appendChild(placeholderContainer);
+
         // Create loading container
         const loadingContainer = createElement('div', {
           className: 'klartext-loading'
         });
 
-        // Add spinner
+        // Add spinner with more specific attributes to avoid conflicts with page styles
         const spinner = createElement('div', {
           className: 'klartext-spinner',
           role: 'progressbar',
-          'aria-label': 'Übersetze...'
+          'aria-label': 'Übersetze...',
+          style: 'display: block !important; width: 36px !important; height: 36px !important;'
         });
         loadingContainer.appendChild(spinner);
 

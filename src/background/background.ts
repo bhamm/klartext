@@ -135,32 +135,44 @@ class MenuManager {
     });
   }
 
-  static setupContextMenu(experimentalFeatures: ExperimentalFeatures) {
-    chrome.contextMenus.removeAll(() => {
-      this.createMenuItem(
-        MENU_ITEMS.SELECTION,
-        'Markierten Text in Leichte Sprache übersetzen',
-        ['selection'],
-        () => {}
-      );
+static getTranslationLevelDisplayName(level: string | undefined): string {
+  const displayNames: { [key: string]: string } = {
+    'einfachere_sprache': 'Einfachere Sprache',
+    'einfache_sprache': 'Einfache Sprache',
+    'leichte_sprache': 'Leichte Sprache'
+  };
+  return level && displayNames[level] ? displayNames[level] : 'Leichte Sprache'; // Default to 'Leichte Sprache' if level is not found or undefined
+}
 
+static setupContextMenu(experimentalFeatures: ExperimentalFeatures) {
+  // Get the display name for the current translation level
+  const translationLevelDisplay = this.getTranslationLevelDisplayName(API_CONFIG.translationLevel);
+  
+  chrome.contextMenus.removeAll(() => {
+    this.createMenuItem(
+      MENU_ITEMS.SELECTION,
+      `Markierten Text in ${translationLevelDisplay} übersetzen`,
+      ['selection'],
+      () => {}
+    );
+
+    this.createMenuItem(
+      MENU_ITEMS.ARTICLE,
+      `Artikel in ${translationLevelDisplay} übersetzen`,
+      ['all'],
+      () => {}
+    );
+
+    if (experimentalFeatures?.fullPageTranslation) {
       this.createMenuItem(
-        MENU_ITEMS.ARTICLE,
-        'Artikel in Leichte Sprache übersetzen',
+        MENU_ITEMS.FULLPAGE,
+        `Ganze Seite in ${translationLevelDisplay} übersetzen (Beta)`,
         ['all'],
-        () => {}
+        () => console.log('Context menu items created successfully')
       );
-
-      if (experimentalFeatures?.fullPageTranslation) {
-        this.createMenuItem(
-          MENU_ITEMS.FULLPAGE,
-          'Ganze Seite in Leichte Sprache übersetzen (Beta)',
-          ['all'],
-          () => console.log('Context menu items created successfully')
-        );
-      }
-    });
-  }
+    }
+  });
+}
 }
 
 // Current API configuration
