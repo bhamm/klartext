@@ -50,11 +50,46 @@ export class SpeechController implements SpeechControllerInterface {
       this.stop();
     });
     
-    // Periodically check if speech synthesis is still active when it shouldn't be
+    // Periodically check TTS state and sync with our internal state
     setInterval(() => {
-      if (!this.isPlaying && speechSynthesis.speaking) {
-        console.log('Speech synthesis still active when it should be stopped, forcing stop');
-        speechSynthesis.cancel();
+      // Handle browser TTS state checks
+      if (this.ttsProvider === 'browser') {
+        // Only force stop if we're confident there's a state mismatch
+        if (!this.isPlaying && speechSynthesis.speaking && !speechSynthesis.paused) {
+          console.log('Speech synthesis state mismatch detected');
+          
+          // Double-check if we're really not playing before forcing stop
+          if (this.utterance && !this.isPlaying) {
+            console.log('Speech synthesis still active when it should be stopped, forcing stop');
+            speechSynthesis.cancel();
+          }
+        }
+        
+        // If we think we're playing but speech synthesis is not active, update our state
+        if (this.isPlaying && !speechSynthesis.speaking && !speechSynthesis.pending) {
+          console.log('Speech synthesis stopped unexpectedly, updating state');
+          this.isPlaying = false;
+          this.updateButtonState(false);
+        }
+      } 
+      // Handle external TTS state checks
+      else if (this.externalAudio) {
+        // Check if the audio element state doesn't match our internal state
+        const audioIsPlaying = !this.externalAudio.paused && !this.externalAudio.ended;
+        
+        if (this.isPlaying !== audioIsPlaying) {
+          console.log('External TTS state mismatch detected, syncing state. Audio playing:', audioIsPlaying);
+          
+          if (!this.isPlaying && audioIsPlaying) {
+            // If we think we're not playing but the audio is playing, update our state
+            this.isPlaying = true;
+            this.updateButtonState(true);
+          } else if (this.isPlaying && !audioIsPlaying) {
+            // If we think we're playing but the audio is not playing, update our state
+            this.isPlaying = false;
+            this.updateButtonState(false);
+          }
+        }
       }
     }, 5000);
     
@@ -297,16 +332,39 @@ export class SpeechController implements SpeechControllerInterface {
     // Apply voice settings
     this.applyVoiceSettings(this.utterance);
     
+    // Set up event handlers for speech synthesis events
+    this.utterance.onstart = () => {
+      console.log('Speech synthesis started');
+      this.isPlaying = true;
+      this.updateButtonState(true);
+    };
+    
     // Handle end of speech
     this.utterance.onend = () => {
       console.log('Speech ended normally');
-      this.stop();
+      this.isPlaying = false;
+      this.updateButtonState(false);
     };
 
     // Handle errors
-    this.utterance.onerror = () => {
-      console.error('Speech synthesis error');
-      this.stop();
+    this.utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event);
+      this.isPlaying = false;
+      this.updateButtonState(false);
+    };
+    
+    // Handle pause events
+    this.utterance.onpause = () => {
+      console.log('Speech synthesis paused');
+      this.isPlaying = false;
+      this.updateButtonState(false);
+    };
+    
+    // Handle resume events
+    this.utterance.onresume = () => {
+      console.log('Speech synthesis resumed');
+      this.isPlaying = true;
+      this.updateButtonState(true);
     };
     
     // Update button state to initial state
@@ -397,9 +455,8 @@ export class SpeechController implements SpeechControllerInterface {
     // Force reset the speech synthesis state
     speechSynthesis.cancel();
     
-    // Set playing state
-    this.isPlaying = true;
-    this.updateButtonState(true);
+    // We'll set isPlaying to true when we actually hear the onstart event
+    // This ensures our state is synchronized with the actual speech state
     
     // If the utterance is null, recreate it
     if (!this.utterance) {
@@ -446,24 +503,47 @@ export class SpeechController implements SpeechControllerInterface {
               // Store the audio element to prevent garbage collection
               (window as any).__klartextAudio = this.externalAudio;
               
-              // Set up event handlers
+              // Set up event handlers for external audio
+              this.externalAudio.onplay = () => {
+                console.log('External TTS audio playback started');
+                this.isPlaying = true;
+                this.updateButtonState(true);
+              };
+              
+              this.externalAudio.onpause = () => {
+                console.log('External TTS audio playback paused');
+                // Only update state if this wasn't triggered by stop()
+                if (this.externalAudio) {
+                  this.isPlaying = false;
+                  this.updateButtonState(false);
+                }
+              };
+              
               this.externalAudio.onended = () => {
                 console.log('External TTS audio playback ended');
-                this.stop();
+                this.isPlaying = false;
+                this.updateButtonState(false);
+                
+                // Clean up resources
                 if (this.audioUrl) {
                   URL.revokeObjectURL(this.audioUrl);
                   this.audioUrl = null;
                 }
+                this.externalAudio = null;
                 delete (window as any).__klartextAudio;
               };
               
               this.externalAudio.onerror = (e: Event | string) => {
                 console.error('Error playing external TTS audio:', e);
-                this.stop();
+                this.isPlaying = false;
+                this.updateButtonState(false);
+                
+                // Clean up resources
                 if (this.audioUrl) {
                   URL.revokeObjectURL(this.audioUrl);
                   this.audioUrl = null;
                 }
+                this.externalAudio = null;
                 delete (window as any).__klartextAudio;
               };
               
@@ -537,9 +617,17 @@ export class SpeechController implements SpeechControllerInterface {
     
     // Handle browser speech synthesis
     if (this.ttsProvider === 'browser') {
-      // Browser speech synthesis doesn't have good resume support, so we start fresh
+      // For browser TTS, always use start() to ensure proper state management
+      // This is more reliable than trying to resume
       if (this.utterance) {
-        speechSynthesis.speak(this.utterance);
+        // If we have an utterance but it's not actively speaking, we need to start fresh
+        if (!speechSynthesis.speaking) {
+          this.start();
+        } else {
+          // If it's speaking but paused, try to resume
+          speechSynthesis.resume();
+          // We'll set isPlaying to true when we hear the onresume event
+        }
       } else {
         this.start();
       }
@@ -550,6 +638,8 @@ export class SpeechController implements SpeechControllerInterface {
       this.externalAudio.play()
         .then(() => {
           console.log('External TTS audio playback resumed successfully');
+          this.isPlaying = true;
+          this.updateButtonState(true);
         })
         .catch((error) => {
           console.error('Failed to resume external TTS audio:', error);
@@ -560,9 +650,6 @@ export class SpeechController implements SpeechControllerInterface {
       // If no audio element exists, start fresh
       this.start();
     }
-    
-    this.isPlaying = true;
-    this.updateButtonState(true);
   }
 
   /**
@@ -602,10 +689,44 @@ export class SpeechController implements SpeechControllerInterface {
   toggle(): void {
     console.log('Toggle called, current state:', this.isPlaying);
     
+    // Check if we need to sync state based on provider type
+    if (this.ttsProvider === 'browser') {
+      // For browser TTS, check the actual speech synthesis state
+      const actuallyPlaying = speechSynthesis.speaking && !speechSynthesis.paused;
+      
+      if (this.isPlaying !== actuallyPlaying) {
+        console.log('State mismatch detected, syncing state. Actual state:', actuallyPlaying);
+        this.isPlaying = actuallyPlaying;
+      }
+    } else if (this.externalAudio) {
+      // For external TTS, check the audio element state
+      const actuallyPlaying = !this.externalAudio.paused;
+      
+      if (this.isPlaying !== actuallyPlaying) {
+        console.log('External TTS state mismatch detected, syncing state. Actual state:', actuallyPlaying);
+        this.isPlaying = actuallyPlaying;
+      }
+    }
+    
     if (this.isPlaying) {
       this.pause();
     } else {
-      this.resume();
+      // Handle different providers appropriately
+      if (this.ttsProvider === 'browser') {
+        // For browser TTS, prefer start() for reliability
+        if (!this.utterance || !speechSynthesis.speaking) {
+          this.start();
+        } else {
+          this.resume();
+        }
+      } else {
+        // For external TTS, use resume() if we have audio, otherwise start fresh
+        if (this.externalAudio) {
+          this.resume();
+        } else {
+          this.start();
+        }
+      }
     }
   }
 
