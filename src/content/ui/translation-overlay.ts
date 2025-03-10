@@ -270,6 +270,13 @@ export class TranslationOverlay implements TranslationOverlayInterface {
       if (this.content) {
         this.content.innerHTML = '';
 
+        // Create a placeholder container with full height to simulate the space a translation would take
+        const placeholderContainer = createElement('div', {
+          className: 'klartext-translation',
+          style: 'min-height: 400px; background-color: transparent;'
+        });
+        this.content.appendChild(placeholderContainer);
+
         // Create loading container
         const loadingContainer = createElement('div', {
           className: 'klartext-loading'
