@@ -24,6 +24,7 @@ export interface Settings {
   apiKey: string;
   apiEndpoint: string;
   textSize: 'normal' | 'gross' | 'sehr-gross';
+  translationLevel: 'einfachere_sprache' | 'einfache_sprache' | 'leichte_sprache';
   experimentalFeatures: ExperimentalFeatures;
   compareView: boolean;
   excludeComments: boolean;
@@ -47,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   apiKey: '',
   apiEndpoint: '',
   textSize: 'normal',
+  translationLevel: 'leichte_sprache',
   experimentalFeatures: {
     fullPageTranslation: false
   },
@@ -66,6 +68,7 @@ export const DEFAULT_SETTINGS: Settings = {
  */
 export interface SettingsFormData extends ProviderConfig {
   textSize: Settings['textSize'];
+  translationLevel: Settings['translationLevel'];
   experimentalFeatures: ExperimentalFeatures;
   compareView: boolean;
   excludeComments: boolean;

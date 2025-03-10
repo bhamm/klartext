@@ -3,6 +3,7 @@ export interface ProviderConfig {
   apiKey: string;
   apiEndpoint: string;
   model: string;
+  translationLevel?: 'einfachere_sprache' | 'einfache_sprache' | 'leichte_sprache';
 }
 
 export interface TranslationProvider {

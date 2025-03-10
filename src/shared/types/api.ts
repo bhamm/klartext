@@ -3,6 +3,7 @@ export interface ApiConfig {
   model: string;
   apiKey: string;
   apiEndpoint: string;
+  translationLevel?: 'einfachere_sprache' | 'einfache_sprache' | 'leichte_sprache';
 }
 
 export interface StorageItems {
@@ -10,6 +11,7 @@ export interface StorageItems {
   model?: string;
   apiKey?: string;
   apiEndpoint?: string;
+  translationLevel?: 'einfachere_sprache' | 'einfache_sprache' | 'leichte_sprache';
   experimentalFeatures?: {
     fullPageTranslation?: boolean;
   };
