@@ -52,6 +52,7 @@ export interface TTSProviderMessage {
 export interface GetProviderVoicesMessage {
   action: 'getProviderVoices';
   provider: string;
+  apiKey?: string;
 }
 
 export interface SynthesizeSpeechMessage {
@@ -62,6 +63,7 @@ export interface SynthesizeSpeechMessage {
     voiceURI: string;
     rate: number;
     pitch?: number;
+    apiKey?: string;
   };
 }
 

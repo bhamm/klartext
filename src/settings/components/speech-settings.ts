@@ -1,8 +1,9 @@
 /**
  * Speech settings component for the Klartext extension
  */
-import { SpeechSettings } from '../../shared/types/settings';
+import { SpeechSettings, ApiKeysConfig } from '../../shared/types/settings';
 import { getTTSProvidersMetadata } from '../../background/tts-providers';
+import { loadApiKeys } from '../services/settings-service';
 
 /**
  * Component for managing speech synthesis settings
@@ -12,9 +13,11 @@ export class SpeechSettingsComponent {
   private rateInput: HTMLInputElement;
   private rateValue: HTMLElement;
   private ttsProviderSelect: HTMLSelectElement;
+  private ttsApiKeyInput: HTMLInputElement;
   private voicesLoaded: boolean = false;
   private pendingVoiceURI: string | null = null;
   private saveButton: HTMLElement | null = null;
+  private apiKeys: ApiKeysConfig | null = null;
   
   /**
    * Create a new SpeechSettingsComponent
@@ -24,6 +27,7 @@ export class SpeechSettingsComponent {
     this.rateInput = document.getElementById('speech-rate') as HTMLInputElement;
     this.rateValue = document.getElementById('rate-value') as HTMLElement;
     this.ttsProviderSelect = document.getElementById('tts-provider-select') as HTMLSelectElement;
+    this.ttsApiKeyInput = document.getElementById('tts-api-key') as HTMLInputElement;
     this.saveButton = document.querySelector('.save-button');
     
     this.initialize();
@@ -32,7 +36,16 @@ export class SpeechSettingsComponent {
   /**
    * Initialize the component
    */
-  private initialize(): void {
+  private async initialize(): Promise<void> {
+    // Load API keys
+    try {
+      this.apiKeys = await loadApiKeys();
+      console.log('API keys loaded for speech settings:', this.apiKeys);
+    } catch (error) {
+      console.error('Error loading API keys for speech settings:', error);
+      this.apiKeys = { providers: {} };
+    }
+    
     // Populate TTS provider options
     this.loadTTSProviders();
     
@@ -78,6 +91,9 @@ export class SpeechSettingsComponent {
       this.ttsProviderSelect.addEventListener('change', () => {
         console.log('TTS provider changed to:', this.ttsProviderSelect.value);
         
+        // Update API key from api-keys.json if available
+        this.updateApiKeyForProvider(this.ttsProviderSelect.value);
+        
         // Update voices based on the selected provider
         this.updateVoicesForProvider(this.ttsProviderSelect.value);
         
@@ -90,6 +106,37 @@ export class SpeechSettingsComponent {
           this.saveButton.click();
         } else {
           console.warn('Save button not found, cannot auto-save TTS provider change');
+        }
+      });
+    }
+    
+    // Add change and input event listeners to TTS API key input
+    if (this.ttsApiKeyInput) {
+      // Listen for change event (when input loses focus)
+      this.ttsApiKeyInput.addEventListener('change', () => {
+        console.log('TTS API key changed (change event)');
+        
+        // Only update voices if we're not using browser TTS
+        if (this.ttsProviderSelect && this.ttsProviderSelect.value !== 'browser') {
+          // Update voices based on the selected provider with the new API key
+          this.updateVoicesForProvider(this.ttsProviderSelect.value);
+        }
+        
+        // Save the settings directly to storage
+        this.saveSettingsToStorage();
+      });
+      
+      // Also listen for input event (as user types)
+      this.ttsApiKeyInput.addEventListener('input', () => {
+        console.log('TTS API key changed (input event)');
+        
+        // Save the settings directly to storage
+        this.saveSettingsToStorage();
+        
+        // Force a save when API key is changed to ensure it takes effect immediately
+        if (this.saveButton) {
+          console.log('Triggering save button click to apply API key change immediately');
+          this.saveButton.click();
         }
       });
     }
@@ -229,6 +276,42 @@ export class SpeechSettingsComponent {
   }
   
   /**
+   * Update API key for the selected provider from api-keys.json or settings
+   * @param provider - The selected TTS provider
+   * @param savedApiKey - Optional API key from saved settings
+   */
+  private updateApiKeyForProvider(provider: string, savedApiKey?: string): void {
+    console.log(`Updating API key for provider: ${provider}, saved API key:`, savedApiKey);
+    
+    if (provider === 'browser') {
+      // Browser TTS doesn't need an API key
+      this.ttsApiKeyInput.value = '';
+      this.ttsApiKeyInput.disabled = true;
+    } else {
+      // Enable the API key input
+      this.ttsApiKeyInput.disabled = false;
+      
+      // First try to use the saved API key from settings if provided and not empty
+      if (savedApiKey && savedApiKey.trim() !== '') {
+        this.ttsApiKeyInput.value = savedApiKey;
+        console.log(`API key for ${provider} loaded from saved settings:`, savedApiKey);
+      }
+      // Otherwise check if we have an API key for this provider in api-keys.json
+      else if (this.apiKeys && this.apiKeys.providers && this.apiKeys.providers[provider]) {
+        this.ttsApiKeyInput.value = this.apiKeys.providers[provider].apiKey || '';
+        console.log(`API key for ${provider} loaded from api-keys.json:`, this.ttsApiKeyInput.value);
+      } else {
+        // No API key found in api-keys.json, leave the field empty
+        this.ttsApiKeyInput.value = '';
+        console.log(`No API key found for ${provider} in api-keys.json`);
+      }
+      
+      // Save the settings to storage to ensure the API key is persisted
+      this.saveSettingsToStorage();
+    }
+  }
+  
+  /**
    * Update voices based on the selected provider
    * @param provider - The selected TTS provider
    */
@@ -259,7 +342,8 @@ export class SpeechSettingsComponent {
     // Send message to background script to get voices for this provider
     chrome.runtime.sendMessage({
       action: 'getProviderVoices',
-      provider: provider
+      provider: provider,
+      apiKey: this.ttsApiKeyInput.value
     }, (response) => {
       if (chrome.runtime.lastError) {
         console.error('Error fetching provider voices:', chrome.runtime.lastError);
@@ -490,6 +574,9 @@ export class SpeechSettingsComponent {
         this.ttsProviderSelect.value = 'browser';
       }
       
+      // Update API key for the selected provider, passing the saved API key from settings
+      this.updateApiKeyForProvider(settings.ttsProvider, settings.apiKey);
+      
       // Update voices based on the selected provider
       this.updateVoicesForProvider(settings.ttsProvider);
       
@@ -513,7 +600,8 @@ export class SpeechSettingsComponent {
       voiceURI: this.voiceSelect.value,
       rate: parseFloat(this.rateInput.value),
       pitch: 1.0, // Default pitch value, not configurable anymore
-      ttsProvider: this.ttsProviderSelect ? this.ttsProviderSelect.value : 'browser'
+      ttsProvider: this.ttsProviderSelect ? this.ttsProviderSelect.value : 'browser',
+      apiKey: this.ttsApiKeyInput ? this.ttsApiKeyInput.value : ''
     };
     
     console.log('Getting speech settings from UI:', settings);

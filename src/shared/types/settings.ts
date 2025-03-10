@@ -12,6 +12,7 @@ export interface SpeechSettings {
   rate: number;      // Speech rate (0.1 to 2.0)
   pitch?: number;    // Speech pitch (0.1 to 2.0)
   ttsProvider: string; // TTS provider ID (browser, googleTTS, etc.)
+  apiKey?: string;   // API key for external TTS providers
 }
 
 /**
@@ -55,7 +56,8 @@ export const DEFAULT_SETTINGS: Settings = {
     voiceURI: '',  // Empty string means use default voice
     rate: 0.9,
     pitch: 1.0,
-    ttsProvider: 'browser'
+    ttsProvider: 'browser',
+    apiKey: ''
   }
 };
 

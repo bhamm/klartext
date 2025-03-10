@@ -247,21 +247,38 @@ export class SpeechController implements SpeechControllerInterface {
     try {
       // Check if we're in a context where chrome.storage is available
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-        const settings: SpeechSettings = {
-          voiceURI: this.selectedVoiceURI,
-          rate: this.rate,
-          pitch: 1.0, // Fixed default pitch value
-          ttsProvider: this.ttsProvider
-        };
-        
-        console.log('Saving speech settings to storage:', settings);
-        
-        chrome.storage.sync.set({ speech: settings }, () => {
+        // First get the existing speech settings to preserve the API key
+        chrome.storage.sync.get(['speech'], (result) => {
           if (chrome.runtime.lastError) {
-            console.error('Error saving speech settings to storage:', chrome.runtime.lastError);
-          } else {
-            console.log('Speech settings saved to storage successfully');
+            console.error('Error getting existing speech settings:', chrome.runtime.lastError);
+            return;
           }
+          
+          // Get the existing API key if available
+          const existingApiKey = result.speech?.apiKey || '';
+          
+          const settings: SpeechSettings = {
+            voiceURI: this.selectedVoiceURI,
+            rate: this.rate,
+            pitch: 1.0, // Fixed default pitch value
+            ttsProvider: this.ttsProvider,
+            apiKey: existingApiKey // Preserve the existing API key
+          };
+          
+          console.log('Saving speech settings to storage with preserved API key:', settings);
+          
+          chrome.storage.sync.set({ speech: settings }, () => {
+            if (chrome.runtime.lastError) {
+              console.error('Error saving speech settings to storage:', chrome.runtime.lastError);
+            } else {
+              console.log('Speech settings saved to storage successfully');
+              
+              // Verify the settings were saved correctly
+              chrome.storage.sync.get(['speech'], (verifyResult) => {
+                console.log('Verified speech settings in storage after save:', verifyResult.speech);
+              });
+            }
+          });
         });
       }
     } catch (error) {
@@ -403,36 +420,42 @@ export class SpeechController implements SpeechControllerInterface {
     
     // Send message to background script to use selected TTS provider
     return new Promise((resolve, reject) => {
-      const settings = {
-        provider: this.ttsProvider,
-        voiceURI: this.selectedVoiceURI,
-        rate: this.rate,
-        pitch: 1.0 // Fixed default pitch value
-      };
-      
-      chrome.runtime.sendMessage({
-        action: 'synthesizeSpeech',
-        text,
-        settings
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-          return;
-        }
+      // Get the current speech settings from storage to include the API key
+      chrome.storage.sync.get(['speech'], (result) => {
+        const apiKey = result.speech?.apiKey || '';
         
-        if (!response || response.error) {
-          reject(new Error(response?.error || 'No response received'));
-          return;
-        }
+        const settings = {
+          provider: this.ttsProvider,
+          voiceURI: this.selectedVoiceURI,
+          rate: this.rate,
+          pitch: 1.0, // Fixed default pitch value
+          apiKey: apiKey
+        };
         
-        if (!response.audioContent) {
-          reject(new Error('No audio content received'));
-          return;
-        }
-        
-        resolve({
-          audioContent: response.audioContent,
-          format: response.format
+        chrome.runtime.sendMessage({
+          action: 'synthesizeSpeech',
+          text,
+          settings
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+            return;
+          }
+          
+          if (!response || response.error) {
+            reject(new Error(response?.error || 'No response received'));
+            return;
+          }
+          
+          if (!response.audioContent) {
+            reject(new Error('No audio content received'));
+            return;
+          }
+          
+          resolve({
+            audioContent: response.audioContent,
+            format: response.format
+          });
         });
       });
     });

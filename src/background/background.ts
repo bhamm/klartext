@@ -468,10 +468,13 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
           throw new Error(`No configuration found for TTS provider: ${message.provider}`);
         }
         
+        // Get API key from message or CONFIG_STORE
+        const apiKey = message.apiKey || CONFIG_STORE.providers[message.provider]?.apiKey || '';
+        
         // Create provider config
         const config = {
           provider: message.provider,
-          apiKey: CONFIG_STORE.providers[message.provider]?.apiKey || '',
+          apiKey: apiKey,
           apiEndpoint: CONFIG_STORE.providers[message.provider]?.apiEndpoint || ''
         };
         
@@ -518,7 +521,7 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
         // Create provider config
         const config = {
           provider: message.settings.provider,
-          apiKey: CONFIG_STORE.providers[message.settings.provider]?.apiKey || '',
+          apiKey: message.settings.apiKey || CONFIG_STORE.providers[message.settings.provider]?.apiKey || '',
           apiEndpoint: CONFIG_STORE.providers[message.settings.provider]?.apiEndpoint || '',
           voice: message.settings.voiceURI,
           rate: message.settings.rate,

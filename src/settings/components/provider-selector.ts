@@ -44,17 +44,7 @@ export function initProviderSelector({
     providerOptions[id] = metadata.name;
   });
   populateSelect(providerSelect, Object.keys(providerOptions), '', providerOptions);
-  
-  // Populate endpoint hints
-  const endpointHint = getElement<HTMLElement>('endpoint-hint');
-  if (endpointHint) {
-    let hintText = 'Standart-Endpunkte:<br>';
-    Object.entries(providers).forEach(([id, metadata]) => {
-      hintText += `• ${metadata.name}: ${metadata.defaultEndpoint}<br>`;
-    });
-    endpointHint.innerHTML = hintText;
-  }
-  
+    
   /**
    * Update UI based on selected provider
    * @param providerId - Provider ID
