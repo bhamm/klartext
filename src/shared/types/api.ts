@@ -69,6 +69,10 @@ export interface SynthesizeSpeechMessage {
   };
 }
 
+export interface DeveloperModeMessage {
+  action: 'checkDeveloperMode';
+}
+
 export interface PingResponse {
   status: 'ok';
 }

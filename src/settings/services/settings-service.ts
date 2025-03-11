@@ -38,7 +38,7 @@ export async function loadSettings(): Promise<Settings> {
   console.log('Loading settings from Chrome storage...');
   return new Promise((resolve) => {
     // Get all settings from storage
-    chrome.storage.sync.get(null, (items) => {
+    chrome.storage.sync.get(DEFAULT_SETTINGS, (items) => {
       console.log('Raw settings from storage:', items);
       
       if (chrome.runtime.lastError) {
