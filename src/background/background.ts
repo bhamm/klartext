@@ -1,5 +1,6 @@
 import { translate } from './providers';
 import { ttsProviderRegistry } from './tts-providers';
+import { isInDeveloperMode, isLikelyInDeveloperMode } from '../shared/utils/extension-utils';
 import { 
   ErrorDetails, 
   ProviderConfig, 
@@ -19,7 +20,8 @@ import {
   SynthesizeSpeechMessage,
   PingResponse,
   Tab,
-  Message
+  Message,
+  DeveloperModeMessage
 } from '../shared/types/api';
 
 // Constants
@@ -340,7 +342,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // Message handling
-chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessage | FeedbackMessage | TTSProviderMessage | GetProviderVoicesMessage | SynthesizeSpeechMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
+chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessage | FeedbackMessage | TTSProviderMessage | GetProviderVoicesMessage | SynthesizeSpeechMessage | DeveloperModeMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: any) => void) => {
   console.log('Background script received message:', message);
   
   if (message.action === 'translateText' || message.action === 'translateArticle' || message.action === 'translateSection') {
@@ -593,6 +595,36 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
     })();
     return true;
   }
+  else if (message.action === 'checkDeveloperMode') {
+    (async () => {
+      try {
+        console.log('Checking if extension is running in developer mode');
+        
+        // Try to use the management API first (more reliable)
+        const isDeveloperMode = await isInDeveloperMode();
+        
+        // If management API is not available, fall back to the ID-based check
+        const isLikelyDev = isLikelyInDeveloperMode();
+        
+        console.log(`Developer mode check results: management API: ${isDeveloperMode}, ID check: ${isLikelyDev}`);
+        
+        sendResponse({ 
+          success: true, 
+          isDeveloperMode: isDeveloperMode,
+          isLikelyDeveloperMode: isLikelyDev
+        });
+      } catch (error) {
+        console.error('Error checking developer mode:', error);
+        sendResponse({ 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          // Fall back to ID-based check if the management API fails
+          isLikelyDeveloperMode: isLikelyInDeveloperMode()
+        });
+      }
+    })();
+    return true;
+  }
   
   return true;
 });
@@ -626,7 +658,33 @@ async function handleTranslation(text: string, isArticle = false): Promise<strin
       isArticle: isArticle
     });
 
+    // Check if we're in developer mode to log additional information
+    const isDeveloperMode = await isInDeveloperMode();
+    const isLikelyDev = isLikelyInDeveloperMode();
+    
+    if (isDeveloperMode || isLikelyDev) {
+      console.log('[DEVELOPER MODE] Translation payload:', {
+        text: text.length > 500 ? text.substring(0, 500) + '...' : text,
+        fullTextLength: text.length,
+        apiConfig: {
+          provider: API_CONFIG.provider,
+          model: API_CONFIG.model,
+          endpoint: API_CONFIG.apiEndpoint,
+          translationLevel: API_CONFIG.translationLevel
+        },
+        isArticle: isArticle
+      });
+    }
+
     const translation = await translate(text, API_CONFIG, isArticle);
+    
+    if (isDeveloperMode || isLikelyDev) {
+      console.log('[DEVELOPER MODE] Translation result:', {
+        result: translation.length > 500 ? translation.substring(0, 500) + '...' : translation,
+        fullResultLength: translation.length
+      });
+    }
+    
     await TranslationCache.set(text, translation);
     return translation;
   } catch (error) {
