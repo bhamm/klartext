@@ -2,7 +2,7 @@
 
 Eine Chrome-Erweiterung, die deutsche Texte in "Leichte Sprache" übersetzt, um sie für Menschen mit eingeschränktem Sprachverständnis zugänglicher zu machen.
 
-## Version 1.5.77
+## Version 1.5.89
 
 Die aktuelle Version enthält folgende Verbesserungen:
 - Fehlerbehebung: Verbesserte Prompt-Verarbeitung
