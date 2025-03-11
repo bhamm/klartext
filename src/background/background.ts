@@ -660,11 +660,10 @@ async function handleTranslation(text: string, isArticle = false): Promise<strin
 
     // Check if we're in developer mode to log additional information
     const isDeveloperMode = await isInDeveloperMode();
-    const isLikelyDev = isLikelyInDeveloperMode();
     
-    if (isDeveloperMode || isLikelyDev) {
+    if (isDeveloperMode) {
       console.log('[DEVELOPER MODE] Translation payload:', {
-        text: text.length > 500 ? text.substring(0, 500) + '...' : text,
+        text: text,
         fullTextLength: text.length,
         apiConfig: {
           provider: API_CONFIG.provider,
@@ -678,9 +677,9 @@ async function handleTranslation(text: string, isArticle = false): Promise<strin
 
     const translation = await translate(text, API_CONFIG, isArticle);
     
-    if (isDeveloperMode || isLikelyDev) {
+    if (isDeveloperMode) {
       console.log('[DEVELOPER MODE] Translation result:', {
-        result: translation.length > 500 ? translation.substring(0, 500) + '...' : translation,
+        result: translation,
         fullResultLength: translation.length
       });
     }

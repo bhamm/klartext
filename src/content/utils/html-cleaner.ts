@@ -187,9 +187,9 @@ function applyAggressiveCleaning(element: HTMLElement): void {
   );
   nonContentElements.forEach(el => el.remove());
   
-  // Remove any elements with data attributes
-  const dataElements = element.querySelectorAll('[data-*]');
-  dataElements.forEach(el => {
+  // Remove data attributes from all elements
+  const elementsWithDataAttrs = element.querySelectorAll('*');
+  elementsWithDataAttrs.forEach(el => {
     const attributes = Array.from(el.attributes);
     for (const attr of attributes) {
       if (attr.name.startsWith('data-')) {
