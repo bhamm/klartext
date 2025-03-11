@@ -4,6 +4,77 @@
 import { SectionData, CleaningMode } from '../types';
 
 /**
+ * Strips unnecessary whitespace and linebreaks from HTML content
+ * @param {string} html - The HTML content to process
+ * @returns {string} The processed HTML with reduced whitespace
+ */
+export function stripWhitespace(html: string): string {
+  if (!html) return '';
+  
+  try {
+    // Create a temporary div to parse HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    // Process all text nodes to normalize whitespace
+    const walker = document.createTreeWalker(
+      tempDiv,
+      NodeFilter.SHOW_TEXT,
+      null
+    );
+    
+    const nodesToProcess: Text[] = [];
+    let currentNode: Text | null = walker.nextNode() as Text;
+    
+    // Collect all text nodes first to avoid modifying during traversal
+    while (currentNode) {
+      nodesToProcess.push(currentNode);
+      currentNode = walker.nextNode() as Text;
+    }
+    
+    // Process each text node
+    for (const node of nodesToProcess) {
+      // Skip text nodes in script, style, pre, textarea, etc.
+      const parentNodeName = node.parentNode?.nodeName.toLowerCase();
+      if (parentNodeName === 'script' || 
+          parentNodeName === 'style' || 
+          parentNodeName === 'pre' || 
+          parentNodeName === 'textarea' || 
+          parentNodeName === 'code') {
+        continue;
+      }
+      
+      // Normalize whitespace in text content
+      const text = node.textContent || '';
+      if (text.trim() === '') {
+        // If the text is only whitespace, replace with a single space
+        node.textContent = ' ';
+      } else {
+        // Replace multiple spaces with a single space
+        node.textContent = text.replace(/\s+/g, ' ');
+      }
+    }
+    
+    // Get the processed HTML
+    let processedHtml = tempDiv.innerHTML;
+    
+    // Remove whitespace between tags
+    processedHtml = processedHtml
+      // Remove whitespace between closing and opening tags
+      .replace(/>\s+</g, '><')
+      // Remove whitespace at the start of the content
+      .replace(/^\s+/, '')
+      // Remove whitespace at the end of the content
+      .replace(/\s+$/, '');
+    
+    return processedHtml;
+  } catch (error) {
+    console.error('Error stripping whitespace from HTML:', error);
+    return html;
+  }
+}
+
+/**
  * Cleans article HTML by removing unnecessary elements
  * @param {string} html - The HTML to clean
  * @param {CleaningMode} mode - The cleaning mode to use (standard or aggressive)

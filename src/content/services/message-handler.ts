@@ -6,7 +6,7 @@ import { translationControls } from '../ui/translation-controls';
 import { pageTranslator } from '../controllers/page-controller';
 import { ARTICLE_SELECTORS } from '../constants';
 import { findClosestMatchingElement } from '../utils/dom-utils';
-import { cleanArticleHTML } from '../utils/html-cleaner';
+import { cleanArticleHTML, stripWhitespace } from '../utils/html-cleaner';
 import { ContentMessage } from '../types';
 
 // Track mode states
@@ -279,10 +279,13 @@ function handleArticleClick(event: MouseEvent): void {
   // Clean HTML before sending (using aggressive mode to reduce token count)
   const cleanedHtml = cleanArticleHTML(html, 'aggressive');
   
-  // Send cleaned HTML to background script
+  // Strip whitespace to further reduce token count
+  const strippedHtml = stripWhitespace(cleanedHtml);
+  
+  // Send cleaned and stripped HTML to background script
   chrome.runtime.sendMessage({
     action: 'translateArticle',
-    html: cleanedHtml
+    html: strippedHtml
   });
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "klartext",
-  "version": "1.5.87",
+  "version": "1.5.88",
   "description": "Chrome extension for translating German texts into 'Leichte Sprache'",
   "private": true,
   "scripts": {

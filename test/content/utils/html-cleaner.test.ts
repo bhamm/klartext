@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { cleanArticleHTML } from '../../../src/content/utils/html-cleaner';
+import { cleanArticleHTML, stripWhitespace } from '../../../src/content/utils/html-cleaner';
 
 describe('HTML Cleaner', () => {
   describe('cleanArticleHTML', () => {
@@ -157,6 +157,84 @@ describe('HTML Cleaner', () => {
       
       expect(cleaned).toContain('<p>Unclosed paragraph</p>');
       expect(cleaned).toContain('<div>New div</div>');
+    });
+  });
+
+  describe('stripWhitespace', () => {
+    test('should remove whitespace between HTML tags', () => {
+      const html = '<div>  \n  <p>  Content  </p>  \n  </div>';
+      const stripped = stripWhitespace(html);
+      
+      expect(stripped).toBe('<div><p> Content </p></div>');
+    });
+    
+    test('should normalize whitespace within text content', () => {
+      const html = '<p>This is   some   spaced   text</p>';
+      const stripped = stripWhitespace(html);
+      
+      expect(stripped).toBe('<p>This is some spaced text</p>');
+    });
+    
+    test('should remove linebreaks between tags', () => {
+      const html = '<div>\n<p>\nContent\n</p>\n</div>';
+      const stripped = stripWhitespace(html);
+      
+      expect(stripped).toBe('<div><p> Content </p></div>');
+    });
+    
+    test('should handle nested elements', () => {
+      const html = '<div>\n  <ul>\n    <li>Item 1</li>\n    <li>Item 2</li>\n  </ul>\n</div>';
+      const stripped = stripWhitespace(html);
+      
+      expect(stripped).toBe('<div><ul><li>Item 1</li><li>Item 2</li></ul></div>');
+    });
+    
+    test('should preserve whitespace in pre, code, and textarea tags', () => {
+      const html = '<pre>  function test() {\n    console.log("test");\n  }  </pre>';
+      const stripped = stripWhitespace(html);
+      
+      expect(stripped).toBe('<pre>  function test() {\n    console.log("test");\n  }  </pre>');
+    });
+    
+    test('should handle empty input', () => {
+      const html = '';
+      const stripped = stripWhitespace(html);
+      
+      expect(stripped).toBe('');
+    });
+    
+    test('should handle input with only whitespace', () => {
+      const html = '   \n   \t   ';
+      const stripped = stripWhitespace(html);
+      
+      expect(stripped).toBe('');
+    });
+    
+    test('should handle complex HTML with multiple whitespace patterns', () => {
+      const html = `
+        <div>
+          <h1>  Title  </h1>
+          <p>
+            This is a paragraph with    multiple spaces
+            and line breaks.
+          </p>
+          <ul>
+            <li>Item 1</li>
+            <li>Item 2</li>
+          </ul>
+        </div>
+      `;
+      const stripped = stripWhitespace(html);
+      
+      expect(stripped).not.toContain('\n');
+      expect(stripped).toContain('<div><h1> Title </h1><p> This is a paragraph with multiple spaces and line breaks. </p><ul><li>Item 1</li><li>Item 2</li></ul></div>');
+    });
+    
+    test('should handle malformed HTML', () => {
+      const html = '<div>  <p>Unclosed paragraph  <div>  New div  </div>';
+      const stripped = stripWhitespace(html);
+      
+      expect(stripped).toContain('<div><p>Unclosed paragraph </p><div> New div </div></div>');
     });
   });
 });

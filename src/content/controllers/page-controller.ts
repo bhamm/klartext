@@ -2,7 +2,7 @@
  * Page translation controller for the Klartext extension
  */
 import { MAX_CHUNK_CHARS, CONTENT_SELECTORS, EXCLUDE_SELECTORS, CONTENT_CLASS_PATTERNS } from '../constants';
-import { splitIntoChunks, cleanArticleHTML } from '../utils/html-cleaner';
+import { splitIntoChunks, cleanArticleHTML, stripWhitespace } from '../utils/html-cleaner';
 import { processTextToWords } from '../utils/dom-utils';
 import { speechController } from './speech-controller';
 import { PageTranslatorInterface, SectionData, TranslationControlsInterface } from '../types';
@@ -414,11 +414,14 @@ export class PageTranslator implements PageTranslatorInterface {
           this.controls.updateProgress(this.currentSection + 1, this.sections.length);
         }
         
+        // Strip whitespace to reduce token count
+        const strippedContent = stripWhitespace(content);
+        
         // Send content for translation
         console.log(`Sending section ${sectionId} for translation`);
         chrome.runtime.sendMessage({
           action: 'translateSection',
-          html: content,
+          html: strippedContent,
           id: sectionId
         });
         
