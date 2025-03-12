@@ -68,6 +68,23 @@ export class PageTranslator implements PageTranslatorInterface {
         throw new Error('Keine übersetzbaren Inhalte gefunden. Bitte wählen Sie einen Artikel oder Text aus.');
       }
       
+      // Store the original text for feedback
+      // Collect text from all sections
+      let fullPageText = '';
+      this.sections.forEach(section => {
+        if (section.originalSection && section.originalSection.innerText) {
+          fullPageText += section.originalSection.innerText + '\n\n';
+        }
+      });
+      
+      // Import the translation overlay to store the original text
+      const { translationOverlay } = await import('../ui/translation-overlay');
+      translationOverlay.originalText = fullPageText.trim();
+      console.log('Stored original full page text for feedback:', 
+        translationOverlay.originalText.length > 100 
+          ? translationOverlay.originalText.substring(0, 100) + '...' 
+          : translationOverlay.originalText);
+      
       // Show controls and start translation
       if (this.controls) {
         this.controls.show();

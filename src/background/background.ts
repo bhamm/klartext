@@ -92,6 +92,9 @@ class CannyFeedback {
   static async submitFeedback(feedback: FeedbackDetails) {
     try {
       const version = chrome.runtime.getManifest().version;
+      // Get translation level display name
+      const translationLevelDisplay = MenuManager.getTranslationLevelDisplayName(feedback.details.translationLevel);
+      
       const response = await fetch('https://canny.io/api/v1/posts/create', {
         method: 'POST',
         headers: {
@@ -103,7 +106,7 @@ class CannyFeedback {
           boardID: CONFIG_STORE.canny?.boardID,
           categoryID: CONFIG_STORE.canny?.categoryID,
           title: `Translation Feedback (${feedback.rating} stars)`,
-          details: `Comment:\n${feedback.comment}\n\nOriginal Text:\n${feedback.details.originalText}\n\nTranslated Text:\n${feedback.details.translatedText}\n\nContext:\n- URL: ${feedback.details.url}\n- Provider: ${feedback.details.provider}\n- Model: ${feedback.details.model}\n- Version: ${version}`
+          details: `Comment:\n${feedback.comment}\n\nOriginal Text:\n${feedback.details.originalText}\n\nTranslated Text:\n${feedback.details.translatedText}\n\nContext:\n- URL: ${feedback.details.url}\n- Provider: ${feedback.details.provider}\n- Model: ${feedback.details.model}\n- Translation Level: ${translationLevelDisplay}\n- Version: ${version}`
         })
       });
 

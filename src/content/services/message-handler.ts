@@ -65,6 +65,9 @@ function handleMessage(
             translationControls.show();
           }
         } else {
+          // Store the original text from the current selection
+          translationOverlay.originalText = window.getSelection()?.toString() || '';
+          console.log('Stored original text for feedback:', translationOverlay.originalText);
           translationOverlay.showLoading();
         }
         break;
@@ -269,6 +272,10 @@ function handleArticleClick(event: MouseEvent): void {
   // Get and clean HTML content
   const html = currentHighlight.innerHTML;
   if (!html.trim()) return;
+  
+  // Store the original text for feedback
+  translationOverlay.originalText = currentHighlight.innerText || '';
+  console.log('Stored original article text for feedback:', translationOverlay.originalText.substring(0, 100) + '...');
   
   // Stop article mode
   stopArticleMode();

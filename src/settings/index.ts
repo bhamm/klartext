@@ -101,6 +101,13 @@ async function initSettings(): Promise<void> {
       });
     }
     
+    // Display version number
+    const versionElement = document.getElementById('version-number');
+    if (versionElement) {
+      const manifest = await chrome.runtime.getManifest();
+      versionElement.textContent = `Version ${manifest.version}`;
+    }
+    
     console.log('Popup initialized successfully');
   } catch (error) {
     console.error('Error initializing popup:', error);

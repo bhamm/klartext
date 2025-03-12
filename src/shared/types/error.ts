@@ -40,6 +40,7 @@ export interface FeedbackDetails {
     url: string;
     provider: string;
     model: string;
+    translationLevel?: string;
   };
 }
 

@@ -15,6 +15,7 @@ export class TranslationOverlay implements TranslationOverlayInterface {
   backdrop: HTMLElement | null = null;
   content: HTMLElement | null = null;
   closeButton: HTMLElement | null = null;
+  originalText: string = ''; // Store the original text
   private static instance: TranslationOverlay;
 
   /**
@@ -521,6 +522,9 @@ export class TranslationOverlay implements TranslationOverlayInterface {
     }) as HTMLTextAreaElement;
     commentContainer.appendChild(commentInput);
 
+    // Translation level is not displayed in the UI as per user request
+    // but it's still included in the feedback data sent to the server
+    
     // Add include texts checkbox container
     const includeContainer = createElement('div', {
       className: 'klartext-include-container'
@@ -541,7 +545,7 @@ export class TranslationOverlay implements TranslationOverlayInterface {
 
     includeContainer.appendChild(includeCheckbox);
     includeContainer.appendChild(includeLabel);
-
+    
     // Create feedback button (initially hidden)
     const feedbackButton = createElement('button', {
       className: 'klartext-feedback',
@@ -576,18 +580,22 @@ export class TranslationOverlay implements TranslationOverlayInterface {
     feedbackButton: HTMLElement
   ): Promise<void> {
     try {
-      const originalText = window.getSelection()?.toString() || '';
-      const { provider, model } = await new Promise<{provider: string, model: string}>(resolve => {
-        chrome.storage.sync.get(['provider', 'model'], items => {
+      // Use the stored original text instead of trying to get it from the current selection
+      const originalText = this.originalText || '';
+      console.log('Using stored original text for feedback:', originalText);
+      const { provider, model, translationLevel } = await new Promise<{provider: string, model: string, translationLevel: string}>(resolve => {
+        chrome.storage.sync.get(['provider', 'model', 'translationLevel'], items => {
           resolve({
             provider: items.provider as string,
-            model: items.model as string
+            model: items.model as string,
+            translationLevel: (items.translationLevel as string) || 'leichte_sprache' // Use default if not set
           });
         });
       });
 
       console.log('Provider:', provider);
       console.log('Model:', model);
+      console.log('Translation Level:', translationLevel);
 
       // Get selected rating and comment
       const rating = stars.filter(s => s.classList.contains('selected')).length;
@@ -606,13 +614,15 @@ export class TranslationOverlay implements TranslationOverlayInterface {
             translatedText: translation,
             url: window.location.href,
             provider: provider,
-            model: model
+            model: model,
+            translationLevel: translationLevel
           } : {
             originalText: 'not provided',
             translatedText: 'not provided',
             url: 'not provided',
             provider: provider,
-            model: model
+            model: model,
+            translationLevel: translationLevel
           }
         }
       }, response => {
@@ -686,11 +696,12 @@ export class TranslationOverlay implements TranslationOverlayInterface {
    */
   async reportError(message: string): Promise<void> {
     try {
-      const { provider, model } = await new Promise<{provider: string, model: string}>(resolve => {
-        chrome.storage.sync.get(['provider', 'model'], items => {
+      const { provider, model, translationLevel } = await new Promise<{provider: string, model: string, translationLevel: string}>(resolve => {
+        chrome.storage.sync.get(['provider', 'model', 'translationLevel'], items => {
           resolve({
             provider: items.provider as string,
-            model: items.model as string
+            model: items.model as string,
+            translationLevel: (items.translationLevel as string) || 'leichte_sprache' // Use default if not set
           });
         });
       });
@@ -717,7 +728,8 @@ export class TranslationOverlay implements TranslationOverlayInterface {
         `- Extension: ${chrome.runtime.getManifest().name}\n` +
         `- Version: ${chrome.runtime.getManifest().version}\n` +
         `- Provider: ${provider}\n` +
-        `- Model: ${model}\n\n` +
+        `- Model: ${model}\n` +
+        `- Translation Level: ${translationLevel}\n\n` +
         `### Zusätzliche Informationen\n` +
         `[Bitte beschreiben Sie hier, was Sie gemacht haben, als der Fehler auftrat]\n`
       );
