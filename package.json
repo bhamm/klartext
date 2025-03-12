@@ -9,7 +9,8 @@
     "package": "zip -r klartext.zip . -x '*.git*' 'node_modules/*' '*.zip' '*.crx' '*.pem' 'package*.json' 'README.md' 'LICENSE'",
     "test": "jest",
     "test:selenium": "node test/selenium/runner.js",
-    "test:ci": "jest --ci --coverage"
+    "test:ci": "jest --ci --coverage --testPathIgnorePatterns=\"<rootDir>/test/extension/\"",
+    "test:puppeteer": "jest test/extension/"
   },
   "keywords": [
     "chrome-extension",
