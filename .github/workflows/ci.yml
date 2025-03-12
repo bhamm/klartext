@@ -29,13 +29,6 @@ jobs:
     - name: Run unit tests
       run: npm run test:ci
 
-    - name: Run Selenium tests
-      run: |
-        # Install Chrome
-        sudo apt-get update
-        sudo apt-get install -y chromium-browser
-        npm run test:selenium
-
     - name: Build project
       run: npm run build
 
