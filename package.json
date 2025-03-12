@@ -8,10 +8,8 @@
     "copy-assets": "mkdir -p dist/content dist/config dist/settings && cp src/content/overlay.css dist/content/ && cp src/config/api-keys.json src/config/prompts.json dist/config/ && cp src/settings/settings.html dist/settings/ && cp src/settings/bmc-button.png dist/settings/",
     "package": "zip -r klartext.zip . -x '*.git*' 'node_modules/*' '*.zip' '*.crx' '*.pem' 'package*.json' 'README.md' 'LICENSE'",
     "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
     "test:selenium": "node test/selenium/runner.js",
-    "test:selenium:single": "mocha"
+    "test:ci": "jest --ci --coverage"
   },
   "keywords": [
     "chrome-extension",
@@ -23,7 +21,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@google-cloud/text-to-speech": "^5.0.0"
+    "@google-cloud/text-to-speech": "^5.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.26.9",
