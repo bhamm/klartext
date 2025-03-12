@@ -29,22 +29,6 @@ jobs:
     - name: Run unit tests
       run: npm run test:ci
 
-    - name: Create config files
-      run: |
-        mkdir -p src/config
-        echo '{
-          "providers": {
-            "openAI": { "apiKey": "" },
-            "anthropic": { "apiKey": "" },
-            "google": { "apiKey": "" },
-            "deepseek": { "apiKey": "" },
-            "googleTTS": {
-              "apiKey": "",
-              "apiEndpoint": "https://texttospeech.googleapis.com/v1"
-            }
-          }
-        }' > src/config/api-keys.json
-
     - name: Build project
       run: npm run build
 
