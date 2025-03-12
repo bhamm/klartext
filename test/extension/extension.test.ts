@@ -14,6 +14,8 @@ describe('Klartext Extension Tests', () => {
     browser = await puppeteer.launch({
       headless: false,
       args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
         `--disable-extensions-except=${pathToExtension}`,
         `--load-extension=${pathToExtension}`,
       ],

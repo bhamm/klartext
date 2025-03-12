@@ -1,3 +1,13 @@
+const chrome = require('selenium-webdriver/chrome');
+const options = new chrome.Options();
+
+// Add headless mode for CI environment
+if (process.env.CI) {
+  options.addArguments('--headless');
+  options.addArguments('--no-sandbox');
+  options.addArguments('--disable-dev-shm-usage');
+}
+
 // Configuration for Selenium tests
 module.exports = {
   // Extension path (relative to project root)
@@ -7,10 +17,7 @@ module.exports = {
   testPageUrl: 'file://' + __dirname + '/../fixtures/test-page.html',
   
   // Browser options
-  browserOptions: {
-    headless: false, // Set to true for CI environments with '--headless=new'
-    windowSize: { width: 1280, height: 800 }
-  },
+  browserOptions: options,
   
   // Test timeouts
   timeouts: {
