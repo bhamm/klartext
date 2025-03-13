@@ -5,6 +5,28 @@ All notable changes to the Klartext Chrome Extension will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.94] - 2025-03-12
+
+### Added
+- Integrierte Open Sans Schriftart für konsistente Typografie:
+  - Lokale Einbindung der Schriftarten (Regular, Medium, SemiBold)
+  - Verbesserte Lesbarkeit durch optimierte Schriftdarstellung
+  - Unabhängigkeit von externen Schriftquellen
+- Neue Dokumentation zur Barrierefreiheit:
+  - Detaillierte WCAG 2.0 und BITV 2.0 Konformitätsübersicht
+  - Dokumentation implementierter Accessibility-Features
+  - Roadmap für vollständige Konformität
+
+### Improved
+- Überarbeitetes CSS für einheitliche Schriftdarstellung:
+  - Konsistente Schriftfamilien-Definitionen
+  - Optimierte Fallback-Schriften
+  - Verbesserte Typografie-Hierarchie
+- Optimierter Font-Download-Prozess:
+  - Schriften werden nur bei Bedarf heruntergeladen
+  - Verbesserte Fehlerbehandlung beim Download
+  - Parallele Downloads für schnellere Build-Zeit
+
 ## [1.5.93] - 2025-03-12
 
 ### Improved
