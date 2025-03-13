@@ -220,7 +220,7 @@ function applyStandardCleaning(element: HTMLElement): void {
  */
 function applyAggressiveCleaning(element: HTMLElement): void {
   // Define content elements to keep
-  const contentTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'img', 'strong', 'em', 'b', 'i', 'a', 'br', 'div', 'span', 'article', 'section'];
+  const contentTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'li', 'blockquote', 'strong', 'em', 'b', 'i', 'a', 'br', 'div', 'span', 'article', 'section'];
   
   // Remove all elements except content elements
   const allElements = Array.from(element.getElementsByTagName('*'));
@@ -236,13 +236,16 @@ function applyAggressiveCleaning(element: HTMLElement): void {
     const attributes = Array.from(el.attributes);
     for (const attr of attributes) {
       // Keep only essential attributes
-      if (!['src', 'href', 'alt', 'title'].includes(attr.name)) {
+      if (!['href', 'title'].includes(attr.name)) {
         el.removeAttribute(attr.name);
       }
     }
   }
   
-  // Remove empty elements (except br and img)
+  // Remove specific elements that aren't needed for translation
+  removeSpecificElements(element);
+  
+  // Remove empty elements (except br)
   removeEmptyElements(element);
   
   // Remove duplicate br tags
@@ -271,6 +274,169 @@ function applyAggressiveCleaning(element: HTMLElement): void {
 }
 
 /**
+ * Remove specific elements that aren't needed for translation
+ * @param {HTMLElement} element - The element to clean
+ */
+function removeSpecificElements(element: HTMLElement): void {
+  // Remove all images
+  const images = element.querySelectorAll('img');
+  images.forEach(img => img.remove());
+  
+  // Remove figure and figcaption elements
+  const figures = element.querySelectorAll('figure, figcaption');
+  figures.forEach(fig => fig.remove());
+  
+  // Remove tracking pixels (common in news sites)
+  const trackingPixels = element.querySelectorAll(
+    'img[src*="vgwort"], ' +
+    'img[src*="count"], ' +
+    'img[src*="pixel"], ' +
+    'img[src*="tracking"], ' +
+    'img[src*="analytics"], ' +
+    'img[width="1"], img[height="1"], ' +
+    'img[width="0"], img[height="0"]'
+  );
+  trackingPixels.forEach(pixel => pixel.remove());
+  
+  // Remove author information sections
+  const authorSections = element.querySelectorAll(
+    '[class*="author"], [id*="author"], ' +
+    '[class*="byline"], [id*="byline"], ' +
+    '[class*="writer"], [id*="writer"], ' +
+    '[class*="profile"], [id*="profile"], ' +
+    '[class*="contributor"], [id*="contributor"], ' +
+    'figure[title*="author"], figure[title*="Author"]'
+  );
+  authorSections.forEach(section => section.remove());
+  
+  // Find and remove text nodes containing author information
+  const authorTextNodes = findTextNodesWithContent(element, ['By ', 'Von ', 'Author: ', 'Autor: ']);
+  authorTextNodes.forEach(node => {
+    if (node.parentNode && !isContentElement(node.parentNode)) {
+      node.parentNode.removeChild(node);
+    }
+  });
+  
+  // Remove article metadata (IDs, timestamps, etc.)
+  const metadataElements = element.querySelectorAll(
+    '[class*="meta"], [id*="meta"], ' +
+    '[class*="date"], [id*="date"], ' +
+    '[class*="time"], [id*="time"], ' +
+    '[class*="timestamp"], [id*="timestamp"], ' +
+    '[class*="article-info"], [id*="article-info"], ' +
+    '[class*="article-meta"], [id*="article-meta"]'
+  );
+  metadataElements.forEach(meta => meta.remove());
+  
+  // Find and remove numeric IDs (common in news articles)
+  const numericIdNodes = findTextNodesWithPattern(element, /^\d{5,}$/);
+  numericIdNodes.forEach(node => {
+    if (node.parentNode && !isContentElement(node.parentNode)) {
+      node.parentNode.removeChild(node);
+    }
+  });
+  
+  // Remove donation/subscription prompts
+  const donationElements = element.querySelectorAll(
+    '[class*="donate"], [id*="donate"], ' +
+    '[class*="donation"], [id*="donation"], ' +
+    '[class*="support"], [id*="support"], ' +
+    '[class*="subscribe"], [id*="subscribe"], ' +
+    '[class*="subscription"], [id*="subscription"], ' +
+    '[class*="paywall"], [id*="paywall"], ' +
+    '[class*="membership"], [id*="membership"]'
+  );
+  donationElements.forEach(donation => donation.remove());
+  
+  // Find and remove donation text
+  const donationTextNodes = findTextNodesWithContent(element, [
+    'Please support', 'Bitte unterstützen', 'Unterstützen Sie', 
+    'Spenden', 'Donate', 'Support us', 'Jetzt unterstützen',
+    'Als Genossenschaft', 'Genossenschaft', 'konzernfrei', 'kostenfrei zugänglich'
+  ]);
+  donationTextNodes.forEach(node => {
+    if (node.parentNode && !isContentElement(node.parentNode)) {
+      node.parentNode.removeChild(node);
+    }
+  });
+  
+  // Remove social media sharing elements
+  const socialElements = element.querySelectorAll(
+    '[class*="share"], [id*="share"], ' +
+    '[class*="social"], [id*="social"], ' +
+    '[class*="twitter"], [id*="twitter"], ' +
+    '[class*="facebook"], [id*="facebook"], ' +
+    '[class*="linkedin"], [id*="linkedin"], ' +
+    '[data-share], [aria-label*="Share"]'
+  );
+  socialElements.forEach(social => social.remove());
+}
+
+/**
+ * Find text nodes containing specific content
+ * @param {Node} node - The node to search
+ * @param {string[]} contentPhrases - Phrases to look for
+ * @returns {Text[]} Array of matching text nodes
+ */
+function findTextNodesWithContent(node: Node, contentPhrases: string[]): Text[] {
+  const matches: Text[] = [];
+  const walker = document.createTreeWalker(
+    node,
+    NodeFilter.SHOW_TEXT,
+    null
+  );
+  
+  let currentNode = walker.nextNode();
+  while (currentNode) {
+    const text = currentNode.textContent || '';
+    if (contentPhrases.some(phrase => text.includes(phrase))) {
+      matches.push(currentNode as Text);
+    }
+    currentNode = walker.nextNode();
+  }
+  
+  return matches;
+}
+
+/**
+ * Find text nodes matching a pattern
+ * @param {Node} node - The node to search
+ * @param {RegExp} pattern - Pattern to match
+ * @returns {Text[]} Array of matching text nodes
+ */
+function findTextNodesWithPattern(node: Node, pattern: RegExp): Text[] {
+  const matches: Text[] = [];
+  const walker = document.createTreeWalker(
+    node,
+    NodeFilter.SHOW_TEXT,
+    null
+  );
+  
+  let currentNode = walker.nextNode();
+  while (currentNode) {
+    const text = currentNode.textContent || '';
+    if (pattern.test(text.trim())) {
+      matches.push(currentNode as Text);
+    }
+    currentNode = walker.nextNode();
+  }
+  
+  return matches;
+}
+
+/**
+ * Check if a node is a content element that should be preserved
+ * @param {Node} node - The node to check
+ * @returns {boolean} True if it's a content element
+ */
+function isContentElement(node: Node): boolean {
+  if (node.nodeType !== Node.ELEMENT_NODE) return false;
+  
+  const contentTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'li', 'blockquote'];
+  return contentTags.includes((node as Element).tagName.toLowerCase());
+}
+
+/**
  * Recursively removes empty elements from an element
  * @param {HTMLElement} element - The element to process
  */
@@ -278,8 +444,8 @@ function removeEmptyElements(element: HTMLElement): void {
   const children = Array.from(element.children);
   
   for (const child of children) {
-    // Skip br and img tags
-    if (child.tagName.toLowerCase() === 'br' || child.tagName.toLowerCase() === 'img') {
+    // Skip br tags
+    if (child.tagName.toLowerCase() === 'br') {
       continue;
     }
     
@@ -291,8 +457,7 @@ function removeEmptyElements(element: HTMLElement): void {
     // Remove element if it has no text content and no children
     if (
       child.textContent?.trim() === '' && 
-      child.children.length === 0 &&
-      !child.querySelector('img')
+      child.children.length === 0
     ) {
       child.remove();
     }

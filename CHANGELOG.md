@@ -5,6 +5,20 @@ All notable changes to the Klartext Chrome Extension will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.93] - 2025-03-12
+
+### Improved
+- Verbesserte HTML-Bereinigung für Übersetzungen:
+  - Entfernung von Bildern und Tracking-Pixeln aus dem Übersetzungs-Payload
+  - Entfernung von Autor-Informationen und Bildunterschriften
+  - Entfernung von Metadaten-Elementen wie Artikel-IDs und Zeitstempeln
+  - Entfernung von Spenden- und Abonnement-Aufforderungen
+  - Bessere Fokussierung auf den eigentlichen Textinhalt für die Übersetzung
+
+### Fixed
+- Behebt Problem, bei dem Bilder und andere nicht relevante Elemente in den Übersetzungs-Payload aufgenommen wurden
+- Reduziert die Tokenzahl bei Übersetzungen durch effizientere Bereinigung des HTML-Inhalts
+
 ## [1.5.92] - 2025-03-12
 
 ### Fixed

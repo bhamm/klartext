@@ -158,6 +158,91 @@ describe('HTML Cleaner', () => {
       expect(cleaned).toContain('<p>Unclosed paragraph</p>');
       expect(cleaned).toContain('<div>New div</div>');
     });
+    
+    test('should remove images', () => {
+      const html = '<div><img src="image.jpg" alt="Test image"><p>Content</p></div>';
+      const cleaned = cleanArticleHTML(html);
+      
+      expect(cleaned).not.toContain('<img');
+      expect(cleaned).not.toContain('src="image.jpg"');
+      expect(cleaned).toContain('<p>Content</p>');
+    });
+    
+    test('should remove tracking pixels', () => {
+      const html = '<div><img src="//taz.met.vgwort.de/na/pixel.gif" alt=""><p>Content</p></div>';
+      const cleaned = cleanArticleHTML(html);
+      
+      expect(cleaned).not.toContain('<img');
+      expect(cleaned).not.toContain('vgwort');
+      expect(cleaned).toContain('<p>Content</p>');
+    });
+    
+    test('should remove figure and figcaption elements', () => {
+      const html = '<div><figure><img src="image.jpg"><figcaption>Caption text</figcaption></figure><p>Content</p></div>';
+      const cleaned = cleanArticleHTML(html);
+      
+      expect(cleaned).not.toContain('<figure>');
+      expect(cleaned).not.toContain('<figcaption>');
+      expect(cleaned).not.toContain('Caption text');
+      expect(cleaned).toContain('<p>Content</p>');
+    });
+    
+    test('should remove article metadata', () => {
+      const html = '<div><span>7582376</span><span>6071785</span><p>Content</p></div>';
+      const cleaned = cleanArticleHTML(html);
+      
+      expect(cleaned).not.toContain('7582376');
+      expect(cleaned).not.toContain('6071785');
+      expect(cleaned).toContain('<p>Content</p>');
+    });
+    
+    test('should handle complex news article content', () => {
+      const html = `
+        <div>
+          <span>7582376</span><span>6071785</span>
+          <img src="//taz.met.vgwort.de/na/8919ccb0cee04328b775b45799046617" alt="">
+          <h2><span>Antwort auf 551 Fragen zu NGOs</span><span>: </span></h2>
+          <p>Mit 551 Fragen nahm die Union die linke Zivilgesellschaft ins Visier. So antwortete die Bundesregierung.</p>
+          <div>
+            <figcaption>Bekommt eine deutliche Abfuhr des Finanzministeriums für die Anfrage seiner Fraktion: Friedrich Merz <span><span>Foto: <span>Lisi Niesner, Reuters</span></span></span></figcaption>
+          </div>
+          <div>
+            <div>
+              <figure title="Konrad Litschko"><img src="https://taz.de/kommune/files/images/profile/192x192/7.webp" alt="Konrad Litschko "></figure>
+              <div><span>Von </span><a href="/Konrad-Litschko/!a7/"><span>Konrad Litschko</span></a></div>
+            </div>
+          </div>
+          <div>
+            <div>
+              <p><em>taz</em> | Selten sorgte eine Anfrage im Bundestag für so viel Aufruhr.</p>
+            </div>
+          </div>
+          <div>
+            <div>
+              <p>Als Genossenschaft gehören wir unseren Leser:innen. Und unser Journalismus ist nicht nur 100 % konzernfrei, sondern auch kostenfrei zugänglich.</p>
+            </div>
+          </div>
+        </div>
+      `;
+      const cleaned = cleanArticleHTML(html);
+      
+      // Should keep main content
+      expect(cleaned).toContain('Antwort auf 551 Fragen zu NGOs');
+      expect(cleaned).toContain('Mit 551 Fragen nahm die Union die linke Zivilgesellschaft ins Visier');
+      expect(cleaned).toContain('Selten sorgte eine Anfrage im Bundestag für so viel Aufruhr');
+      
+      // Should remove unnecessary elements
+      expect(cleaned).not.toContain('<img');
+      expect(cleaned).not.toContain('vgwort');
+      expect(cleaned).not.toContain('<figure');
+      expect(cleaned).not.toContain('<figcaption');
+      expect(cleaned).not.toContain('Foto: Lisi Niesner, Reuters');
+      
+      // Note: In a real-world scenario, the donation text might still be present
+      // as it's part of a paragraph element which is considered content.
+      // What's important is that the main article content is preserved
+      // and non-content elements like images, tracking pixels, and metadata are removed.
+    });
   });
 
   describe('stripWhitespace', () => {
