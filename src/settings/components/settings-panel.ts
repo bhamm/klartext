@@ -1,8 +1,8 @@
 /**
- * Settings panel component for text size and experimental features
+ * Settings panel component for text size and settings
  */
-import { getElement, toggleVisibility, addSafeEventListener } from '../utils/dom-utils';
-import { Settings, SettingsPanelComponent, ExperimentalFeatures } from '../../shared/types/settings';
+import { getElement, addSafeEventListener } from '../utils/dom-utils';
+import { Settings, SettingsPanelComponent } from '../../shared/types/settings';
 import { speechSettings } from './speech-settings';
 
 /**
@@ -12,29 +12,12 @@ import { speechSettings } from './speech-settings';
 export function initSettingsPanel(): SettingsPanelComponent | null {
   // Get DOM elements
   const textSizeRadios = document.querySelectorAll<HTMLInputElement>('input[name="text-size"]');
-  const enableFullpageCheckbox = getElement<HTMLInputElement>('enable-fullpage');
-  const fullpageSettings = getElement<HTMLElement>('fullpage-settings');
-  const compareViewCheckbox = getElement<HTMLInputElement>('compare-view');
-  const excludeCommentsCheckbox = getElement<HTMLInputElement>('exclude-comments');
   const translationLevelSlider = getElement<HTMLInputElement>('translation-level');
   
-  if (!textSizeRadios.length || !enableFullpageCheckbox || !fullpageSettings || 
-      !compareViewCheckbox || !excludeCommentsCheckbox || !translationLevelSlider) {
+  if (!textSizeRadios.length || !translationLevelSlider) {
     console.error('Settings panel: Required DOM elements not found');
     return null;
   }
-  
-  /**
-   * Handle fullpage translation toggle
-   * @param event - Change event
-   */
-  function handleFullpageToggle(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    toggleVisibility(fullpageSettings, target.checked);
-  }
-  
-  // Set up event listeners
-  addSafeEventListener(enableFullpageCheckbox, 'change', handleFullpageToggle);
   
   // Public interface
   return {
@@ -60,22 +43,7 @@ export function initSettingsPanel(): SettingsPanelComponent | null {
           translationLevelSlider!.value = levelIndex.toString();
         }
       }
-      
-      // Set experimental features
-      if (settings.experimentalFeatures) {
-        enableFullpageCheckbox!.checked = Boolean(settings.experimentalFeatures.fullPageTranslation);
-        toggleVisibility(fullpageSettings!, enableFullpageCheckbox!.checked);
-      }
-      
-      // Set fullpage settings
-      if (settings.compareView !== undefined) {
-        compareViewCheckbox!.checked = Boolean(settings.compareView);
-      }
-      
-      if (settings.excludeComments !== undefined) {
-        excludeCommentsCheckbox!.checked = Boolean(settings.excludeComments);
-      }
-      
+            
       // Set speech settings
       if (settings.speech) {
         speechSettings.setSettings(settings.speech);
@@ -101,11 +69,6 @@ export function initSettingsPanel(): SettingsPanelComponent | null {
       return {
         textSize,
         translationLevel,
-        experimentalFeatures: {
-          fullPageTranslation: enableFullpageCheckbox!.checked
-        } as ExperimentalFeatures,
-        compareView: compareViewCheckbox!.checked,
-        excludeComments: excludeCommentsCheckbox!.checked,
         speech
       };
     }

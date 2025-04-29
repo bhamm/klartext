@@ -23,7 +23,6 @@ export type ContentMessageAction =
   | 'translateArticle'
   | 'translateSection'
   | 'startArticleMode'
-  | 'startFullPageMode'
   | 'startTranslation'
   | 'showTranslation'
   | 'showError'
@@ -35,12 +34,6 @@ export type ContentMessageAction =
  */
 export interface ContentSettings {
   textSize?: 'normal' | 'gross' | 'sehr-gross';
-  compareView?: boolean;
-  excludeComments?: boolean;
-  experimentalFeatures?: {
-    fullPageTranslation?: boolean;
-    [key: string]: boolean | undefined;
-  };
   [key: string]: any;
 }
 

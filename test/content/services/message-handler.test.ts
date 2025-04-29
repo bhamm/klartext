@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
-import { initMessageHandler, startArticleMode, stopArticleMode, startFullPageMode, stopFullPageMode } from '../../../src/content/services/message-handler';
+import { initMessageHandler, startArticleMode, stopArticleMode } from '../../../src/content/services/message-handler';
 import { ContentMessage } from '../../../src/content/types';
 import { ARTICLE_SELECTORS } from '../../../src/content/constants';
 
@@ -78,7 +78,6 @@ describe('Message Handler', () => {
     
     // Reset module state by re-initializing
     stopArticleMode();
-    stopFullPageMode();
   });
   
   describe('initMessageHandler', () => {
@@ -121,14 +120,6 @@ describe('Message Handler', () => {
       expect(document.body.style.cursor).toBe('pointer');
     });
     
-    test('should handle startFullPageMode message', async () => {
-      const sendResponse = jest.fn();
-      
-      handleMessage({ action: 'startFullPageMode' }, {} as chrome.runtime.MessageSender, sendResponse);
-      
-      expect(pageTranslator.setControls).toHaveBeenCalledWith(translationControls);
-      expect(pageTranslator.initialize).toHaveBeenCalled();
-    });
     
     test('should handle startTranslation message in article mode', () => {
       const sendResponse = jest.fn();
@@ -142,20 +133,6 @@ describe('Message Handler', () => {
       expect(translationOverlay.showLoading).toHaveBeenCalled();
     });
     
-    test('should handle startTranslation message in full page mode', () => {
-      const sendResponse = jest.fn();
-      
-      // First set full page mode
-      handleMessage({ action: 'startFullPageMode' }, {} as chrome.runtime.MessageSender, sendResponse);
-      
-      // Reset the mocks to ensure clean state
-      (translationControls.show as jest.Mock).mockClear();
-      
-      // Then test startTranslation
-      handleMessage({ action: 'startTranslation' }, {} as chrome.runtime.MessageSender, sendResponse);
-      
-      expect(translationControls.show).toHaveBeenCalled();
-    });
     
     test('should handle showTranslation message in article mode', () => {
       const sendResponse = jest.fn();
@@ -166,22 +143,6 @@ describe('Message Handler', () => {
       expect(translationOverlay.show).toHaveBeenCalledWith(translation);
     });
     
-    test('should handle showTranslation message in full page mode', () => {
-      const sendResponse = jest.fn();
-      const translation = '<p>Translated text</p>';
-      const id = 'section-1';
-      
-      // First set full page mode
-      handleMessage({ action: 'startFullPageMode' }, {} as chrome.runtime.MessageSender, sendResponse);
-      
-      // Reset the mocks to ensure clean state
-      (pageTranslator.appendTranslation as jest.Mock).mockClear();
-      
-      // Then test showTranslation
-      handleMessage({ action: 'showTranslation', translation, id }, {} as chrome.runtime.MessageSender, sendResponse);
-      
-      expect(pageTranslator.appendTranslation).toHaveBeenCalledWith(translation, id);
-    });
     
     test('should handle showError message in article mode', () => {
       const sendResponse = jest.fn();
@@ -195,21 +156,6 @@ describe('Message Handler', () => {
       expect(translationOverlay.showError).toHaveBeenCalledWith(error);
     });
     
-    test('should handle showError message in full page mode', () => {
-      const sendResponse = jest.fn();
-      const error = 'Error message';
-      
-      // First set full page mode
-      handleMessage({ action: 'startFullPageMode' }, {} as chrome.runtime.MessageSender, sendResponse);
-      
-      // Reset the mocks to ensure clean state
-      (pageTranslator.showError as jest.Mock).mockClear();
-      
-      // Then test showError
-      handleMessage({ action: 'showError', error }, {} as chrome.runtime.MessageSender, sendResponse);
-      
-      expect(pageTranslator.showError).toHaveBeenCalledWith(error);
-    });
     
     test('should handle updateSettings message', () => {
       const sendResponse = jest.fn();
@@ -339,41 +285,4 @@ describe('Message Handler', () => {
     });
   });
   
-  describe('startFullPageMode', () => {
-    test('should initialize page translator', async () => {
-      await startFullPageMode();
-      
-      expect(pageTranslator.setControls).toHaveBeenCalledWith(translationControls);
-      expect(pageTranslator.initialize).toHaveBeenCalled();
-    });
-    
-    test('should handle initialization errors', async () => {
-      // Mock pageTranslator.initialize to throw an error
-      (pageTranslator.initialize as jest.Mock).mockRejectedValueOnce(new Error('Init error'));
-      
-      // Reset the mocks to ensure clean state
-      (pageTranslator.showError as jest.Mock).mockClear();
-      
-      await startFullPageMode();
-      
-      // Check if showError was called with the error message
-      expect(pageTranslator.showError).toHaveBeenCalled();
-      expect(translationControls.hide).toHaveBeenCalled();
-    });
-  });
-  
-  describe('stopFullPageMode', () => {
-    test('should hide translation controls', async () => {
-      // First start full page mode
-      await startFullPageMode();
-      
-      // Reset the mocks to ensure clean state
-      (translationControls.hide as jest.Mock).mockClear();
-      
-      // Then stop it
-      stopFullPageMode();
-      
-      expect(translationControls.hide).toHaveBeenCalled();
-    });
-  });
 });

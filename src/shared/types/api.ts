@@ -12,9 +12,6 @@ export interface StorageItems {
   apiKey?: string;
   apiEndpoint?: string;
   translationLevel?: 'einfachere_sprache' | 'einfache_sprache' | 'leichte_sprache';
-  experimentalFeatures?: {
-    fullPageTranslation?: boolean;
-  };
   translationCache?: {
     [key: string]: string;
   };

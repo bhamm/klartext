@@ -6,8 +6,7 @@ import {
   ProviderConfig, 
   ConfigStore, 
   FeedbackDetails, 
-  MenuItemConfig,
-  ExperimentalFeatures 
+  MenuItemConfig
 } from '../shared/types/error';
 import {
   ApiConfig,
@@ -27,8 +26,7 @@ import {
 // Constants
 const MENU_ITEMS: { [key: string]: string } = {
   SELECTION: 'translate-selection-to-leichte-sprache',
-  ARTICLE: 'translate-article-to-leichte-sprache',
-  FULLPAGE: 'translate-fullpage-to-leichte-sprache'
+  ARTICLE: 'translate-article-to-leichte-sprache'
 };
 const REPO_URL = 'https://github.com/bhamm/klartext';
 
@@ -149,7 +147,7 @@ static getTranslationLevelDisplayName(level: string | undefined): string {
   return level && displayNames[level] ? displayNames[level] : 'Leichte Sprache'; // Default to 'Leichte Sprache' if level is not found or undefined
 }
 
-static setupContextMenu(experimentalFeatures: ExperimentalFeatures) {
+static setupContextMenu() {
   // Get the display name for the current translation level
   const translationLevelDisplay = this.getTranslationLevelDisplayName(API_CONFIG.translationLevel);
   
@@ -165,17 +163,8 @@ static setupContextMenu(experimentalFeatures: ExperimentalFeatures) {
       MENU_ITEMS.ARTICLE,
       `Artikel in ${translationLevelDisplay} übersetzen`,
       ['all'],
-      () => {}
+      () => console.log('Context menu items created successfully')
     );
-
-    if (experimentalFeatures?.fullPageTranslation) {
-      this.createMenuItem(
-        MENU_ITEMS.FULLPAGE,
-        `Ganze Seite in ${translationLevelDisplay} übersetzen (Beta)`,
-        ['all'],
-        () => console.log('Context menu items created successfully')
-      );
-    }
   });
 }
 }
@@ -339,9 +328,7 @@ class TranslationCache {
 // Initialize context menu
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed/updated, creating context menu');
-  chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
-    MenuManager.setupContextMenu(items.experimentalFeatures || {});
-  });
+  MenuManager.setupContextMenu();
 });
 
 // Message handling
@@ -423,9 +410,7 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
                 model: API_CONFIG.model
               });
 
-              chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
-                MenuManager.setupContextMenu(items.experimentalFeatures || {});
-              });
+              MenuManager.setupContextMenu();
             });
           } catch (error) {
             console.error('Error validating model after provider change:', error);
@@ -445,9 +430,7 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
             model: API_CONFIG.model
           });
 
-          chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
-            MenuManager.setupContextMenu(items.experimentalFeatures || {});
-          });
+          MenuManager.setupContextMenu();
         });
       }
       
@@ -779,7 +762,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   
   console.log('Context menu clicked:', info.menuItemId);
   
-  if (info.menuItemId === MENU_ITEMS.SELECTION || info.menuItemId === MENU_ITEMS.ARTICLE || info.menuItemId === MENU_ITEMS.FULLPAGE) {
+  if (info.menuItemId === MENU_ITEMS.SELECTION || info.menuItemId === MENU_ITEMS.ARTICLE) {
     if (info.menuItemId === MENU_ITEMS.SELECTION && !info.selectionText) return;
     
     console.log('Current API configuration:', {
@@ -805,8 +788,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
         if (info.menuItemId === MENU_ITEMS.ARTICLE) {
           ContentScriptManager.sendMessage(tab, { action: 'startArticleMode' });
-        } else if (info.menuItemId === MENU_ITEMS.FULLPAGE) {
-          ContentScriptManager.sendMessage(tab, { action: 'startFullPageMode' });
         } else if (info.selectionText) {
           ContentScriptManager.sendMessage(tab, { action: 'startTranslation' });
           const translation = await handleTranslation(info.selectionText);

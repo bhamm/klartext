@@ -11,7 +11,6 @@ import { ContentMessage } from '../types';
 
 // Track mode states
 let isArticleMode = false;
-let isFullPageMode = false;
 let currentHighlight: HTMLElement | null = null;
 
 // Track if speech controller is loaded
@@ -53,30 +52,18 @@ function handleMessage(
         startArticleMode();
         break;
 
-      case 'startFullPageMode':
-        console.log('Starting full page translation mode');
-        startFullPageMode();
-        break;
 
       case 'startTranslation':
         console.log('Starting translation, showing loading state');
-        if (isFullPageMode) {
-          if (translationControls) {
-            translationControls.show();
-          }
-        } else {
-          // Store the original text from the current selection
-          translationOverlay.originalText = window.getSelection()?.toString() || '';
-          console.log('Stored original text for feedback:', translationOverlay.originalText);
-          translationOverlay.showLoading();
-        }
+        // Store the original text from the current selection
+        translationOverlay.originalText = window.getSelection()?.toString() || '';
+        console.log('Stored original text for feedback:', translationOverlay.originalText);
+        translationOverlay.showLoading();
         break;
 
       case 'showTranslation':
         console.log('Showing translation:', message.translation);
-        if (isFullPageMode && pageTranslator && message.translation && message.id) {
-          pageTranslator.appendTranslation(message.translation, message.id);
-        } else if (message.translation) {
+        if (message.translation) {
           translationOverlay.show(message.translation);
         }
         
@@ -85,13 +72,10 @@ function handleMessage(
 
       case 'showError':
         console.error('Showing error:', message.error);
-        if (isFullPageMode && pageTranslator && message.error) {
-          pageTranslator.showError(message.error);
-        } else if (message.error) {
+        if (message.error) {
           translationOverlay.showError(message.error);
         }
         stopArticleMode();
-        stopFullPageMode();
         break;
 
       case 'updateSettings':
@@ -294,34 +278,4 @@ function handleArticleClick(event: MouseEvent): void {
     action: 'translateArticle',
     html: strippedHtml
   });
-}
-
-/**
- * Start full page translation mode
- */
-export async function startFullPageMode(): Promise<void> {
-  if (isFullPageMode) return;
-  isFullPageMode = true;
-  
-  // Initialize page translator
-  pageTranslator.setControls(translationControls);
-  
-  try {
-    await pageTranslator.initialize();
-  } catch (error) {
-    console.error('Error initializing page translator:', error);
-    pageTranslator.showError(error instanceof Error ? error.message : String(error));
-    stopFullPageMode();
-  }
-
-  preloadSpeechController();
-}
-
-/**
- * Stop full page translation mode
- */
-export function stopFullPageMode(): void {
-  if (!isFullPageMode) return;
-  isFullPageMode = false;
-  translationControls.hide();
 }

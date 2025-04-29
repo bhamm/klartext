@@ -191,9 +191,6 @@ describe('Validation Service', () => {
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         textSize: 'normal',
         translationLevel: 'leichte_sprache',
-        experimentalFeatures: { fullPageTranslation: false },
-        compareView: false,
-        excludeComments: true,
         speech: {
           voiceURI: '',
           rate: 0.9,

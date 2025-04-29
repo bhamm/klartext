@@ -50,7 +50,3 @@ export interface MenuItemConfig {
   contexts: chrome.contextMenus.ContextType[];
   callback?: () => void;
 }
-
-export interface ExperimentalFeatures {
-  fullPageTranslation?: boolean;
-}

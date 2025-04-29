@@ -5,6 +5,24 @@ All notable changes to the Klartext Chrome Extension will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.96] - 2025-04-29
+
+### Removed
+- Vollständige Entfernung aller experimentellen Einstellungen:
+  - Entfernung des "Experimentelle Funktionen" Bereichs aus der Benutzeroberfläche
+  - Entfernung der `ExperimentalFeatures` Schnittstelle aus dem Code
+  - Umwandlung der verbleibenden Einstellungen (Vergleichsansicht, Kommentare ausschließen) in reguläre Einstellungen
+  - Bereinigung aller Referenzen zu experimentellen Funktionen in Tests und Typdefinitionen
+
+## [1.5.95] - 2025-04-28
+
+### Removed
+- Experimentelle Vollseiten-Übersetzungsfunktion:
+  - Entfernung der experimentellen Vollseiten-Übersetzung aus der Benutzeroberfläche
+  - Entfernung des Kontextmenüeintrags für die Vollseiten-Übersetzung
+  - Bereinigung des Codes und der Einstellungen im Zusammenhang mit der Vollseiten-Übersetzung
+  - Entfernung der zugehörigen Tests
+
 ## [1.5.94] - 2025-03-12
 
 ### Added

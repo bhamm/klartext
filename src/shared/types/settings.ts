@@ -25,18 +25,7 @@ export interface Settings {
   apiEndpoint: string;
   textSize: 'normal' | 'gross' | 'sehr-gross';
   translationLevel: 'einfachere_sprache' | 'einfache_sprache' | 'leichte_sprache';
-  experimentalFeatures: ExperimentalFeatures;
-  compareView: boolean;
-  excludeComments: boolean;
   speech: SpeechSettings;
-}
-
-/**
- * Experimental features configuration
- */
-export interface ExperimentalFeatures {
-  fullPageTranslation: boolean;
-  [key: string]: boolean;
 }
 
 /**
@@ -49,11 +38,6 @@ export const DEFAULT_SETTINGS: Settings = {
   apiEndpoint: '',
   textSize: 'normal',
   translationLevel: 'leichte_sprache',
-  experimentalFeatures: {
-    fullPageTranslation: false
-  },
-  compareView: false,
-  excludeComments: true,
   speech: {
     voiceURI: '',  // Empty string means use default voice
     rate: 0.9,
@@ -69,9 +53,6 @@ export const DEFAULT_SETTINGS: Settings = {
 export interface SettingsFormData extends ProviderConfig {
   textSize: Settings['textSize'];
   translationLevel: Settings['translationLevel'];
-  experimentalFeatures: ExperimentalFeatures;
-  compareView: boolean;
-  excludeComments: boolean;
   speech: SpeechSettings;
 }
 
