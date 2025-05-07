@@ -1,10 +1,9 @@
 /**
  * Page translation controller for the Klartext extension
  */
-import { MAX_CHUNK_CHARS, CONTENT_SELECTORS, EXCLUDE_SELECTORS, CONTENT_CLASS_PATTERNS } from '../constants';
+import { MAX_CHUNK_CHARS, EXCLUDE_SELECTORS, CONTENT_CLASS_PATTERNS } from '../constants';
 import { splitIntoChunks, cleanArticleHTML, stripWhitespace } from '../utils/html-cleaner';
 import { processTextToWords } from '../utils/dom-utils';
-import { speechController } from './speech-controller';
 import { PageTranslatorInterface, SectionData, TranslationControlsInterface } from '../types';
 import { TranslationControls } from '../ui/translation-controls';
 
@@ -31,9 +30,7 @@ export class PageTranslator implements PageTranslatorInterface {
    * Get the singleton instance of PageTranslator
    */
   public static getInstance(): PageTranslator {
-    if (!PageTranslator.instance) {
-      PageTranslator.instance = new PageTranslator();
-    }
+    PageTranslator.instance ??= new PageTranslator();
     return PageTranslator.instance;
   }
 
@@ -72,7 +69,7 @@ export class PageTranslator implements PageTranslatorInterface {
       // Collect text from all sections
       let fullPageText = '';
       this.sections.forEach(section => {
-        if (section.originalSection && section.originalSection.innerText) {
+        if (section.originalSection?.innerText) {
           fullPageText += section.originalSection.innerText + '\n\n';
         }
       });
@@ -506,7 +503,7 @@ export class PageTranslator implements PageTranslatorInterface {
       
       // Setup TTS for this section
       if (this.controls) {
-        const plainText = translationElement.textContent || '';
+        const plainText = translationElement.textContent ?? '';
         const words = plainText.split(/\s+/).filter(word => word.length > 0);
         this.controls.setupTTS(plainText, words);
       }
@@ -561,7 +558,7 @@ export class PageTranslator implements PageTranslatorInterface {
     
     // Setup TTS for this section
     if (this.controls) {
-      const plainText = translationElement.textContent || '';
+      const plainText = translationElement.textContent ?? '';
       const words = plainText.split(/\s+/).filter(word => word.length > 0);
       this.controls.setupTTS(plainText, words);
     }

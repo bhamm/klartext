@@ -2,8 +2,6 @@
  * Message handler service for the Klartext extension
  */
 import { translationOverlay } from '../ui/translation-overlay';
-import { translationControls } from '../ui/translation-controls';
-import { pageTranslator } from '../controllers/page-controller';
 import { ARTICLE_SELECTORS } from '../constants';
 import { findClosestMatchingElement } from '../utils/dom-utils';
 import { cleanArticleHTML, stripWhitespace } from '../utils/html-cleaner';
@@ -56,7 +54,7 @@ function handleMessage(
       case 'startTranslation':
         console.log('Starting translation, showing loading state');
         // Store the original text from the current selection
-        translationOverlay.originalText = window.getSelection()?.toString() || '';
+        translationOverlay.originalText = window.getSelection()?.toString() ?? '';
         console.log('Stored original text for feedback:', translationOverlay.originalText);
         translationOverlay.showLoading();
         break;

@@ -74,7 +74,7 @@ export abstract class BaseProvider implements TranslationProvider {
       }
       
       // Get provider-specific prompt for the selected level
-      const level = config.translationLevel || 'leichte_sprache';
+      const level = config.translationLevel ?? 'leichte_sprache';
       
       if (BaseProvider.prompts && 
           BaseProvider.prompts[config.provider] && 
@@ -106,7 +106,7 @@ export abstract class BaseProvider implements TranslationProvider {
 
   protected createErrorDetails(error: any, config: ProviderConfig, text: string): TranslationError {
     return {
-      message: error?.message || 'Unknown error',
+      message: error?.message ?? 'Unknown error',
       request: {
         endpoint: config.apiEndpoint,
         model: config.model,
@@ -129,19 +129,5 @@ export abstract class BaseProvider implements TranslationProvider {
 
   protected cleanResponse(text: string): string {
     return text.replace(/(^```html|^```|```$|^html)/g, '').trim();
-  }
-
-  private static rateLimiter = {
-    lastCall: 0,
-    minInterval: 1000, // 1 second between calls
-    maxCallsPerMinute: 60
-  };
-
-  protected async checkRateLimit() {
-    const now = Date.now();
-    if (now - BaseProvider.rateLimiter.lastCall < BaseProvider.rateLimiter.minInterval) {
-      throw new Error('Rate limit exceeded');
-    }
-    BaseProvider.rateLimiter.lastCall = now;
   }
 }

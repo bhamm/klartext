@@ -250,7 +250,7 @@ export async function saveAllSettings(settings: Settings): Promise<SettingsRespo
 
     if (!response.success) {
       console.error('Background script returned error:', response.error);
-      throw new Error(response.error || 'Failed to update API configuration');
+      throw new Error(response.error ?? 'Failed to update API configuration');
     }
 
     // Update content script settings

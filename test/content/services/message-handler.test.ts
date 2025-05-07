@@ -40,10 +40,7 @@ jest.mock('../../../src/content/utils/html-cleaner', () => ({
 
 // Import mocked modules
 import { translationOverlay } from '../../../src/content/ui/translation-overlay';
-import { translationControls } from '../../../src/content/ui/translation-controls';
-import { pageTranslator } from '../../../src/content/controllers/page-controller';
 import { findClosestMatchingElement } from '../../../src/content/utils/dom-utils';
-import { cleanArticleHTML } from '../../../src/content/utils/html-cleaner';
 
 describe('Message Handler', () => {
   let addListenerSpy: jest.SpyInstance<any>;

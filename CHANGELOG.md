@@ -5,6 +5,23 @@ All notable changes to the Klartext Chrome Extension will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.98] - 2025-04-29
+
+### Improved
+- Code-Qualität verbessert:
+  - Verwendung von optionalen Verkettungsoperatoren (optional chaining) für bessere Lesbarkeit
+  - Ersetzung von `if (section.originalSection && section.originalSection.innerText)` durch `if (section.originalSection?.innerText)` in page-controller.ts
+  - Modernisierung des getInstance() Singleton-Patterns mit Nullish Coalescing Assignment Operator (??=)
+
+## [1.5.97] - 2025-04-29
+
+### Removed
+- Entfernung ungenutzter Code-Fragmente:
+  - Leere `src/content/content.js` Datei entfernt (wird nicht im Build-Prozess verwendet)
+  - Ungenutzte `checkRateLimit` Methode und `rateLimiter` Property in der BaseProvider-Klasse
+  - Ungenutzte Imports in message-handler.ts: `pageTranslator` und `translationControls`
+  - Referenzen zu nicht existierenden Sidepanel-Dateien und full-page-mode.test.js
+
 ## [1.5.96] - 2025-04-29
 
 ### Removed

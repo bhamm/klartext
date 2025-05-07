@@ -3,10 +3,8 @@ import { ttsProviderRegistry } from './tts-providers';
 import { isInDeveloperMode, isLikelyInDeveloperMode } from '../shared/utils/extension-utils';
 import { 
   ErrorDetails, 
-  ProviderConfig, 
   ConfigStore, 
-  FeedbackDetails, 
-  MenuItemConfig
+  FeedbackDetails
 } from '../shared/types/error';
 import {
   ApiConfig,
@@ -18,7 +16,6 @@ import {
   GetProviderVoicesMessage,
   SynthesizeSpeechMessage,
   PingResponse,
-  Tab,
   Message,
   DeveloperModeMessage
 } from '../shared/types/api';
@@ -63,7 +60,7 @@ class ApiErrorHandler {
   static createErrorDetails(error: unknown, config: ApiConfig, text: string, provider: string): ErrorDetails {
     const err = error as { message?: string; status?: number; statusText?: string };
     return {
-      message: err?.message || 'Unknown error',
+      message: err?.message ?? 'Unknown error',
       request: {
         endpoint: config.apiEndpoint,
         model: config.model,
@@ -299,7 +296,7 @@ class TranslationCache {
   static async get(text: string): Promise<string | null> {
     try {
       const result = await chrome.storage.local.get(['translationCache']);
-      return (result.translationCache || {})[text];
+      return (result.translationCache ?? {})[text];
     } catch (error) {
       console.error('Error reading from cache:', error);
       return null;
@@ -309,7 +306,7 @@ class TranslationCache {
   static async set(text: string, translation: string): Promise<void> {
     try {
       const result = await chrome.storage.local.get(['translationCache']);
-      const cache = result.translationCache || {};
+      const cache = result.translationCache ?? {};
       cache[text] = translation;
       
       const entries = Object.entries(cache);
@@ -488,7 +485,7 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
         }
         
         // Get API key from message or CONFIG_STORE
-        const apiKey = message.apiKey || CONFIG_STORE.providers[message.provider]?.apiKey || '';
+        const apiKey = (message.apiKey ?? CONFIG_STORE.providers[message.provider]?.apiKey) || '';
         
         // Create provider config
         const config = {
@@ -540,7 +537,7 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
         // Create provider config
         const config = {
           provider: message.settings.provider,
-          apiKey: message.settings.apiKey || CONFIG_STORE.providers[message.settings.provider]?.apiKey || '',
+          apiKey: (message.settings.apiKey ?? CONFIG_STORE.providers[message.settings.provider]?.apiKey) || '',
           apiEndpoint: CONFIG_STORE.providers[message.settings.provider]?.apiEndpoint || '',
           voice: message.settings.voiceURI,
           rate: message.settings.rate,
@@ -698,6 +695,7 @@ class ContentScriptManager {
       });
       return response?.status === 'ok';
     } catch (error) {
+      console.error('Failed to check if loaded:', error);
       return false;
     }
   }

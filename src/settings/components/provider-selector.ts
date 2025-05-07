@@ -130,12 +130,12 @@ export function initProviderSelector({
         // Set API key and endpoint from api-keys.json if available
         const metadata = providers[providerId];
         if (apiKeys.providers?.[providerId]) {
-          apiKeyInput!.value = apiKeys.providers[providerId].apiKey || '';
-          apiEndpointInput!.value = apiKeys.providers[providerId].apiEndpoint || metadata.defaultEndpoint;
+          apiKeyInput.value = apiKeys.providers[providerId].apiKey || '';
+          apiEndpointInput.value = apiKeys.providers[providerId].apiEndpoint || metadata.defaultEndpoint;
         } else {
           // Only set default endpoint if field is empty
-          if (!apiEndpointInput!.value) {
-            apiEndpointInput!.value = metadata.defaultEndpoint;
+          if (!apiEndpointInput.value) {
+            apiEndpointInput.value = metadata.defaultEndpoint;
           }
         }
         
@@ -149,10 +149,10 @@ export function initProviderSelector({
      */
     getProviderConfig(): ProviderConfig {
       return {
-        provider: providerSelect!.value,
-        model: modelSelect!.value,
-        apiKey: apiKeyInput!.value.trim(),
-        apiEndpoint: apiEndpointInput!.value.trim()
+        provider: providerSelect.value,
+        model: modelSelect.value,
+        apiKey: apiKeyInput.value.trim(),
+        apiEndpoint: apiEndpointInput.value.trim()
       };
     },
     

@@ -1,7 +1,7 @@
 /**
  * Settings panel component for text size and settings
  */
-import { getElement, addSafeEventListener } from '../utils/dom-utils';
+import { getElement } from '../utils/dom-utils';
 import { Settings, SettingsPanelComponent } from '../../shared/types/settings';
 import { speechSettings } from './speech-settings';
 
@@ -40,7 +40,7 @@ export function initSettingsPanel(): SettingsPanelComponent | null {
       if (settings.translationLevel) {
         const levelIndex = ['einfachere_sprache', 'einfache_sprache', 'leichte_sprache'].indexOf(settings.translationLevel);
         if (levelIndex !== -1) {
-          translationLevelSlider!.value = levelIndex.toString();
+          translationLevelSlider.value = levelIndex.toString();
         }
       }
             
@@ -60,7 +60,7 @@ export function initSettingsPanel(): SettingsPanelComponent | null {
       const textSize = selectedTextSize ? selectedTextSize.value as Settings['textSize'] : 'normal';
       
       // Get translation level
-      const translationLevelValue = translationLevelSlider!.value;
+      const translationLevelValue = translationLevelSlider.value;
       const translationLevel = ['einfachere_sprache', 'einfache_sprache', 'leichte_sprache'][parseInt(translationLevelValue)] as Settings['translationLevel'];
       
       // Get speech settings
