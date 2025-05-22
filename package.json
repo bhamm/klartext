@@ -1,11 +1,12 @@
 {
   "name": "klartext",
-  "version": "1.5.92",
+  "version": "1.5.98",
   "description": "Chrome extension for translating German texts into 'Leichte Sprache'",
   "private": true,
   "scripts": {
-    "build": "webpack --config webpack.config.js && npm run copy-assets",
-    "copy-assets": "mkdir -p dist/content dist/config dist/settings && cp src/content/overlay.css dist/content/ && cp src/config/prompts.json dist/config/ && cp src/settings/settings.html dist/settings/ && cp src/settings/bmc-button.png dist/settings/ && cp src/config/api-keys.json dist/config/ 2>/dev/null || true",
+    "download-fonts": "node scripts/download-fonts.js",
+    "build": "npm run download-fonts && webpack --config webpack.config.js && npm run copy-assets",
+    "copy-assets": "mkdir -p dist/content dist/config dist/settings dist/fonts && cp src/content/overlay.css dist/content/ && cp src/config/prompts.json dist/config/ && cp src/settings/settings.html dist/settings/ && cp src/settings/bmc-button.png dist/settings/ && cp src/fonts/*.woff2 dist/fonts/ && cp src/config/api-keys.json dist/config/ 2>/dev/null || true",
     "package": "zip -r klartext.zip . -x '*.git*' 'node_modules/*' '*.zip' '*.crx' '*.pem' 'package*.json' 'README.md' 'LICENSE'",
     "test": "jest",
     "test:selenium": "node test/selenium/runner.js",

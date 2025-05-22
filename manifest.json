@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klartext - Leichte Sprache",
-  "version": "1.5.92",
+  "version": "1.5.98",
   "description": "Übersetzt deutsche Texte in 'Leichte Sprache' für bessere Zugänglichkeit",
   "permissions": [
     "contextMenus",
@@ -9,15 +9,14 @@
     "scripting",
     "activeTab",
     "tabs",
-    "unlimitedStorage",
-    "management"
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "https://api.openai.com/*",
     "https://generativelanguage.googleapis.com/*",
     "https://api.anthropic.com/*",
     "https://api.deepseek.com/*",
-    "http://localhost:1234/*",
+    "http://localhost:*/*",
     "https://canny.io/*",
     "https://texttospeech.googleapis.com/*"
   ],
@@ -31,7 +30,10 @@
       "dist/content/overlay.css",
       "dist/config/api-keys.json",
       "dist/config/prompts.json",
-      "dist/settings/bmc-button.png"
+      "dist/settings/bmc-button.png",
+      "dist/fonts/OpenSans-Regular.woff2",
+      "dist/fonts/OpenSans-Medium.woff2",
+      "dist/fonts/OpenSans-SemiBold.woff2"
     ],
     "matches": ["<all_urls>"]
   }],

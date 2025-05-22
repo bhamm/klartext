@@ -432,3 +432,9 @@ Die Erweiterung enthält End-to-End-Tests mit Selenium, die die Hauptfunktionen 
 ## Lizenz
 
 MIT License - Siehe LICENSE-Datei für Details
+
+## Fonts
+
+This project uses Open Sans, licensed under the Apache License 2.0:
+- Copyright 2020 The Open Sans Project Authors (https://github.com/googlefonts/opensans)
+- License: [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)

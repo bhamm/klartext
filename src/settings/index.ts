@@ -68,7 +68,7 @@ async function initSettings(): Promise<void> {
         // Validate form
         const validation = validateForm(formData);
         if (!validation.success) {
-          showStatus(validation.error || 'Validation error', 'error');
+          showStatus(validation.error ?? 'Validation error', 'error');
           return;
         }
         
@@ -104,7 +104,7 @@ async function initSettings(): Promise<void> {
     // Display version number
     const versionElement = document.getElementById('version-number');
     if (versionElement) {
-      const manifest = await chrome.runtime.getManifest();
+      const manifest = chrome.runtime.getManifest();
       versionElement.textContent = `Version ${manifest.version}`;
     }
     

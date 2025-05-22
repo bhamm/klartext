@@ -23,7 +23,6 @@ export type ContentMessageAction =
   | 'translateArticle'
   | 'translateSection'
   | 'startArticleMode'
-  | 'startFullPageMode'
   | 'startTranslation'
   | 'showTranslation'
   | 'showError'
@@ -35,12 +34,6 @@ export type ContentMessageAction =
  */
 export interface ContentSettings {
   textSize?: 'normal' | 'gross' | 'sehr-gross';
-  compareView?: boolean;
-  excludeComments?: boolean;
-  experimentalFeatures?: {
-    fullPageTranslation?: boolean;
-    [key: string]: boolean | undefined;
-  };
   [key: string]: any;
 }
 
@@ -156,21 +149,4 @@ export interface TranslationOverlayInterface {
   reportError(message: string): Promise<void>;
   hide(): void;
   isVisible(): boolean;
-}
-
-/**
- * Page translator interface
- */
-export interface PageTranslatorInterface {
-  sections: SectionData[];
-  currentSection: number;
-  controls: TranslationControlsInterface | null;
-  
-  setControls(controls: TranslationControlsInterface): void;
-  initialize(): Promise<void>;
-  getContentSections(): SectionData[];
-  translateNextSection(): Promise<void>;
-  appendTranslation(translation: string, id: string): void;
-  completeTranslation(): void;
-  showError(message: string): void;
 }

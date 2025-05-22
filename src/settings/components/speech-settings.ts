@@ -2,7 +2,6 @@
  * Speech settings component for the Klartext extension
  */
 import { SpeechSettings, ApiKeysConfig } from '../../shared/types/settings';
-import { getTTSProvidersMetadata } from '../../background/tts-providers';
 import { loadApiKeys } from '../services/settings-service';
 
 /**
@@ -351,7 +350,7 @@ export class SpeechSettingsComponent {
       }
       
       if (!response || !response.success || !response.voices) {
-        console.error('Failed to fetch provider voices:', response?.error || 'Unknown error');
+        console.error('Failed to fetch provider voices:', response?.error ?? 'Unknown error');
         return;
       }
       
@@ -491,12 +490,12 @@ export class SpeechSettingsComponent {
     
     // If the exact URI wasn't found, try to find a voice with a similar name
     if (voiceURI) {
-      const nameFromURI = voiceURI.split('/').pop() || '';
+      const nameFromURI = voiceURI.split('/').pop() ?? '';
       
       // Try to find by name similarity
       for (let i = 0; i < this.voiceSelect.options.length; i++) {
         const optionValue = this.voiceSelect.options[i].value;
-        const optionText = this.voiceSelect.options[i].textContent || '';
+        const optionText = this.voiceSelect.options[i].textContent ?? '';
         
         if (optionValue.includes(nameFromURI) || 
             nameFromURI.includes(optionValue) ||
@@ -511,7 +510,7 @@ export class SpeechSettingsComponent {
       // Try exact name match (case insensitive)
       for (let i = 0; i < this.voiceSelect.options.length; i++) {
         const optionValue = this.voiceSelect.options[i].value;
-        const optionText = this.voiceSelect.options[i].textContent || '';
+        const optionText = this.voiceSelect.options[i].textContent ?? '';
         
         if (optionValue.toLowerCase() === voiceURI.toLowerCase() ||
             optionText.toLowerCase().includes(voiceURI.toLowerCase())) {

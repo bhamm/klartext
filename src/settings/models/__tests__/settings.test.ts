@@ -11,11 +11,6 @@ describe('Settings Model', () => {
         apiEndpoint: '',
         textSize: 'normal',
         translationLevel: 'leichte_sprache',
-        experimentalFeatures: {
-          fullPageTranslation: false
-        },
-        compareView: false,
-        excludeComments: true,
         speech: {
           voiceURI: '',
           rate: 0.9,
@@ -35,11 +30,6 @@ describe('Settings Model', () => {
         apiEndpoint: 'https://api.openai.com/v1/chat/completions',
         textSize: 'normal',
         translationLevel: 'leichte_sprache',
-        experimentalFeatures: {
-          fullPageTranslation: false
-        },
-        compareView: false,
-        excludeComments: true,
         speech: {
           voiceURI: '',
           rate: 0.9,
@@ -111,13 +101,6 @@ describe('Settings Model', () => {
       expect(validateSettings(nonStringTextSize)).toBe(false);
     });
 
-    test('returns false for invalid experimentalFeatures', () => {
-      const nonObjectExperimentalFeatures = { 
-        ...DEFAULT_SETTINGS,
-        experimentalFeatures: 'not-an-object' as any
-      };
-      expect(validateSettings(nonObjectExperimentalFeatures)).toBe(false);
-    });
   });
 
   describe('mergeWithDefaults', () => {
@@ -134,43 +117,11 @@ describe('Settings Model', () => {
       
       const expected = {
         ...DEFAULT_SETTINGS,
-        ...userSettings,
-        experimentalFeatures: {
-          ...DEFAULT_SETTINGS.experimentalFeatures
-        }
+        ...userSettings
       };
       
       expect(mergeWithDefaults(userSettings)).toEqual(expected);
     });
 
-    test('merges experimentalFeatures correctly', () => {
-      const userSettings = {
-        experimentalFeatures: {
-          fullPageTranslation: true,
-          newFeature: true
-        }
-      };
-      
-      const expected = {
-        ...DEFAULT_SETTINGS,
-        experimentalFeatures: {
-          ...DEFAULT_SETTINGS.experimentalFeatures,
-          ...userSettings.experimentalFeatures
-        }
-      };
-      
-      const result = mergeWithDefaults(userSettings);
-      expect(result.experimentalFeatures).toEqual(expected.experimentalFeatures);
-    });
-
-    test('handles empty experimentalFeatures', () => {
-      const userSettings = {
-        provider: 'anthropic',
-        experimentalFeatures: null as any
-      };
-      
-      const result = mergeWithDefaults(userSettings);
-      expect(result.experimentalFeatures).toEqual(DEFAULT_SETTINGS.experimentalFeatures);
-    });
   });
 });

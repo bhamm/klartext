@@ -3,11 +3,8 @@ import { ttsProviderRegistry } from './tts-providers';
 import { isInDeveloperMode, isLikelyInDeveloperMode } from '../shared/utils/extension-utils';
 import { 
   ErrorDetails, 
-  ProviderConfig, 
   ConfigStore, 
-  FeedbackDetails, 
-  MenuItemConfig,
-  ExperimentalFeatures 
+  FeedbackDetails
 } from '../shared/types/error';
 import {
   ApiConfig,
@@ -19,7 +16,6 @@ import {
   GetProviderVoicesMessage,
   SynthesizeSpeechMessage,
   PingResponse,
-  Tab,
   Message,
   DeveloperModeMessage
 } from '../shared/types/api';
@@ -27,8 +23,7 @@ import {
 // Constants
 const MENU_ITEMS: { [key: string]: string } = {
   SELECTION: 'translate-selection-to-leichte-sprache',
-  ARTICLE: 'translate-article-to-leichte-sprache',
-  FULLPAGE: 'translate-fullpage-to-leichte-sprache'
+  ARTICLE: 'translate-article-to-leichte-sprache'
 };
 const REPO_URL = 'https://github.com/bhamm/klartext';
 
@@ -65,7 +60,7 @@ class ApiErrorHandler {
   static createErrorDetails(error: unknown, config: ApiConfig, text: string, provider: string): ErrorDetails {
     const err = error as { message?: string; status?: number; statusText?: string };
     return {
-      message: err?.message || 'Unknown error',
+      message: err?.message ?? 'Unknown error',
       request: {
         endpoint: config.apiEndpoint,
         model: config.model,
@@ -149,7 +144,7 @@ static getTranslationLevelDisplayName(level: string | undefined): string {
   return level && displayNames[level] ? displayNames[level] : 'Leichte Sprache'; // Default to 'Leichte Sprache' if level is not found or undefined
 }
 
-static setupContextMenu(experimentalFeatures: ExperimentalFeatures) {
+static setupContextMenu() {
   // Get the display name for the current translation level
   const translationLevelDisplay = this.getTranslationLevelDisplayName(API_CONFIG.translationLevel);
   
@@ -165,17 +160,8 @@ static setupContextMenu(experimentalFeatures: ExperimentalFeatures) {
       MENU_ITEMS.ARTICLE,
       `Artikel in ${translationLevelDisplay} übersetzen`,
       ['all'],
-      () => {}
+      () => console.log('Context menu items created successfully')
     );
-
-    if (experimentalFeatures?.fullPageTranslation) {
-      this.createMenuItem(
-        MENU_ITEMS.FULLPAGE,
-        `Ganze Seite in ${translationLevelDisplay} übersetzen (Beta)`,
-        ['all'],
-        () => console.log('Context menu items created successfully')
-      );
-    }
   });
 }
 }
@@ -310,7 +296,7 @@ class TranslationCache {
   static async get(text: string): Promise<string | null> {
     try {
       const result = await chrome.storage.local.get(['translationCache']);
-      return (result.translationCache || {})[text];
+      return (result.translationCache ?? {})[text];
     } catch (error) {
       console.error('Error reading from cache:', error);
       return null;
@@ -320,7 +306,7 @@ class TranslationCache {
   static async set(text: string, translation: string): Promise<void> {
     try {
       const result = await chrome.storage.local.get(['translationCache']);
-      const cache = result.translationCache || {};
+      const cache = result.translationCache ?? {};
       cache[text] = translation;
       
       const entries = Object.entries(cache);
@@ -339,9 +325,7 @@ class TranslationCache {
 // Initialize context menu
 chrome.runtime.onInstalled.addListener(() => {
   console.log('Extension installed/updated, creating context menu');
-  chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
-    MenuManager.setupContextMenu(items.experimentalFeatures || {});
-  });
+  MenuManager.setupContextMenu();
 });
 
 // Message handling
@@ -423,9 +407,7 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
                 model: API_CONFIG.model
               });
 
-              chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
-                MenuManager.setupContextMenu(items.experimentalFeatures || {});
-              });
+              MenuManager.setupContextMenu();
             });
           } catch (error) {
             console.error('Error validating model after provider change:', error);
@@ -445,9 +427,7 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
             model: API_CONFIG.model
           });
 
-          chrome.storage.sync.get(['experimentalFeatures'], (items: StorageItems) => {
-            MenuManager.setupContextMenu(items.experimentalFeatures || {});
-          });
+          MenuManager.setupContextMenu();
         });
       }
       
@@ -505,7 +485,7 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
         }
         
         // Get API key from message or CONFIG_STORE
-        const apiKey = message.apiKey || CONFIG_STORE.providers[message.provider]?.apiKey || '';
+        const apiKey = (message.apiKey ?? CONFIG_STORE.providers[message.provider]?.apiKey) || '';
         
         // Create provider config
         const config = {
@@ -557,7 +537,7 @@ chrome.runtime.onMessage.addListener((message: TranslationMessage | ConfigMessag
         // Create provider config
         const config = {
           provider: message.settings.provider,
-          apiKey: message.settings.apiKey || CONFIG_STORE.providers[message.settings.provider]?.apiKey || '',
+          apiKey: (message.settings.apiKey ?? CONFIG_STORE.providers[message.settings.provider]?.apiKey) || '',
           apiEndpoint: CONFIG_STORE.providers[message.settings.provider]?.apiEndpoint || '',
           voice: message.settings.voiceURI,
           rate: message.settings.rate,
@@ -715,6 +695,7 @@ class ContentScriptManager {
       });
       return response?.status === 'ok';
     } catch (error) {
+      console.error('Failed to check if loaded:', error);
       return false;
     }
   }
@@ -779,7 +760,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   
   console.log('Context menu clicked:', info.menuItemId);
   
-  if (info.menuItemId === MENU_ITEMS.SELECTION || info.menuItemId === MENU_ITEMS.ARTICLE || info.menuItemId === MENU_ITEMS.FULLPAGE) {
+  if (info.menuItemId === MENU_ITEMS.SELECTION || info.menuItemId === MENU_ITEMS.ARTICLE) {
     if (info.menuItemId === MENU_ITEMS.SELECTION && !info.selectionText) return;
     
     console.log('Current API configuration:', {
@@ -805,8 +786,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
         if (info.menuItemId === MENU_ITEMS.ARTICLE) {
           ContentScriptManager.sendMessage(tab, { action: 'startArticleMode' });
-        } else if (info.menuItemId === MENU_ITEMS.FULLPAGE) {
-          ContentScriptManager.sendMessage(tab, { action: 'startFullPageMode' });
         } else if (info.selectionText) {
           ContentScriptManager.sendMessage(tab, { action: 'startTranslation' });
           const translation = await handleTranslation(info.selectionText);

@@ -5,6 +5,77 @@ All notable changes to the Klartext Chrome Extension will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.98] - 2025-04-29
+
+### Improved
+- Code-Qualität verbessert:
+  - Verwendung von optionalen Verkettungsoperatoren (optional chaining) für bessere Lesbarkeit
+  - Ersetzung von `if (section.originalSection && section.originalSection.innerText)` durch `if (section.originalSection?.innerText)` in page-controller.ts
+  - Modernisierung des getInstance() Singleton-Patterns mit Nullish Coalescing Assignment Operator (??=)
+
+## [1.5.97] - 2025-04-29
+
+### Removed
+- Entfernung ungenutzter Code-Fragmente:
+  - Leere `src/content/content.js` Datei entfernt (wird nicht im Build-Prozess verwendet)
+  - Ungenutzte `checkRateLimit` Methode und `rateLimiter` Property in der BaseProvider-Klasse
+  - Ungenutzte Imports in message-handler.ts: `pageTranslator` und `translationControls`
+  - Referenzen zu nicht existierenden Sidepanel-Dateien und full-page-mode.test.js
+
+## [1.5.96] - 2025-04-29
+
+### Removed
+- Vollständige Entfernung aller experimentellen Einstellungen:
+  - Entfernung des "Experimentelle Funktionen" Bereichs aus der Benutzeroberfläche
+  - Entfernung der `ExperimentalFeatures` Schnittstelle aus dem Code
+  - Umwandlung der verbleibenden Einstellungen (Vergleichsansicht, Kommentare ausschließen) in reguläre Einstellungen
+  - Bereinigung aller Referenzen zu experimentellen Funktionen in Tests und Typdefinitionen
+
+## [1.5.95] - 2025-04-28
+
+### Removed
+- Experimentelle Vollseiten-Übersetzungsfunktion:
+  - Entfernung der experimentellen Vollseiten-Übersetzung aus der Benutzeroberfläche
+  - Entfernung des Kontextmenüeintrags für die Vollseiten-Übersetzung
+  - Bereinigung des Codes und der Einstellungen im Zusammenhang mit der Vollseiten-Übersetzung
+  - Entfernung der zugehörigen Tests
+
+## [1.5.94] - 2025-03-12
+
+### Added
+- Integrierte Open Sans Schriftart für konsistente Typografie:
+  - Lokale Einbindung der Schriftarten (Regular, Medium, SemiBold)
+  - Verbesserte Lesbarkeit durch optimierte Schriftdarstellung
+  - Unabhängigkeit von externen Schriftquellen
+- Neue Dokumentation zur Barrierefreiheit:
+  - Detaillierte WCAG 2.0 und BITV 2.0 Konformitätsübersicht
+  - Dokumentation implementierter Accessibility-Features
+  - Roadmap für vollständige Konformität
+
+### Improved
+- Überarbeitetes CSS für einheitliche Schriftdarstellung:
+  - Konsistente Schriftfamilien-Definitionen
+  - Optimierte Fallback-Schriften
+  - Verbesserte Typografie-Hierarchie
+- Optimierter Font-Download-Prozess:
+  - Schriften werden nur bei Bedarf heruntergeladen
+  - Verbesserte Fehlerbehandlung beim Download
+  - Parallele Downloads für schnellere Build-Zeit
+
+## [1.5.93] - 2025-03-12
+
+### Improved
+- Verbesserte HTML-Bereinigung für Übersetzungen:
+  - Entfernung von Bildern und Tracking-Pixeln aus dem Übersetzungs-Payload
+  - Entfernung von Autor-Informationen und Bildunterschriften
+  - Entfernung von Metadaten-Elementen wie Artikel-IDs und Zeitstempeln
+  - Entfernung von Spenden- und Abonnement-Aufforderungen
+  - Bessere Fokussierung auf den eigentlichen Textinhalt für die Übersetzung
+
+### Fixed
+- Behebt Problem, bei dem Bilder und andere nicht relevante Elemente in den Übersetzungs-Payload aufgenommen wurden
+- Reduziert die Tokenzahl bei Übersetzungen durch effizientere Bereinigung des HTML-Inhalts
+
 ## [1.5.92] - 2025-03-12
 
 ### Fixed

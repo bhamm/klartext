@@ -94,9 +94,6 @@ export async function saveSettings(settings: Settings): Promise<Settings> {
         apiEndpoint: settings.apiEndpoint,
         textSize: settings.textSize,
         translationLevel: settings.translationLevel,
-        experimentalFeatures: settings.experimentalFeatures,
-        compareView: settings.compareView,
-        excludeComments: settings.excludeComments,
         speech: settings.speech
       };
       
@@ -135,10 +132,7 @@ interface ApiConfigResponse {
  * @param config - API configuration
  * @returns Response from background script
  */
-export async function updateApiConfig(config: ProviderConfig & { 
-  compareView?: boolean; 
-  excludeComments?: boolean;
-}): Promise<ApiConfigResponse> {
+export async function updateApiConfig(config: ProviderConfig): Promise<ApiConfigResponse> {
   console.log('Updating API configuration in background script:', config);
   
   return new Promise((resolve) => {
@@ -202,8 +196,6 @@ export async function updateContentSettings(settings: Settings): Promise<void> {
       action: 'updateSettings',
       settings: {
         textSize: settings.textSize,
-        compareView: settings.compareView,
-        excludeComments: settings.excludeComments,
         speech: settings.speech
       }
     });
@@ -249,9 +241,7 @@ export async function saveAllSettings(settings: Settings): Promise<SettingsRespo
       model: settings.model,
       apiKey: settings.apiKey,
       apiEndpoint: settings.apiEndpoint || getDefaultEndpoint(settings.provider),
-      translationLevel: settings.translationLevel,
-      compareView: settings.compareView,
-      excludeComments: settings.excludeComments
+      translationLevel: settings.translationLevel
     };
     console.log('API config to send:', apiConfig);
     
@@ -260,7 +250,7 @@ export async function saveAllSettings(settings: Settings): Promise<SettingsRespo
 
     if (!response.success) {
       console.error('Background script returned error:', response.error);
-      throw new Error(response.error || 'Failed to update API configuration');
+      throw new Error(response.error ?? 'Failed to update API configuration');
     }
 
     // Update content script settings

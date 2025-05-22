@@ -1,7 +1,7 @@
 /**
  * Settings model for the Klartext extension
  */
-import { Settings, ExperimentalFeatures } from '../../shared/types/settings';
+import { Settings } from '../../shared/types/settings';
 
 /**
  * Default settings values
@@ -13,11 +13,6 @@ export const DEFAULT_SETTINGS: Settings = {
   apiEndpoint: '',
   textSize: 'normal',
   translationLevel: 'leichte_sprache',
-  experimentalFeatures: {
-    fullPageTranslation: false
-  },
-  compareView: false,
-  excludeComments: true,
   speech: {
     voiceURI: '',  // Empty string means use default voice
     rate: 0.9,
@@ -71,11 +66,6 @@ export function validateSettings(settings: unknown): settings is Settings {
     return false;
   }
 
-  // Validate experimentalFeatures if present
-  if (settingsObj.experimentalFeatures && 
-      typeof settingsObj.experimentalFeatures !== 'object') {
-    return false;
-  }
   
   // Validate speech settings if present
   if (settingsObj.speech) {
@@ -118,10 +108,6 @@ export function mergeWithDefaults(userSettings: Partial<Settings> = {}): Setting
   return {
     ...DEFAULT_SETTINGS,
     ...userSettings,
-    experimentalFeatures: {
-      ...DEFAULT_SETTINGS.experimentalFeatures,
-      ...(userSettings.experimentalFeatures || {})
-    },
     speech: {
       ...DEFAULT_SETTINGS.speech,
       ...(userSettings.speech || {})

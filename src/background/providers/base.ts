@@ -74,7 +74,7 @@ export abstract class BaseProvider implements TranslationProvider {
       }
       
       // Get provider-specific prompt for the selected level
-      const level = config.translationLevel || 'leichte_sprache';
+      const level = config.translationLevel ?? 'leichte_sprache';
       
       if (BaseProvider.prompts && 
           BaseProvider.prompts[config.provider] && 
@@ -106,7 +106,7 @@ export abstract class BaseProvider implements TranslationProvider {
 
   protected createErrorDetails(error: any, config: ProviderConfig, text: string): TranslationError {
     return {
-      message: error?.message || 'Unknown error',
+      message: error?.message ?? 'Unknown error',
       request: {
         endpoint: config.apiEndpoint,
         model: config.model,
