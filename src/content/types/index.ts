@@ -150,20 +150,3 @@ export interface TranslationOverlayInterface {
   hide(): void;
   isVisible(): boolean;
 }
-
-/**
- * Page translator interface
- */
-export interface PageTranslatorInterface {
-  sections: SectionData[];
-  currentSection: number;
-  controls: TranslationControlsInterface | null;
-  
-  setControls(controls: TranslationControlsInterface): void;
-  initialize(): Promise<void>;
-  getContentSections(): SectionData[];
-  translateNextSection(): Promise<void>;
-  appendTranslation(translation: string, id: string): void;
-  completeTranslation(): void;
-  showError(message: string): void;
-}

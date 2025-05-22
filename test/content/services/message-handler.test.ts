@@ -20,15 +20,6 @@ jest.mock('../../../src/content/ui/translation-controls', () => ({
   }
 }));
 
-jest.mock('../../../src/content/controllers/page-controller', () => ({
-  pageTranslator: {
-    setControls: jest.fn(),
-    initialize: jest.fn().mockResolvedValue(undefined),
-    appendTranslation: jest.fn(),
-    showError: jest.fn()
-  }
-}));
-
 jest.mock('../../../src/content/utils/dom-utils', () => ({
   findClosestMatchingElement: jest.fn(),
   cleanArticleHTML: jest.fn().mockReturnValue('<p>Test content</p>')
