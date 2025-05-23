@@ -16,31 +16,32 @@ jest.mock('../../../background/providers/index', () => ({
 describe('Validation Service', () => {
   describe('validateApiKey', () => {
     test('returns true for local provider regardless of key', () => {
-      expect(validateApiKey('', 'local')).toBe(true);
-      expect(validateApiKey(undefined, 'local')).toBe(true);
-      expect(validateApiKey('any-key', 'local')).toBe(true);
+      const localTestCases = ['', undefined, 'any-key'];
+      localTestCases.forEach(key => {
+        expect(validateApiKey(key, 'local')).toBe(true);
+      });
     });
 
-    test('returns false for empty or undefined key for non-local providers', () => {
-      expect(validateApiKey('', 'openAI')).toBe(false);
-      expect(validateApiKey(undefined, 'google')).toBe(false);
-      expect(validateApiKey(undefined, 'anthropic')).toBe(false);
-    });
+    test('validates API key requirements by provider', () => {
+      const testCases = [
+        // OpenAI and Anthropic require sk- prefix
+        { key: 'sk-test', provider: 'openAI', expected: true },
+        { key: 'sk-test', provider: 'anthropic', expected: true },
+        { key: 'test', provider: 'openAI', expected: false },
+        { key: 'test', provider: 'anthropic', expected: false },
+        // Google accepts any non-empty string
+        { key: 'any-key', provider: 'google', expected: true },
+        // Empty/undefined keys fail for non-local providers
+        { key: '', provider: 'openAI', expected: false },
+        { key: undefined, provider: 'google', expected: false },
+        // Non-string keys fail
+        { key: 123 as any, provider: 'openAI', expected: false },
+        { key: {} as any, provider: 'google', expected: false }
+      ];
 
-    test('returns false for non-string key', () => {
-      expect(validateApiKey(123 as any, 'openAI')).toBe(false);
-      expect(validateApiKey({} as any, 'google')).toBe(false);
-    });
-
-    test('validates OpenAI and Anthropic keys start with sk-', () => {
-      expect(validateApiKey('sk-test', 'openAI')).toBe(true);
-      expect(validateApiKey('sk-test', 'anthropic')).toBe(true);
-      expect(validateApiKey('test', 'openAI')).toBe(false);
-      expect(validateApiKey('test', 'anthropic')).toBe(false);
-    });
-
-    test('accepts any non-empty string for Google', () => {
-      expect(validateApiKey('any-key', 'google')).toBe(true);
+      testCases.forEach(({ key, provider, expected }) => {
+        expect(validateApiKey(key, provider)).toBe(expected);
+      });
     });
   });
 
