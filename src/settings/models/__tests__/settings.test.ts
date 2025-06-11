@@ -2,24 +2,6 @@ import { DEFAULT_SETTINGS, validateSettings, mergeWithDefaults } from '../settin
 import { Settings } from '../../../shared/types/settings';
 
 describe('Settings Model', () => {
-  describe('DEFAULT_SETTINGS', () => {
-    test('has correct initial values', () => {
-      expect(DEFAULT_SETTINGS).toEqual({
-        provider: 'openAI',
-        model: '',
-        apiKey: '',
-        apiEndpoint: '',
-        textSize: 'normal',
-        translationLevel: 'leichte_sprache',
-        speech: {
-          voiceURI: '',
-          rate: 0.9,
-          pitch: 1.0,
-          ttsProvider: 'browser'
-        }
-      });
-    });
-  });
 
   describe('validateSettings', () => {
     test('returns true for valid settings', () => {
@@ -40,65 +22,35 @@ describe('Settings Model', () => {
       expect(validateSettings(settings)).toBe(true);
     });
 
-    test('returns false for null or undefined settings', () => {
-      expect(validateSettings(null as any)).toBe(false);
-      expect(validateSettings(undefined as any)).toBe(false);
-    });
-
-    test('returns false for non-object settings', () => {
-      expect(validateSettings('string' as any)).toBe(false);
-      expect(validateSettings(123 as any)).toBe(false);
-      expect(validateSettings([] as any)).toBe(false);
+    test('returns false for invalid input types', () => {
+      const invalidInputs = ['string', 123, [], null, undefined];
+      invalidInputs.forEach(input => {
+        expect(validateSettings(input as any)).toBe(false);
+      });
     });
 
     test('returns false for missing required properties', () => {
-      const missingProvider = { ...DEFAULT_SETTINGS };
-      delete (missingProvider as any).provider;
-      expect(validateSettings(missingProvider)).toBe(false);
-
-      const missingModel = { ...DEFAULT_SETTINGS };
-      delete (missingModel as any).model;
-      expect(validateSettings(missingModel)).toBe(false);
-
-      const missingTextSize = { ...DEFAULT_SETTINGS };
-      delete (missingTextSize as any).textSize;
-      expect(validateSettings(missingTextSize)).toBe(false);
+      const requiredProps = ['provider', 'model', 'textSize'];
+      requiredProps.forEach(prop => {
+        const settings = { ...DEFAULT_SETTINGS };
+        delete (settings as any)[prop];
+        expect(validateSettings(settings)).toBe(false);
+      });
     });
 
-    test('returns false for invalid provider', () => {
-      const settings = { 
-        ...DEFAULT_SETTINGS,
-        provider: ''
-      };
-      expect(validateSettings(settings)).toBe(false);
-
-      const nonStringProvider = { 
-        ...DEFAULT_SETTINGS,
-        provider: 123 as any
-      };
-      expect(validateSettings(nonStringProvider)).toBe(false);
-    });
-
-    test('returns false for invalid model', () => {
-      const nonStringModel = { 
-        ...DEFAULT_SETTINGS,
-        model: 123 as any
-      };
-      expect(validateSettings(nonStringModel)).toBe(false);
-    });
-
-    test('returns false for invalid textSize', () => {
-      const invalidTextSize = { 
-        ...DEFAULT_SETTINGS,
-        textSize: 'invalid-size' as any
-      };
-      expect(validateSettings(invalidTextSize)).toBe(false);
-
-      const nonStringTextSize = { 
-        ...DEFAULT_SETTINGS,
-        textSize: 123 as any
-      };
-      expect(validateSettings(nonStringTextSize)).toBe(false);
+    test('returns false for invalid property values', () => {
+      const invalidCases = [
+        { provider: '' },
+        { provider: 123 },
+        { model: 123 },
+        { textSize: 'invalid-size' },
+        { textSize: 123 }
+      ];
+      
+      invalidCases.forEach(invalidProps => {
+        const settings = { ...DEFAULT_SETTINGS, ...invalidProps };
+        expect(validateSettings(settings)).toBe(false);
+      });
     });
 
   });

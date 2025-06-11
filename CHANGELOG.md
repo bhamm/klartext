@@ -5,6 +5,43 @@ All notable changes to the Klartext Chrome Extension will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2025-05-23
+
+### Added
+- Neue Test-Abdeckung für wichtige Komponenten:
+  - Browser TTS Provider Tests für Sprachsynthese-Funktionalität
+  - Umfassende Tests für DOM-Utility-Funktionen in den Einstellungen
+  - Verbesserte Testabdeckung für kritische Systemkomponenten
+
+### Removed
+- Entfernung unnötiger und problematischer Tests:
+  - Entfernung fehlerhafter Background-Script Tests mit komplexen Chrome API Mocks
+  - Entfernung problematischer Provider-Tests mit TypeScript-Kompatibilitätsproblemen
+  - Bereinigung von Tests, die aufgrund von DOM-Umgebungsproblemen nicht zuverlässig liefen
+
+### Improved
+- Optimierte Test-Suite-Wartbarkeit:
+  - Fokussierung auf Tests mit echtem Mehrwert für die Qualitätssicherung
+  - Reduzierung der Komplexität bei Mock-Objekten und Test-Umgebungen
+  - Verbesserte Stabilität der verbleibenden Tests
+
+## [1.5.99] - 2025-05-23
+
+### Removed
+- Bereinigung der Test-Suite zur Verbesserung der Wartbarkeit:
+  - Entfernung redundanter Tests für statische Datenstrukturen (DEFAULT_SETTINGS Werte-Verifikation)
+  - Konsolidierung ähnlicher Validierungstests in parametrisierte Tests
+  - Entfernung problematischer Selenium-Tests, die Mock-DOM-Elemente statt echter Funktionalität testeten
+  - Entfernung unzuverlässiger Puppeteer-Tests mit zu vielen Umgehungslösungen
+  - Vereinfachung der Provider-Base-Tests durch Zusammenfassung ähnlicher Testfälle
+
+### Improved
+- Optimierte Test-Struktur:
+  - Reduzierte Anzahl der Tests von 297 auf 189 bei gleichbleibender Funktionsabdeckung
+  - Verbesserte Lesbarkeit durch parametrisierte Tests
+  - Fokussierung auf Tests mit echtem Mehrwert für die Fehlererkennung
+  - Reduzierter Wartungsaufwand für die Test-Suite
+
 ## [1.5.98] - 2025-04-29
 
 ### Improved

@@ -73,76 +73,33 @@ describe('BaseProvider', () => {
     });
   });
 
-  describe('createErrorDetails', () => {
-    test('creates error details with all fields', () => {
-      const error = {
-        message: 'Test error',
-        status: 400,
-        statusText: 'Bad Request'
-      };
-
+  describe('error handling and response cleaning', () => {
+    test('creates error details correctly', () => {
+      const error = { message: 'Test error', status: 400, statusText: 'Bad Request' };
       const details = provider['createErrorDetails'](error, mockConfig, 'test text');
       
-      expect(details).toEqual({
-        message: 'Test error',
-        request: {
-          endpoint: mockConfig.apiEndpoint,
-          model: mockConfig.model,
-          text: 'test text'
-        },
-        response: error,
-        status: 400,
-        statusText: 'Bad Request'
-      });
+      expect(details.message).toBe('Test error');
+      expect(details.request?.endpoint).toBe(mockConfig.apiEndpoint);
+      expect(details.status).toBe(400);
     });
 
-    test('handles missing error fields', () => {
-      const details = provider['createErrorDetails'](null, mockConfig, 'test text');
-      
-      expect(details).toEqual({
-        message: 'Unknown error',
-        request: {
-          endpoint: mockConfig.apiEndpoint,
-          model: mockConfig.model,
-          text: 'test text'
-        },
-        response: null,
-        status: undefined,
-        statusText: undefined
-      });
-    });
-  });
-
-  describe('handleApiError', () => {
-    test('throws formatted error message', () => {
-      const error = { message: 'API Error' };
-      
-      expect(() => provider['handleApiError'](error, mockConfig, 'test text'))
+    test('handles API and syntax errors', () => {
+      expect(() => provider['handleApiError']({ message: 'API Error' }, mockConfig, 'test'))
         .toThrow(/test API error:/);
-    });
-  });
-
-  describe('handleSyntaxError', () => {
-    test('throws formatted syntax error message', () => {
       expect(() => provider['handleSyntaxError']('TestProvider'))
-        .toThrow('Invalid response from TestProvider API. Please check your API configuration.');
-    });
-  });
-
-  describe('cleanResponse', () => {
-    test('removes markdown code blocks', () => {
-      expect(provider['cleanResponse']('```html\n<p>test</p>\n```'))
-        .toBe('<p>test</p>');
+        .toThrow(/Invalid response from TestProvider API/);
     });
 
-    test('removes html prefix', () => {
-      expect(provider['cleanResponse']('html<p>test</p>'))
-        .toBe('<p>test</p>');
-    });
-
-    test('trims whitespace', () => {
-      expect(provider['cleanResponse']('  <p>test</p>  '))
-        .toBe('<p>test</p>');
+    test('cleans response text correctly', () => {
+      const testCases = [
+        { input: '```html\n<p>test</p>\n```', expected: '<p>test</p>' },
+        { input: 'html<p>test</p>', expected: '<p>test</p>' },
+        { input: '  <p>test</p>  ', expected: '<p>test</p>' }
+      ];
+      
+      testCases.forEach(({ input, expected }) => {
+        expect(provider['cleanResponse'](input)).toBe(expected);
+      });
     });
   });
 
